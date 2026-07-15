@@ -27,9 +27,11 @@ noctalia pi desktop automation machine
 
 Important entry points:
 
-- `~/dotfiles/install.sh`: initializes/validates the machine profile, restows
-  all packages, initializes machine-local Pi settings when absent, and reloads
-  the user-systemd unit inventory.
+- `~/dotfiles/install.sh`: validates the machine profile, unfolds old Stow
+  directory links, moves ignored local state out of package trees, restows all
+  packages without folding, initializes local defaults, and reloads the
+  user-systemd unit inventory. It shares `sync-all`'s lock and refuses to race
+  an active synchronization.
 - `~/dotfiles/sync.sh`: stages all non-ignored changes, checks whitespace,
   commits, fetches/rebases `origin/main`, and pushes.
 - `~/dotfiles/README.md`: concise deployment and synchronization instructions.
@@ -38,16 +40,20 @@ Important entry points:
 commit and push are explicitly authorized. Before editing a live path, resolve
 its source with `readlink -f`; Stow may link either a file or a parent directory.
 Never use `stow --adopt` without first reviewing every resulting source change.
+Always use `--no-folding`: target directories are real, portable files are
+symlinks, and generated/private files are real target-side files. Package
+`.gitignore` files are source metadata and must not appear in deployed paths.
 
 Preferred dry run:
 
 ```bash
 packages=(ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine)
-stow -d "$HOME/dotfiles" -t "$HOME" -n --verbose=2 -R "${packages[@]}"
+stow -d "$HOME/dotfiles" -t "$HOME" --no-folding -n --verbose=2 -R "${packages[@]}"
 ```
 
 Neovim's local repository metadata under `~/.config/nvim/.git` is machine-local;
-do not import it into the outer dotfiles repository.
+do not import it into the outer dotfiles repository. Its real `.gitignore` is a
+justified deployed exception because that standalone repository tracks it.
 
 ## Canonical Machine Profile
 

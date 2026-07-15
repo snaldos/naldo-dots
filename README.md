@@ -13,11 +13,16 @@ Deploy every package and initialize machine-local Pi settings with:
 Equivalent manual Stow command:
 
 ```bash
-stow ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine
+stow --no-folding ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine
 ```
 
-Reapply links with `stow --restow PACKAGE`, or remove a package's links with
-`stow --delete PACKAGE`.
+Reapply links with `stow --no-folding --restow PACKAGE`, or remove links with
+`stow --no-folding --delete PACKAGE`.
+
+`--no-folding` is required: deployed directories stay real, tracked files are
+individual symlinks, and generated/private files stay physically outside the
+repository. Package `.gitignore` files are source metadata and are not deployed.
+`install.sh` safely unfolds older directory-symlink installations.
 
 `desktop` owns portable desktop preferences such as `mimeapps.list`.
 `automation` owns the centralized synchronization commands and user systemd
@@ -62,4 +67,5 @@ application defaults, and Pi's extension selects built-in `dark` when
 
 Pi's active `settings.json` is machine-local because changing the live theme
 rewrites it. `settings.default.json` is the tracked durable source used by
-`install.sh` on a fresh machine.
+`install.sh` on a fresh machine. Fish similarly sources ignored
+`~/.config/fish/local.fish` after the shared configuration.

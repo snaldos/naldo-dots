@@ -11,6 +11,7 @@
 /bin/
 /logs/
 *.log
+/extensions/herdr-agent-state.ts
 
 # Rendered by Noctalia; settings.default.json supplies the durable dark fallback.
 /themes/noctalia.json

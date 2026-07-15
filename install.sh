@@ -7,6 +7,43 @@ packages=(
   ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi
   desktop automation machine
 )
+declare -A package_names=()
+for package in "${packages[@]}"; do
+  package_names["$package"]=1
+done
+
+fail() {
+  printf 'install: ERROR: %s\n' "$*" >&2
+  exit 2
+}
+
+entry_target() {
+  local entry="$1"
+  local package="${entry%%/*}"
+  local relative="${entry#*/}"
+
+  [[ "$entry" == */* && -n "${package_names[$package]:-}" ]] ||
+    fail "cannot map package entry: $entry"
+  [[ "$relative" != /* && "$relative" != .. && "$relative" != ../* &&
+    "$relative" != */../* && "$relative" != */.. ]] ||
+    fail "unsafe package entry: $entry"
+  printf '%s/%s' "$HOME" "$relative"
+}
+
+entries_match() {
+  local source="$1"
+  local target="$2"
+
+  [[ -e "$source" || -L "$source" ]] || return 1
+  [[ -e "$target" || -L "$target" ]] || return 1
+  [[ "$source" -ef "$target" ]] && return 0
+  [[ -f "$source" && ! -L "$source" && -f "$target" && ! -L "$target" ]] &&
+    cmp -s -- "$source" "$target" && return 0
+  [[ -L "$source" && -L "$target" && "$(readlink -- "$source")" == "$(readlink -- "$target")" ]]
+}
+
+git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
+  fail "not a Git working tree: $REPO_DIR"
 
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 profile_dir="${MACHINE_PROFILE_DIR:-$config_home/naldo/machine-profile}"
@@ -25,7 +62,7 @@ profile_override="${profile_override//[[:space:]]/}"
 read -r profile_default <"$profile_default_source"
 profile_default="${profile_default//[[:space:]]/}"
 effective_profile="${profile_override:-$profile_default}"
-effective_source="${profile_default_source}"
+effective_source="$profile_default_source"
 [[ -z "$profile_override" ]] || effective_source="$profile_source"
 grep -Fxq -- "$effective_profile" "$profile_values_source" || {
   printf 'Invalid machine profile from %s: %q\nAllowed values:\n' \
@@ -34,54 +71,93 @@ grep -Fxq -- "$effective_profile" "$profile_values_source" || {
   exit 2
 }
 
-if [[ -e "$profile_dir" && ! -d "$profile_dir" ]]; then
-  printf 'Machine profile path must be a directory: %s\n' "$profile_dir" >&2
-  exit 2
-fi
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+install -d "$runtime_dir"
+exec 8>"$runtime_dir/naldo-sync-all.lock"
+flock -n 8 || fail "synchronization is active; retry after sync-all finishes"
+
+# Earlier Stow tree-folding could place ignored generated/private state inside
+# package directories. Unfold every package, move such state to its deployed
+# path, and restow only tracked configuration as individual symlinks.
+mapfile -d '' ignored_source_entries < <(
+  git -C "$REPO_DIR" ls-files --others --ignored --exclude-standard -z -- "${packages[@]}"
+)
+for entry in "${ignored_source_entries[@]}"; do
+  source="$REPO_DIR/$entry"
+  [[ ! -d "$source" || -L "$source" ]] || fail "unexpected ignored directory entry: $entry"
+  target="$(entry_target "$entry")"
+  if [[ -e "$target" || -L "$target" ]]; then
+    entries_match "$source" "$target" || fail "conflicting local state: $target"
+  fi
+done
+
+stow --dir="$REPO_DIR" --target="$HOME" --no-folding --delete "${packages[@]}"
+
+moved_state=0
+for entry in "${ignored_source_entries[@]}"; do
+  source="$REPO_DIR/$entry"
+  [[ -e "$source" || -L "$source" ]] || continue
+  target="$(entry_target "$entry")"
+  install -d "$(dirname -- "$target")"
+  if [[ -e "$target" || -L "$target" ]]; then
+    entries_match "$source" "$target" || fail "conflicting local state after unstow: $target"
+    rm -f -- "$source"
+  else
+    mv -- "$source" "$target"
+  fi
+  ((moved_state += 1))
+done
+
+# A previously copied metadata file is not runtime configuration. Remove it
+# only when it is byte-identical to the tracked package metadata.
+mapfile -d '' tracked_entries < <(git -C "$REPO_DIR" ls-files -z -- "${packages[@]}")
+for entry in "${tracked_entries[@]}"; do
+  [[ "${entry##*/}" == .gitignore ]] || continue
+  [[ "${entry#*/}" != .gitignore ]] || continue
+  source="$REPO_DIR/$entry"
+  target="$(entry_target "$entry")"
+  target_dir="$(dirname -- "$target")"
+  if git -C "$target_dir" ls-files --error-unmatch .gitignore >/dev/null 2>&1; then
+    [[ -e "$target" || -L "$target" ]] || install -m 644 "$source" "$target"
+    continue
+  fi
+  if [[ -f "$target" && ! -L "$target" ]] && cmp -s -- "$source" "$target"; then
+    rm -- "$target"
+  fi
+done
+
+for package in "${packages[@]}"; do
+  find "$REPO_DIR/$package" -depth -type d -empty -delete
+done
+
+stow --dir="$REPO_DIR" --target="$HOME" --no-folding --stow "${packages[@]}"
+((moved_state == 0)) || printf 'Moved %d generated/private files out of package directories.\n' "$moved_state"
+
+[[ ! -e "$profile_dir" || -d "$profile_dir" ]] ||
+  fail "machine profile path must be a directory: $profile_dir"
 install -d -m 700 "$profile_dir"
 if [[ -n "$profile_override" ]]; then
   printf '%s\n' "$profile_override" | install -m 600 /dev/stdin "$profile_file"
 else
   rm -f -- "$profile_file"
 fi
+printf 'Machine profile: %s (%s)\n' "$effective_profile" \
+  "$([[ -n "$profile_override" ]] && printf '%s' "$profile_file" || printf '%s/default' "$profile_dir")"
 
 fish_config_dir="$HOME/.config/fish"
-fish_source_dir="$REPO_DIR/fish/.config/fish"
-fish_state_temp=""
-if [[ -L "$fish_config_dir" ]]; then
-  fish_link_target="$(readlink -f "$fish_config_dir")"
-  fish_state_temp="$(mktemp -d)"
-  for name in fish_variables local.fish; do
-    [[ ! -f "$fish_config_dir/$name" ]] || cp -- "$fish_config_dir/$name" "$fish_state_temp/$name"
-  done
-  rm -- "$fish_config_dir"
-  install -d -m 700 "$fish_config_dir"
-  for name in fish_variables local.fish; do
-    [[ ! -f "$fish_state_temp/$name" ]] || install -m 600 "$fish_state_temp/$name" "$fish_config_dir/$name"
-  done
-  rm -rf -- "$fish_state_temp"
-  if [[ "$fish_link_target" == "$fish_source_dir" ]]; then
-    rm -f -- "$fish_source_dir/fish_variables" "$fish_source_dir/local.fish"
-  fi
-elif [[ -e "$fish_config_dir" && ! -d "$fish_config_dir" ]]; then
-  printf 'Fish config path must be a directory: %s\n' "$fish_config_dir" >&2
-  exit 2
-else
-  install -d -m 700 "$fish_config_dir"
-fi
-
+[[ ! -e "$fish_config_dir" || -d "$fish_config_dir" ]] ||
+  fail "Fish config path must be a directory: $fish_config_dir"
+install -d -m 700 "$fish_config_dir"
 fish_local="$fish_config_dir/local.fish"
 if [[ ! -e "$fish_local" ]]; then
   install -m 600 /dev/null "$fish_local"
   printf 'Initialized empty machine-local Fish overrides: %s\n' "$fish_local"
 fi
 
-stow --dir="$REPO_DIR" --target="$HOME" --restow "${packages[@]}"
-printf 'Machine profile: %s (%s)\n' "$effective_profile" \
-  "$([[ -n "$profile_override" ]] && printf '%s' "$profile_file" || printf '%s/default' "$profile_dir")"
-
-pi_settings="$HOME/.pi/agent/settings.json"
-pi_defaults="$HOME/.pi/agent/settings.default.json"
+pi_agent_dir="$HOME/.pi/agent"
+install -d -m 700 "$pi_agent_dir"
+pi_settings="$pi_agent_dir/settings.json"
+pi_defaults="$pi_agent_dir/settings.default.json"
 if [[ -L "$pi_settings" && ! -e "$pi_settings" ]]; then
   rm -- "$pi_settings"
 fi

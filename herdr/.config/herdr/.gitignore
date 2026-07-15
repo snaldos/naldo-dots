@@ -1,0 +1,4 @@
+# Herdr runtime, logs, sockets, and sessions are machine-local.
+*
+!/.gitignore
+!/config.toml
