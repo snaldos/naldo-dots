@@ -94,9 +94,13 @@ Use it only with explicit authorization, then validate every affected consumer.
 ### Ghostty
 
 The tracked active file is `config.ghostty`. It uses optional config fragments
-for generated theme and shader state, so absence must remain valid. Resolve
-relative paths as Ghostty does and validate before sending reload signals.
-Shader changes require a visual check and rollback.
+for generated theme and shader state, so absence must remain valid. The shader
+manager writes `shaders/active.ghostty` plus content-addressed files under
+`shaders/generated/`; the main config includes the active file through its
+canonical home-relative path. Do not make that include source-relative: Ghostty
+resolves a Stow symlink to its repository path. Validate the effective config
+and confirm the configured shader path changes before sending reload signals.
+Shader changes still require a visual check and rollback.
 
 ### Neovim/LazyVim
 

@@ -14,9 +14,9 @@ Run the complete user-level bootstrap:
 ```
 
 It validates prerequisites and the selected profile, serializes against
-`sync-all`, unfolds old Stow directory links, deploys all packages, initializes
-machine-local Fish and Pi files when absent, and reloads user-systemd units. It
-does not install Arch packages or modify system files.
+`sync-all`, enforces clean package-source boundaries, deploys all packages,
+initializes machine-local Fish and Pi files when absent, and reloads
+user-systemd units. It does not install Arch packages or modify system files.
 
 Equivalent manual Stow command (links only):
 
@@ -30,7 +30,7 @@ Reapply links with `stow --no-folding --restow PACKAGE`, or remove links with
 `--no-folding` is required: deployed directories stay real, tracked files are
 individual symlinks, and generated/private files stay physically outside the
 repository. Package `.gitignore` files are source metadata and are not deployed.
-`install.sh` safely unfolds older directory-symlink installations.
+Conflicting files or invalid topology stop installation for explicit review.
 
 `desktop` owns portable desktop preferences such as `mimeapps.list`.
 `automation` owns the centralized synchronization commands and user systemd
@@ -62,13 +62,14 @@ interval is machine-local and ignored by Git. Every machine uses a local
 The `machine` package deploys `~/.config/naldo/machine-profile/`. Its tracked
 `default` is `laptop`; an optional machine-local `profile` file overrides it and
 must contain `desktop` or `laptop`. Fresh interactive installs choose from this
-tracked enum; `MACHINE_PROFILE=desktop ./install.sh` remains supported for
-automation.
+tracked enum; automation uses `./install.sh --profile PROFILE`.
 
 ## Generated themes and machine-local settings
 
 Noctalia's rendered outputs are ignored; all durable template inputs live under
-`~/.config/noctalia/templates/`. Missing outputs degrade safely: Ghostty and
+`~/.config/noctalia/templates/`. Ghostty's shader manager similarly keeps its
+active config and content-addressed shader outputs machine-local. Missing
+outputs degrade safely: Ghostty and
 Hyprland skip optional theme fragments, Neovim and Starship use tracked
 fallbacks, Yazi and the generated Fuzzel/Zathura configs fall back to
 application defaults, and Pi's extension selects built-in `dark` when

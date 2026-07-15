@@ -14,7 +14,6 @@ Resolution is `profile` when it exists, otherwise `default`. A fresh interactive
 
 ```bash
 ./install.sh --profile desktop
-# or: MACHINE_PROFILE=desktop ./install.sh
 ```
 
 Desktop and laptop can both use the local path `~/backups`: each clone retains

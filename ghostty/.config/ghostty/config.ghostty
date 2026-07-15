@@ -72,5 +72,5 @@ keybind = alt+backspace=text:\x1b\x7f
 # Shader
 # -----------------------------------------------------------------------------
 
-# Keep the shader chain isolated; "?" makes the include optional.
-config-file = ?shaders.ghostty
+# The manager writes this optional machine-local shader chain.
+config-file = ?~/.config/ghostty/shaders/active.ghostty

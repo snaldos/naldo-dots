@@ -15,7 +15,7 @@ TERMINAL_FLOAT=(
 )
 SYNC_CONTROL="${SYNC_CONTROL:-$HOME/.local/bin/sync-control}"
 SYNC_ALL="${SYNC_ALL:-$HOME/.local/bin/sync-all}"
-SYSTEM_SYNC="${SYSTEM_SYNC:-}"
+SYSTEM_SYNC="${SYSTEM_SYNC:-$HOME/backups/sync.sh}"
 
 notify() {
   local title="$1" message="$2"
@@ -52,17 +52,6 @@ run_control() {
   fi
 
   [[ -z "$output" ]] || printf '%s\n' "$output"
-}
-
-resolve_system_sync() {
-  local repository
-
-  if [[ -n "$SYSTEM_SYNC" ]]; then
-    printf '%s\n' "$SYSTEM_SYNC"
-  else
-    repository="$("$SYNC_ALL" --print-system-repo)" || return
-    printf '%s/sync.sh\n' "$repository"
-  fi
 }
 
 sync_status_value() {
@@ -122,7 +111,7 @@ choose_single_sync() {
 }
 
 choose_sync() {
-  local timer_state startup_state interval choice toggle_label startup_label system_sync
+  local timer_state startup_state interval choice toggle_label startup_label
   local -a items
 
   timer_state="$(sync_status_value timer)"
@@ -159,10 +148,10 @@ choose_sync() {
   "󰑐 Sync everything now") run_control run ;;
   "󰓦 Sync one repository") choose_single_sync ;;
   "󰌾 Refresh machine snapshot with sudo")
-    if system_sync="$(resolve_system_sync 2>&1)"; then
-      run_terminal "$system_sync" --sudo
+    if [[ -x "$SYSTEM_SYNC" ]]; then
+      run_terminal "$SYSTEM_SYNC" --sudo
     else
-      notify "Synchronization" "$system_sync"
+      notify "Synchronization" "Missing executable: $SYSTEM_SYNC"
     fi
     ;;
   "󰏤 Pause timer for this session") run_control pause ;;

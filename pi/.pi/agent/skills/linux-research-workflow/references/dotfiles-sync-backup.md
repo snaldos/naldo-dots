@@ -28,9 +28,8 @@ noctalia pi desktop automation machine
 Important entry points:
 
 - `~/dotfiles/install.sh`: runs the complete user-level bootstrap, prompts for
-  a fresh interactive machine profile, unfolds old Stow directory links, moves
-  ignored local state out of package trees, restows all packages without
-  folding, initializes local defaults, and reloads the
+  a fresh interactive machine profile, rejects invalid package-source state,
+  restows all packages without folding, initializes local defaults, and reloads the
   user-systemd unit inventory. It shares `sync-all`'s lock and refuses to race
   an active synchronization.
 - `~/dotfiles/sync.sh`: stages all non-ignored changes, checks whitespace,
@@ -39,8 +38,8 @@ Important entry points:
 
 `sync.sh` is a Git/network mutation, not a validator. Do not invoke it unless a
 commit and push are explicitly authorized. Before editing a live path, resolve
-its source with `readlink -f`; portable files should be individual links and a
-folded parent is a migration issue. Never use `stow --adopt` without first
+its source with `readlink -f`; portable files must be individual links and a
+folded parent is an invalid topology. Never use `stow --adopt` without first
 reviewing every resulting source change.
 Always use `--no-folding`: target directories are real, portable files are
 symlinks, and generated/private files are real target-side files. Package
@@ -69,8 +68,8 @@ The `machine` Stow package deploys one shared configuration directory:
 ```
 
 Resolution is `profile` when present, otherwise `default`. A fresh interactive
-install prompts from the enum; automation can use `./install.sh --profile desktop`
-or `MACHINE_PROFILE=desktop ./install.sh`.
+install prompts from the enum; automation uses `./install.sh --profile desktop`.
+A selection equal to the tracked default does not create a redundant override.
 
 The profile controls portable machine behavior, currently including:
 
@@ -194,11 +193,3 @@ Do not use `--sudo` without explicit authorization. An unprivileged run keeps a
 previous protected snapshot when the source still exists but is unreadable.
 Restore by reviewing file-by-file differences and recorded metadata, never by
 copying the entire snapshot over a new installation.
-
-## Migration Rule
-
-For a new machine, stop legacy timers first, archive conflicting repositories
-and live configs outside all Git trees, clone canonical repositories, create the
-machine-local profile, resolve Stow conflicts explicitly, and retain the
-archive until the user authorizes deletion. Do not replace unique uncommitted
-notes or wallpapers with a clone.

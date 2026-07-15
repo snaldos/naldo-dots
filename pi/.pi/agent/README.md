@@ -72,7 +72,7 @@ Discoverability lives in the header and `/hotkeys`, not inside the composer. Pi'
 
 `/pi-buddy german|typst|concept|quote|rps|anime` selects a category without creating more slash commands; no argument chooses randomly and avoids repeating the previous random category. `n` advances, Escape closes, and `q` does nothing. Cards leave a constant two-row gap before `π ask`.
 
-Ambient animation is not implemented by Pi. Ghostty currently owns the independently configurable `custom_background.glsl` and `custom_cursor.glsl` shaders, keeping graphics and animation outside Pi's input/render loop.
+Ambient animation is not implemented by Pi. Ghostty owns independently configurable background, cursor, and combined shaders through its machine-local active chain, keeping graphics and animation outside Pi's input/render loop.
 
 ### Persistent status
 

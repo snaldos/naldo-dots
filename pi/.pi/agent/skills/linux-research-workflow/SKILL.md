@@ -26,7 +26,7 @@ Treat this as a current profile that must still be inspected:
 
 Before nontrivial diagnosis or editing, read only the relevant guide:
 
-- Stow ownership, machine profiles, Git synchronization, timers, snapshots, or migration:
+- Stow ownership, machine profiles, Git synchronization, timers, or snapshots:
   [references/dotfiles-sync-backup.md](references/dotfiles-sync-backup.md)
 - Hyprland, plugins, Noctalia, UWSM, portals, or Wayland:
   [references/desktop-wayland.md](references/desktop-wayland.md)
@@ -50,9 +50,9 @@ Classify the target first:
 5. allowlisted system reconstruction data captured by `~/backups`
 
 Resolve live symlinks with `readlink -f`, inspect `.gitignore`, and check generator
-markers. Portable files should be individual links inside real target directories;
-a folded parent directory is a migration issue. Never duplicate Stow-managed files
-in the machine snapshot.
+markers. Portable files must be individual links inside real target directories;
+a folded parent directory is an invalid topology. Never duplicate Stow-managed
+files in the machine snapshot.
 
 ## Inspection Workflow
 

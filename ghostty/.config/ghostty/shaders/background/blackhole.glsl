@@ -27,7 +27,7 @@
 // Units: r_s (Schwarzschild radius) = 1. The screen mapping ties the shadow
 // radius b_crit to HOLE_RADIUS * sz, so the size modes below keep working.
 //
-// Ghostty setup (~/.config/ghostty/config):
+// Ghostty setup (~/.config/ghostty/config.ghostty):
 //   custom-shader = /path/to/blackhole_ghostty/blackhole.glsl
 //   custom-shader-animation = true
 
@@ -68,7 +68,18 @@ const float TOKEN_RUSH    = 1.1000; // MODE_TOKENS: drift speed at 100% context 
 // geodesic integration steps per pixel (only pixels near the hole pay this).
 // The dominant GPU cost: at high token fill the near field covers most of the
 // screen, and on a base-M GPU at 5K that's ~15M pixels x N_STEPS per frame.
+#ifndef GHOSTTY_GPU_PROFILE
+#define GHOSTTY_GPU_PROFILE 2
+#endif
+#if GHOSTTY_GPU_PROFILE == 0
+#define N_STEPS 24
+#elif GHOSTTY_GPU_PROFILE == 1
+#define N_STEPS 32
+#elif GHOSTTY_GPU_PROFILE == 2
+#define N_STEPS 40
+#else
 #define N_STEPS 48
+#endif
 
 // ---------------------------------------------------------------- size mode --
 // What drives the hole's growth — the master intensity I that every visual

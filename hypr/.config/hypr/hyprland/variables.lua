@@ -27,9 +27,9 @@ local valid_machine_profiles = {
   laptop = true,
 }
 
-local machine_profile_dir = os.getenv("MACHINE_PROFILE_DIR") or (config_home .. "/naldo/machine-profile")
-local machine_profile_path = os.getenv("MACHINE_PROFILE_FILE") or (machine_profile_dir .. "/profile")
-local machine_profile_default_path = os.getenv("MACHINE_PROFILE_DEFAULT_FILE") or (machine_profile_dir .. "/default")
+local machine_profile_dir = config_home .. "/naldo/machine-profile"
+local machine_profile_path = machine_profile_dir .. "/profile"
+local machine_profile_default_path = machine_profile_dir .. "/default"
 
 local function read_machine_profile(path)
   local file = io.open(path, "r")
@@ -42,14 +42,18 @@ local function read_machine_profile(path)
   return profile:match("^%s*(.-)%s*$")
 end
 
----@type HyprlandMachineProfile
 local machine_profile = read_machine_profile(machine_profile_path)
-  or read_machine_profile(machine_profile_default_path)
-  or "laptop"
+local machine_profile_source = machine_profile_path
+if machine_profile == nil then
+  machine_profile = read_machine_profile(machine_profile_default_path)
+  machine_profile_source = machine_profile_default_path
+end
 
+assert(machine_profile ~= nil, "machine profile is missing; run ~/dotfiles/install.sh")
+---@cast machine_profile HyprlandMachineProfile
 assert(
   valid_machine_profiles[machine_profile],
-  ("machine profile in %s must be desktop or laptop, got %q"):format(machine_profile_path, machine_profile)
+  ("machine profile in %s must be desktop or laptop, got %q"):format(machine_profile_source, machine_profile)
 )
 
 ---@type table<HyprlandMachineProfile, HyprlandKeyboardConfig>

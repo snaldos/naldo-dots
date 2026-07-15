@@ -3,42 +3,10 @@
 set -Eeuo pipefail
 
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-MACHINE_PROFILE_DIR="${MACHINE_PROFILE_DIR:-$CONFIG_HOME/naldo/machine-profile}"
-MACHINE_PROFILE_FILE="${MACHINE_PROFILE_FILE:-$MACHINE_PROFILE_DIR/profile}"
-MACHINE_PROFILE_DEFAULT_FILE="${MACHINE_PROFILE_DEFAULT_FILE:-$MACHINE_PROFILE_DIR/default}"
-MACHINE_PROFILE="${MACHINE_PROFILE:-}"
-
-if [[ -z "$MACHINE_PROFILE" && -r "$MACHINE_PROFILE_FILE" ]]; then
-  read -r MACHINE_PROFILE <"$MACHINE_PROFILE_FILE"
-elif [[ -z "$MACHINE_PROFILE" && -r "$MACHINE_PROFILE_DEFAULT_FILE" ]]; then
-  read -r MACHINE_PROFILE <"$MACHINE_PROFILE_DEFAULT_FILE"
-fi
-MACHINE_PROFILE="${MACHINE_PROFILE:-laptop}"
-MACHINE_PROFILE="${MACHINE_PROFILE//[[:space:]]/}"
-
-case "$MACHINE_PROFILE" in
-  desktop|laptop) ;;
-  *)
-    printf '[sync-all] ERROR: machine profile must be desktop or laptop, got %q\n' "$MACHINE_PROFILE" >&2
-    exit 2
-    ;;
-esac
-
 DOTFILES_REPO="${DOTFILES_REPO:-$HOME/dotfiles}"
 SYSTEM_BACKUP_REPO="${SYSTEM_BACKUP_REPO:-$HOME/backups}"
 NOTES_REPO="${NOTES_REPO:-$HOME/Vaults/second-brain}"
 WALLPAPERS_REPO="${WALLPAPERS_REPO:-$HOME/Wallpapers}"
-
-# Keep callers such as the Hyprland launcher on the same profile resolution path.
-if [[ "${1:-}" == "--print-system-repo" ]]; then
-  (($# == 1)) || {
-    printf 'Usage: %s --print-system-repo\n' "${0##*/}" >&2
-    exit 2
-  }
-  printf '%s\n' "$SYSTEM_BACKUP_REPO"
-  exit 0
-fi
 
 all_tasks=(system dotfiles notes wallpapers)
 declare -A task_labels=(
