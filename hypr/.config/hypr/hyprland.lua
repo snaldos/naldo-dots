@@ -29,6 +29,6 @@ if file_exists(vars.config_dir .. "/noctalia.lua") then
 end
 
 -- Plugin configuration is isolated so a missing plugin cannot block the core config.
-if file_exists(vars.config_dir .. "/plugins.lua") then
+if file_exists(vars.config_dir .. "/hyprland/plugins.lua") then
   require("hyprland.plugins")
 end
