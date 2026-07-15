@@ -10,7 +10,7 @@ Classify a file before editing or backing it up:
 | Machine override | ignored file under the deployed path | Keep local; provide a tracked example/default when useful |
 | Generated output | owning template or generator | Track the durable source, ignore the output |
 | Runtime or credentials | application state directories | Do not track, print, or copy into snapshots |
-| System reconstruction state | `~/backups-$profile/snapshot` | Capture only through the allowlisted snapshot script |
+| System reconstruction state | `~/backups/snapshot` | Capture only through the allowlisted snapshot script |
 
 Do not duplicate Stow-managed configuration in the backup repository. Do not
 turn generated theme output into a portable source merely because it currently
@@ -27,8 +27,9 @@ noctalia pi desktop automation
 
 Important entry points:
 
-- `~/dotfiles/install.sh`: restows all packages, initializes machine-local Pi
-  settings when absent, and reloads the user-systemd unit inventory.
+- `~/dotfiles/install.sh`: initializes/validates the machine profile, restows
+  all packages, initializes machine-local Pi settings when absent, and reloads
+  the user-systemd unit inventory.
 - `~/dotfiles/sync.sh`: stages all non-ignored changes, checks whitespace,
   commits, fetches/rebases `origin/main`, and pushes.
 - `~/dotfiles/README.md`: concise deployment and synchronization instructions.
@@ -50,22 +51,29 @@ do not import it into the outer dotfiles repository.
 
 ## Canonical Machine Profile
 
-`~/.config/hypr/machine/profile` is ignored and contains exactly one enum value:
+The active machine-local file is outside every Git repository:
 
 ```text
-desktop
-laptop
+~/.config/naldo/machine-profile
 ```
 
-It controls Hyprland machine defaults and the central backup repository:
+It contains exactly one enum value, `desktop` or `laptop`. Dotfiles track only
+`machine/profiles`, `machine/profile.default`, and documentation. The installer
+migrates the former Hyprland-local file and accepts an explicit override such as
+`MACHINE_PROFILE=laptop ./install.sh`.
+
+The profile controls portable machine behavior, currently including:
 
 ```text
-desktop -> XKB layout gb -> ~/backups-desktop
-laptop  -> XKB layout us -> ~/backups-laptop
+desktop -> XKB layout gb
+laptop  -> XKB layout us
 ```
 
-`sync-all` rejects other values. The tracked source is
-`hypr/.config/hypr/machine/profile.example`; never commit the active profile.
+Each machine independently clones its private snapshot repository at
+`~/backups`; Git history and `origin` determine whether it is the desktop or
+laptop backup. The backup is not the authority for the live profile. During
+migration, consumers may temporarily accept the old Hyprland profile and
+`backups-$profile` paths.
 
 ## Generated Themes and Active Settings
 
@@ -102,7 +110,7 @@ Each repository has a standalone `sync.sh`:
 
 ```text
 ~/dotfiles
-~/backups-$profile
+~/backups
 ~/Vaults/second-brain
 ~/Wallpapers
 ```
@@ -139,8 +147,7 @@ journalctl --user -u sync-all.service -n 150 --no-pager
 systemctl --user show sync-all.service -p Result -p ExecMainStatus
 systemctl --user list-timers sync-all.timer --all --no-pager
 
-profile=$(tr -d '[:space:]' < "$HOME/.config/hypr/machine/profile")
-for repo in "$HOME/dotfiles" "$HOME/backups-$profile" "$HOME/Vaults/second-brain" "$HOME/Wallpapers"; do
+for repo in "$HOME/dotfiles" "$HOME/backups" "$HOME/Vaults/second-brain" "$HOME/Wallpapers"; do
   git -C "$repo" status --short
   git -C "$repo" rev-list --left-right --count HEAD...@{u}
 done
@@ -151,7 +158,7 @@ A fresh remote check additionally requires an authorized `git fetch`.
 
 ## Machine Snapshot
 
-`~/backups-$profile` is a private Git repository whose current tree contains:
+`~/backups` is a private Git repository whose current tree contains:
 
 ```text
 .gitignore
@@ -169,9 +176,9 @@ private keys, network credentials, Pi credentials, and Noctalia's
 credential-bearing `state.toml`.
 
 ```bash
-~/backups-$profile/sync.sh --local  # regenerate without Git/network mutation
-~/backups-$profile/sync.sh          # regenerate, commit, rebase, push
-~/backups-$profile/sync.sh --sudo   # additionally read protected allowlisted files
+~/backups/sync.sh --local  # regenerate without Git/network mutation
+~/backups/sync.sh          # regenerate, commit, rebase, push
+~/backups/sync.sh --sudo   # additionally read protected allowlisted files
 ```
 
 Do not use `--sudo` without explicit authorization. An unprivileged run keeps a
@@ -182,7 +189,7 @@ copying the entire snapshot over a new installation.
 ## Migration Rule
 
 For a new machine, stop legacy timers first, archive conflicting repositories
-and live configs outside all Git trees, clone canonical repositories, set the
-ignored machine profile, resolve Stow conflicts explicitly, and retain the
+and live configs outside all Git trees, clone canonical repositories, create the
+machine-local profile, resolve Stow conflicts explicitly, and retain the
 archive until the user authorizes deletion. Do not replace unique uncommitted
 notes or wallpapers with a clone.

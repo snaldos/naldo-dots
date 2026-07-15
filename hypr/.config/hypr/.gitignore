@@ -1,3 +1,6 @@
+# Legacy machine-local profile; canonical path is ~/.config/naldo/machine-profile.
+/machine/profile
+
 workspaces.lua
 monitors.lua
 
