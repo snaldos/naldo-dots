@@ -44,6 +44,23 @@ assert(
   ("machine profile in %s must be desktop or laptop, got %q"):format(machine_profile_path, machine_profile)
 )
 
+---@type table<HyprlandMachineProfile, HyprlandKeyboardConfig>
+local keyboards = {
+  desktop = {
+    layout = "gb",
+    numlock_by_default = true,
+    repeat_delay = 250,
+    repeat_rate = 35,
+  },
+  laptop = {
+    layout = "us",
+    numlock_by_default = true,
+    repeat_delay = 250,
+    repeat_rate = 35,
+  },
+}
+local keyboard = keyboards[machine_profile]
+
 local centered_floating_size = "(monitor_w*0.30) (monitor_h*0.70)"
 local workspace_monitors = { "DP-1" }
 
@@ -80,6 +97,7 @@ local scrolling_direction_is_left = scrolling_direction == "left"
 ---@field config_dir string
 ---@field machine_profile HyprlandMachineProfile
 ---@field main_mod string
+---@field keyboard HyprlandKeyboardConfig
 ---@field noctalia HyprlandNoctaliaConfig
 ---@field window HyprlandWindowConfig
 ---@field terminal HyprlandTerminalConfig
@@ -88,6 +106,12 @@ local scrolling_direction_is_left = scrolling_direction == "left"
 ---@field workspace_group_size integer
 ---@field workspace_monitors string[]
 ---@field scrolling HyprlandScrollingConfig
+
+---@class HyprlandKeyboardConfig
+---@field layout "gb"|"us"
+---@field numlock_by_default boolean
+---@field repeat_delay integer
+---@field repeat_rate integer
 
 ---@class HyprlandNoctaliaConfig
 ---@field executable string
@@ -122,6 +146,7 @@ local M = {
   config_dir = config_dir,
   machine_profile = machine_profile,
   main_mod = "SUPER",
+  keyboard = keyboard,
   noctalia = noctalia,
   window = window,
   terminal = terminal,

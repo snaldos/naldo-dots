@@ -60,8 +60,8 @@ laptop
 It controls Hyprland machine defaults and the central backup repository:
 
 ```text
-desktop -> ~/backups-desktop
-laptop  -> ~/backups-laptop
+desktop -> XKB layout gb -> ~/backups-desktop
+laptop  -> XKB layout us -> ~/backups-laptop
 ```
 
 `sync-all` rejects other values. The tracked source is

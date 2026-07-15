@@ -12,10 +12,10 @@ hl.monitor({
 -- Input, appearance, and built-in layouts.
 hl.config({
   input = {
-    kb_layout = "gb",
-    numlock_by_default = true,
-    repeat_delay = 250,
-    repeat_rate = 35,
+    kb_layout = vars.keyboard.layout,
+    numlock_by_default = vars.keyboard.numlock_by_default,
+    repeat_delay = vars.keyboard.repeat_delay,
+    repeat_rate = vars.keyboard.repeat_rate,
     follow_mouse = 1,
 
     touchpad = {
