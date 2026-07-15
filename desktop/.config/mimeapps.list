@@ -37,10 +37,10 @@ audio/mpeg=vlc.desktop
 audio/x-vorbis+ogg=vlc.desktop
 video/mp4=vlc.desktop
 x-scheme-handler/discord=vesktop.desktop
-x-scheme-handler/mailto=userapp-Thunderbird-YBLVR3.desktop
-x-scheme-handler/mid=userapp-Thunderbird-YBLVR3.desktop
-message/rfc822=userapp-Thunderbird-YBLVR3.desktop
-x-scheme-handler/net.thunderbird=userapp-Thunderbird-4OQUR3.desktop
+x-scheme-handler/mailto=org.mozilla.Thunderbird.desktop
+x-scheme-handler/mid=org.mozilla.Thunderbird.desktop
+message/rfc822=org.mozilla.Thunderbird.desktop
+x-scheme-handler/net.thunderbird=org.mozilla.Thunderbird.desktop
 
 [Added Associations]
 application/pdf=org.pwmt.zathura.desktop;org.kde.okular.desktop;okularApplication_pdf.desktop;
@@ -58,7 +58,7 @@ text/x-chdr=nvim.desktop;
 text/x-c++src=nvim.desktop;
 text/x-c++hdr=nvim.desktop;
 text/x-tex=nvim.desktop;
-x-scheme-handler/mailto=userapp-Thunderbird-YBLVR3.desktop;
-x-scheme-handler/mid=userapp-Thunderbird-YBLVR3.desktop;
-message/rfc822=userapp-Thunderbird-YBLVR3.desktop;
-x-scheme-handler/net.thunderbird=userapp-Thunderbird-4OQUR3.desktop;
+x-scheme-handler/mailto=org.mozilla.Thunderbird.desktop;
+x-scheme-handler/mid=org.mozilla.Thunderbird.desktop;
+message/rfc822=org.mozilla.Thunderbird.desktop;
+x-scheme-handler/net.thunderbird=org.mozilla.Thunderbird.desktop;

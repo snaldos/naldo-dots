@@ -25,6 +25,16 @@ SYSTEM_BACKUP_REPO="${SYSTEM_BACKUP_REPO:-$HOME/backups-$MACHINE_PROFILE}"
 NOTES_REPO="${NOTES_REPO:-$HOME/Vaults/second-brain}"
 WALLPAPERS_REPO="${WALLPAPERS_REPO:-$HOME/Wallpapers}"
 
+# Keep callers such as the Hyprland launcher on the same profile resolution path.
+if [[ "${1:-}" == "--print-system-repo" ]]; then
+  (($# == 1)) || {
+    printf 'Usage: %s --print-system-repo\n' "${0##*/}" >&2
+    exit 2
+  }
+  printf '%s\n' "$SYSTEM_BACKUP_REPO"
+  exit 0
+fi
+
 all_tasks=(system dotfiles notes wallpapers)
 declare -A task_labels=(
   [system]="machine snapshot"

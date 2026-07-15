@@ -72,6 +72,10 @@ show_status() {
 
   timer_state="$(unit_state is-active "$TIMER_UNIT")"
   enabled="$(unit_state is-enabled "$TIMER_UNIT")"
+  case "$enabled" in
+  enabled|enabled-runtime) enabled="enabled" ;;
+  *) enabled="disabled" ;;
+  esac
   service_state="$(unit_state is-active "$SERVICE_UNIT")"
   result="$(systemctl --user show "$SERVICE_UNIT" --property=Result --value 2>/dev/null || true)"
   next="$(

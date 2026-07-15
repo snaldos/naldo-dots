@@ -29,7 +29,7 @@ local valid_machine_profiles = {
 
 local machine_profile_path = config_dir .. "/machine/profile"
 ---@type HyprlandMachineProfile
-local machine_profile = "laptop"
+local machine_profile = "desktop"
 local machine_profile_file = io.open(machine_profile_path, "r")
 
 -- This file is intentionally gitignored so each machine can choose its own profile.
