@@ -77,6 +77,63 @@ local function focus_window_or_workspace(dispatcher, workspace_fallback)
   end
 end
 
+local function window_move_signature(window)
+  if window == nil then
+    return nil
+  end
+
+  local at = window.at
+  local size = window.size
+  local layout_state = window.layout
+  at = type(at) == "table" and at or {}
+  size = type(size) == "table" and size or {}
+  layout_state = type(layout_state) == "table" and layout_state or {}
+
+  local workspace = window.workspace
+  local monitor = window.monitor
+  local column = type(layout_state.column) == "table" and layout_state.column or {}
+  local group = window.group
+
+  return table.concat({
+    tostring(at.x),
+    tostring(at.y),
+    tostring(size.x),
+    tostring(size.y),
+    tostring(workspace and workspace.id),
+    tostring(monitor and monitor.id),
+    tostring(column.index),
+    tostring(layout_state.index_in_column),
+    tostring(group and group.current_index),
+  }, "|")
+end
+
+local function move_window_or_workspace(dispatcher, workspace_fallback)
+  if workspace_fallback == nil then
+    return dispatcher
+  end
+
+  return function()
+    local window = hl.get_active_window()
+    if window == nil then
+      return
+    end
+
+    local before = window_move_signature(window)
+    local result = hl.dispatch(dispatcher)
+    if type(result) == "table" and result.ok == false then
+      return
+    end
+
+    if window_move_signature(window) == before then
+      hl.dispatch(hl.dsp.window.move({
+        workspace = workspace_fallback,
+        follow = true,
+        window = window,
+      }))
+    end
+  end
+end
+
 local function when_layout(name, dispatcher)
   return layout.by_layout({
     { layout = name, dispatcher = dispatcher },
@@ -321,8 +378,20 @@ for _, spec in ipairs(directional_binds) do
     { repeating = true, description = "Layout-Size: Resize window " .. spec.direction }
   )
 
-  bind(main_mod .. " + ALT + " .. spec.key, hl.dsp.window.move({ direction = spec.direction }), {
-    description = "Layout-Position: Move window " .. spec.direction .. " inside monitor",
+  local move_description = "Layout-Position: Move window " .. spec.direction
+  local move_dispatcher = hl.dsp.window.move({ direction = spec.direction })
+  if spec.workspace_fallback ~= nil then
+    move_description = move_description
+      .. " / Workspace: Move with window to "
+      .. spec.workspace_fallback
+      .. " at edge"
+    move_dispatcher = move_window_or_workspace(move_dispatcher, spec.workspace_fallback)
+  else
+    move_description = move_description .. " inside monitor"
+  end
+
+  bind(main_mod .. " + ALT + " .. spec.key, move_dispatcher, {
+    description = move_description,
   })
 
   bind(
