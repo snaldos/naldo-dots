@@ -16,7 +16,7 @@ Treat this as a current profile that must still be inspected:
 - native Noctalia v5 beta invoked as `noctalia`, not the old Quickshell/QML shell
 - Ghostty, Fish, Starship, Neovim/LazyVim, Fuzzel, Yazi, Zen Browser, and Herdr
 - portable user config in the public GNU Stow repository `~/dotfiles`
-- one machine-local `desktop|laptop` profile at `~/.config/naldo/machine-profile`
+- optional machine-local profile override at `~/.config/naldo/machine-profile/profile`, falling back to tracked `default`
 - one private machine-snapshot clone at `~/backups`, with its own history and remote on each machine
 - one `sync-all.timer` orchestrating dotfiles, machine snapshot, notes, and wallpapers
 - Noctalia templates as durable theme sources; rendered outputs remain ignored

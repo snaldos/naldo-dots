@@ -7,8 +7,6 @@
 /fuzzel/.config/fuzzel/fuzzel.ini
 /fuzzel/.config/fuzzel/fuzzel_theme.ini
 /fuzzel/.config/fuzzel/themes/noctalia
-# Legacy profile remains ignored until every machine uses ~/.config/naldo/machine-profile.
-/hypr/.config/hypr/machine/profile
 /hypr/.config/hypr/monitors.lua
 /hypr/.config/hypr/noctalia.lua
 /hypr/.config/hypr/workspaces.lua

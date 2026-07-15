@@ -5,42 +5,48 @@ set -Eeuo pipefail
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 packages=(
   ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi
-  desktop automation
+  desktop automation machine
 )
 
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
-profile_dir="$config_home/naldo"
-profile_file="${MACHINE_PROFILE_FILE:-$profile_dir/machine-profile}"
-legacy_profile_file="$config_home/hypr/machine/profile"
-profile_values="$REPO_DIR/machine/profiles"
-profile_default="$REPO_DIR/machine/profile.default"
-profile="${MACHINE_PROFILE:-}"
+profile_dir="${MACHINE_PROFILE_DIR:-$config_home/naldo/machine-profile}"
+profile_file="${MACHINE_PROFILE_FILE:-$profile_dir/profile}"
+profile_default_source="$REPO_DIR/machine/.config/naldo/machine-profile/default"
+profile_values_source="$REPO_DIR/machine/.config/naldo/machine-profile/profiles"
+profile_override="${MACHINE_PROFILE:-}"
 profile_source="MACHINE_PROFILE"
 
-if [[ -z "$profile" ]]; then
-  for candidate in "$profile_file" "$legacy_profile_file" "$profile_default"; do
-    if [[ -r "$candidate" ]]; then
-      read -r profile <"$candidate"
-      profile_source="$candidate"
-      break
-    fi
-  done
+if [[ -z "$profile_override" && -f "$profile_file" && -r "$profile_file" ]]; then
+  read -r profile_override <"$profile_file"
+  profile_source="$profile_file"
 fi
-profile="${profile//[[:space:]]/}"
-grep -Fxq -- "$profile" "$profile_values" || {
-  printf 'Invalid machine profile from %s: %q\nAllowed values:\n' "$profile_source" "$profile" >&2
-  sed 's/^/  /' "$profile_values" >&2
+profile_override="${profile_override//[[:space:]]/}"
+
+read -r profile_default <"$profile_default_source"
+profile_default="${profile_default//[[:space:]]/}"
+effective_profile="${profile_override:-$profile_default}"
+effective_source="${profile_default_source}"
+[[ -z "$profile_override" ]] || effective_source="$profile_source"
+grep -Fxq -- "$effective_profile" "$profile_values_source" || {
+  printf 'Invalid machine profile from %s: %q\nAllowed values:\n' \
+    "$effective_source" "$effective_profile" >&2
+  sed 's/^/  /' "$profile_values_source" >&2
   exit 2
 }
 
-install -d -m 700 "$(dirname -- "$profile_file")"
-printf '%s\n' "$profile" | install -m 600 /dev/stdin "$profile_file"
-if [[ "$legacy_profile_file" != "$profile_file" ]]; then
-  rm -f -- "$legacy_profile_file"
+if [[ -e "$profile_dir" && ! -d "$profile_dir" ]]; then
+  printf 'Machine profile path must be a directory: %s\n' "$profile_dir" >&2
+  exit 2
 fi
-printf 'Machine profile: %s (%s)\n' "$profile" "$profile_file"
-
+install -d -m 700 "$profile_dir"
+if [[ -n "$profile_override" ]]; then
+  printf '%s\n' "$profile_override" | install -m 600 /dev/stdin "$profile_file"
+else
+  rm -f -- "$profile_file"
+fi
 stow --dir="$REPO_DIR" --target="$HOME" --restow "${packages[@]}"
+printf 'Machine profile: %s (%s)\n' "$effective_profile" \
+  "$([[ -n "$profile_override" ]] && printf '%s' "$profile_file" || printf '%s/default' "$profile_dir")"
 
 pi_settings="$HOME/.pi/agent/settings.json"
 pi_defaults="$HOME/.pi/agent/settings.default.json"

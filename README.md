@@ -13,7 +13,7 @@ Deploy every package and initialize machine-local Pi settings with:
 Equivalent manual Stow command:
 
 ```bash
-stow ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation
+stow ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine
 ```
 
 Reapply links with `stow --restow PACKAGE`, or remove a package's links with
@@ -46,10 +46,10 @@ testing interval. Prefer `30min` or longer for routine use. The selected
 interval is machine-local and ignored by Git. Every machine uses a local
 `~/backups` clone with its own Git history and remote.
 
-The active `desktop|laptop` profile lives outside the repository at
-`~/.config/naldo/machine-profile`. Allowed values and the installer default are
-tracked under `machine/`; set an explicit fresh-machine value with, for example,
-`MACHINE_PROFILE=laptop ./install.sh`.
+The `machine` package deploys `~/.config/naldo/machine-profile/`. Its tracked
+`default` is `laptop`; an optional machine-local `profile` file overrides it and
+must contain `desktop` or `laptop`. Set that override during installation with,
+for example, `MACHINE_PROFILE=desktop ./install.sh`.
 
 ## Generated themes and machine-local settings
 

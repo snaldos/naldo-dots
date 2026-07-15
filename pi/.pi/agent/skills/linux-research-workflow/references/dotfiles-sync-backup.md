@@ -22,7 +22,7 @@ The canonical public repository is `~/dotfiles`, with these packages:
 
 ```text
 ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit
-noctalia pi desktop automation
+noctalia pi desktop automation machine
 ```
 
 Important entry points:
@@ -42,7 +42,7 @@ Never use `stow --adopt` without first reviewing every resulting source change.
 Preferred dry run:
 
 ```bash
-packages=(ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation)
+packages=(ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine)
 stow -d "$HOME/dotfiles" -t "$HOME" -n --verbose=2 -R "${packages[@]}"
 ```
 
@@ -51,16 +51,17 @@ do not import it into the outer dotfiles repository.
 
 ## Canonical Machine Profile
 
-The active machine-local file is outside every Git repository:
+The `machine` Stow package deploys one shared configuration directory:
 
 ```text
-~/.config/naldo/machine-profile
+~/.config/naldo/machine-profile/
+├── default    # tracked fallback: laptop
+├── profiles   # tracked enum: desktop, laptop
+└── profile    # optional machine-local override, ignored by Git
 ```
 
-It contains exactly one enum value, `desktop` or `laptop`. Dotfiles track only
-`machine/profiles`, `machine/profile.default`, and documentation. The installer
-migrates the former Hyprland-local file and accepts an explicit override such as
-`MACHINE_PROFILE=laptop ./install.sh`.
+Resolution is `profile` when present, otherwise `default`. The installer accepts
+an explicit override such as `MACHINE_PROFILE=desktop ./install.sh`.
 
 The profile controls portable machine behavior, currently including:
 
@@ -71,9 +72,7 @@ laptop  -> XKB layout us
 
 Each machine independently clones its private snapshot repository at
 `~/backups`; Git history and `origin` determine whether it is the desktop or
-laptop backup. The backup is not the authority for the live profile. During
-migration, consumers may temporarily accept the old Hyprland profile and
-`backups-$profile` paths.
+laptop backup. The backup is not the authority for the live profile.
 
 ## Generated Themes and Active Settings
 

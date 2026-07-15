@@ -1,18 +1,20 @@
 # Machine profile
 
-The active profile is machine-local and lives at:
+This GNU Stow package deploys:
 
 ```text
-~/.config/naldo/machine-profile
+~/.config/naldo/machine-profile/
+├── default    # tracked fallback: laptop
+├── profiles   # tracked allowed values
+└── profile    # optional machine-local override, ignored by Git
 ```
 
-It contains one value listed in `profiles`. `profile.default` is used only when
-`install.sh` initializes a machine with no active or legacy profile. Override
-that initialization explicitly with, for example:
+Resolution is `profile` when it exists, otherwise `default`. Set an explicit
+override with, for example:
 
 ```bash
 MACHINE_PROFILE=desktop ./install.sh
 ```
 
-Do not track the active file. Desktop and laptop can use the same local
-`~/backups` path because each clone retains its own Git history and remote.
+Desktop and laptop can both use the local path `~/backups`: each clone retains
+its own independent Git history and machine-specific remote.

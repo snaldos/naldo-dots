@@ -27,8 +27,9 @@ local valid_machine_profiles = {
   laptop = true,
 }
 
-local machine_profile_path = os.getenv("MACHINE_PROFILE_FILE") or (config_home .. "/naldo/machine-profile")
-local legacy_machine_profile_path = config_dir .. "/machine/profile"
+local machine_profile_dir = os.getenv("MACHINE_PROFILE_DIR") or (config_home .. "/naldo/machine-profile")
+local machine_profile_path = os.getenv("MACHINE_PROFILE_FILE") or (machine_profile_dir .. "/profile")
+local machine_profile_default_path = os.getenv("MACHINE_PROFILE_DEFAULT_FILE") or (machine_profile_dir .. "/default")
 
 local function read_machine_profile(path)
   local file = io.open(path, "r")
@@ -43,8 +44,8 @@ end
 
 ---@type HyprlandMachineProfile
 local machine_profile = read_machine_profile(machine_profile_path)
-  or read_machine_profile(legacy_machine_profile_path)
-  or "desktop"
+  or read_machine_profile(machine_profile_default_path)
+  or "laptop"
 
 assert(
   valid_machine_profiles[machine_profile],

@@ -28,8 +28,7 @@ Under UWSM, the Wayland session is a systemd-user lifecycle. Do not restart `use
 ### Central synchronization timer
 
 The current user setup has one periodic timer, `sync-all.timer`, activating the
-oneshot `sync-all.service`. Legacy `backups-desktop.timer` and
-`second-brain-sync.timer` should not be installed. An inactive service after a
+oneshot `sync-all.service`. No per-repository timers should be installed. An inactive service after a
 run is normal; inspect `Result`, exit status, journal task completions, timer
 schedule, and repository divergence before declaring success.
 
