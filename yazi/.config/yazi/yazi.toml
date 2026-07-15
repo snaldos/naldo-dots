@@ -1,0 +1,19 @@
+# ~/.config/yazi/yazi.toml
+
+[opener]
+zathura = [
+  { run = 'zathura "$@"', desc = "Zathura", orphan = true, for = "unix" },
+]
+
+sioyek = [
+  { run = 'sioyek "$@"', desc = "Sioyek", orphan = true, for = "unix" },
+]
+
+okular = [
+  { run = 'okular "$@"', desc = "Okular", orphan = true, for = "unix" },
+]
+
+[open]
+prepend_rules = [
+  { mime = "application/pdf", use = [ "zathura", "sioyek", "okular", "reveal" ] },
+]

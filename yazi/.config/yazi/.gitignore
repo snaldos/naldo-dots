@@ -1,0 +1,4 @@
+# Noctalia renders the flavor and its post-hook creates theme.toml.
+/theme.toml
+/flavors/noctalia.yazi/flavor.toml
+/flavors/noctalia.yazi/tmtheme.xml

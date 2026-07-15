@@ -1,0 +1,21 @@
+# Credentials and machine-local Pi state
+/auth.json
+/settings.json
+/agent.db*
+/trust.json
+/sessions/
+
+# Installed packages and generated runtime material
+/git/
+/npm/
+/bin/
+/logs/
+*.log
+
+# Rendered by Noctalia; settings.default.json supplies the durable dark fallback.
+/themes/noctalia.json
+
+# Temporary/editor files
+.DS_Store
+*.swp
+*.swo

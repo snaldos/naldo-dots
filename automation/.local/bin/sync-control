@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+TIMER_UNIT="sync-all.timer"
+SERVICE_UNIT="sync-all.service"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+DROPIN_DIR="$CONFIG_HOME/systemd/user/$TIMER_UNIT.d"
+INTERVAL_FILE="$DROPIN_DIR/interval.conf"
+DEFAULT_INTERVAL="30min"
+
+notify() {
+  local message="$1"
+
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send "Synchronization" "$message" || true
+  else
+    printf '%s\n' "$message"
+  fi
+}
+
+unit_state() {
+  systemctl --user "$1" "$2" 2>/dev/null || true
+}
+
+current_interval() {
+  local value=""
+
+  if [[ -f "$INTERVAL_FILE" ]]; then
+    value="$(awk -F= '$1 == "OnUnitActiveSec" && $2 != "" { value=$2 } END { print value }' "$INTERVAL_FILE")"
+  fi
+
+  printf '%s\n' "${value:-$DEFAULT_INTERVAL}"
+}
+
+validate_interval() {
+  local interval="$1"
+
+  [[ "$interval" =~ ^[1-9][0-9]*(s|min|h|d|w)$ ]] || {
+    printf 'Invalid interval: %s\nUse values such as 15min, 2h, or 1d.\n' "$interval" >&2
+    return 1
+  }
+
+  systemd-analyze timespan "$interval" >/dev/null
+}
+
+set_interval() {
+  local interval="$1"
+  local was_active tmp
+
+  validate_interval "$interval"
+  mkdir -p "$DROPIN_DIR"
+  tmp="$(mktemp "$DROPIN_DIR/.interval.conf.XXXXXX")"
+  cat >"$tmp" <<EOF
+[Timer]
+OnUnitActiveSec=
+OnUnitActiveSec=$interval
+EOF
+  mv -f "$tmp" "$INTERVAL_FILE"
+
+  was_active="$(unit_state is-active "$TIMER_UNIT")"
+  systemctl --user daemon-reload
+  if [[ "$was_active" == "active" ]]; then
+    systemctl --user restart "$TIMER_UNIT"
+  fi
+
+  notify "Timer interval set to $interval"
+}
+
+show_status() {
+  local timer_state enabled service_state result next
+
+  timer_state="$(unit_state is-active "$TIMER_UNIT")"
+  enabled="$(unit_state is-enabled "$TIMER_UNIT")"
+  service_state="$(unit_state is-active "$SERVICE_UNIT")"
+  result="$(systemctl --user show "$SERVICE_UNIT" --property=Result --value 2>/dev/null || true)"
+  next="$(systemctl --user show "$TIMER_UNIT" --property=NextElapseUSecRealtime --value 2>/dev/null || true)"
+
+  cat <<EOF
+Synchronization status
+  timer:       ${timer_state:-unknown}
+  startup:     ${enabled:-unknown}
+  interval:    $(current_interval)
+  next run:    ${next:-not scheduled}
+  service:     ${service_state:-unknown}
+  last result: ${result:-unknown}
+EOF
+}
+
+usage() {
+  cat <<EOF
+Usage: ${0##*/} COMMAND [ARGUMENT]
+
+Commands:
+  run                    Start a synchronization in the background
+  pause                  Stop the timer for this login session
+  resume                 Resume the timer for this login session
+  enable                 Enable and start the timer persistently
+  disable                Disable and stop the timer persistently
+  interval DURATION      Set the timer interval (for example 30min or 6h)
+  reset-interval         Restore the tracked default interval
+  status                 Print timer and service status
+  logs                    Show recent synchronization logs
+EOF
+}
+
+command="${1:-status}"
+case "$command" in
+run)
+  systemctl --user --no-block start "$SERVICE_UNIT"
+  notify "Synchronization started"
+  ;;
+pause)
+  systemctl --user stop "$TIMER_UNIT"
+  notify "Timer paused for this login session"
+  ;;
+resume)
+  systemctl --user start "$TIMER_UNIT"
+  notify "Timer resumed for this login session"
+  ;;
+enable)
+  systemctl --user enable --now "$TIMER_UNIT"
+  notify "Timer enabled at login"
+  ;;
+disable)
+  systemctl --user disable --now "$TIMER_UNIT"
+  notify "Timer disabled at login"
+  ;;
+interval)
+  (($# == 2)) || { usage >&2; exit 2; }
+  set_interval "$2"
+  ;;
+reset-interval)
+  was_active="$(unit_state is-active "$TIMER_UNIT")"
+  rm -f "$INTERVAL_FILE"
+  systemctl --user daemon-reload
+  if [[ "$was_active" == "active" ]]; then
+    systemctl --user restart "$TIMER_UNIT"
+  fi
+  notify "Timer interval restored to $DEFAULT_INTERVAL"
+  ;;
+status)
+  show_status
+  ;;
+logs)
+  journalctl --user --unit="$SERVICE_UNIT" --lines=150 --no-pager
+  ;;
+-h|--help|help)
+  usage
+  ;;
+*)
+  usage >&2
+  exit 2
+  ;;
+esac

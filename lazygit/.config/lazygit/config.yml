@@ -1,0 +1,11 @@
+os:
+  edit: 'sh -c ''if [ -z "$NVIM" ] || [ ! -S "$NVIM" ]; then nvim -- "$1"; else nvim --server "$NVIM" --remote-send "<C-\><C-n>:hide<CR>" && nvim --server "$NVIM" --remote "$1"; fi'' sh {{filename}}'
+  editAtLine: 'sh -c ''if [ -z "$NVIM" ] || [ ! -S "$NVIM" ]; then nvim +"$2" -- "$1"; else nvim --server "$NVIM" --remote-send "<C-\><C-n>:hide<CR>" && nvim --server "$NVIM" --remote "$1" && nvim --server "$NVIM" --remote-send ":$2<CR>"; fi'' sh {{filename}} {{line}}'
+  openDirInEditor: 'sh -c ''if [ -z "$NVIM" ] || [ ! -S "$NVIM" ]; then nvim -- "$1"; else nvim --server "$NVIM" --remote-send "<C-\><C-n>:hide<CR>" && nvim --server "$NVIM" --remote "$1"; fi'' sh {{dir}}'
+git:
+  pagers:
+    - colorArg: always
+      pager: delta --dark --paging=never
+
+    - colorArg: always
+      externalDiffCommand: difft --color=always --display=side-by-side

@@ -1,0 +1,3 @@
+# Machine-local interval selected by sync-control.
+/interval.conf
+/.interval.conf.*

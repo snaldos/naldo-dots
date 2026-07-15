@@ -1,0 +1,7 @@
+shaders/custom_background.glsl
+shaders/custom_cursor.glsl
+shaders/custom_combined.glsl
+shaders/.shader-selection
+
+# Rendered from Noctalia's tracked Ghostty template.
+themes/noctalia

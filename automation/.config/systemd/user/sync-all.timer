@@ -1,0 +1,12 @@
+[Unit]
+Description=Run centralized synchronization periodically
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=30min
+AccuracySec=1min
+RandomizedDelaySec=2min
+Unit=sync-all.service
+
+[Install]
+WantedBy=timers.target

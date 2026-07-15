@@ -1,0 +1,43 @@
+local vars = require("hyprland.variables")
+
+-- scrolloverview
+hl.config({
+  plugin = {
+    scrolloverview = {
+      workspace_gap = 70,
+      wallpaper = 0,
+      blur = false,
+      scale = 0.603,
+      layout = "vertical",
+      shadow = {
+        enabled = false,
+        range = 50,
+        color = 0xee1a1a1a,
+      },
+      input = {
+        scroll_event_delay = 100,
+        scrolling_mode = 0,
+        drag_mode = 0,
+      },
+    },
+  },
+})
+
+hl.plugin.scrolloverview.gesture({ fingers = 3, direction = "vertical" })
+hl.plugin.scrolloverview.gesture({ fingers = 4, direction = "vertical", mod = vars.main_mod, scale = 1.5 })
+hl.plugin.scrolloverview.gesture({ fingers = 4, direction = "vertical", disable_inhibit = true })
+hl.plugin.scrolloverview.gesture({ fingers = 3, direction = "vertical", action = "unset" })
+
+local function toggle_overview()
+  hl.plugin.scrolloverview.overview("toggle")
+end
+
+local bind_options = {
+  description = "Plugins: Toggle scroll overview",
+  submap_universal = false,
+}
+
+hl.bind(vars.main_mod .. " + g", toggle_overview, bind_options)
+hl.define_submap("scrolloverview", function()
+  hl.bind(vars.main_mod .. " + g", toggle_overview, bind_options)
+end)

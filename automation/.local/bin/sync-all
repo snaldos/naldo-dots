@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+DOTFILES_REPO="${DOTFILES_REPO:-$HOME/dotfiles}"
+SYSTEM_BACKUP_REPO="${SYSTEM_BACKUP_REPO:-$HOME/backups-desktop}"
+NOTES_REPO="${NOTES_REPO:-$HOME/Vaults/second-brain}"
+WALLPAPERS_REPO="${WALLPAPERS_REPO:-$HOME/Wallpapers}"
+
+all_tasks=(system dotfiles notes wallpapers)
+declare -A task_labels=(
+  [system]="machine snapshot"
+  [dotfiles]="dotfiles"
+  [notes]="notes"
+  [wallpapers]="wallpapers"
+)
+declare -A task_scripts=(
+  [system]="$SYSTEM_BACKUP_REPO/sync.sh"
+  [dotfiles]="$DOTFILES_REPO/sync.sh"
+  [notes]="$NOTES_REPO/sync.sh"
+  [wallpapers]="$WALLPAPERS_REPO/sync.sh"
+)
+
+log() {
+  printf '[sync-all] %s\n' "$*"
+}
+
+notify_failure() {
+  local message="$1"
+
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send --urgency=critical "Sync failed" "$message" || true
+  fi
+}
+
+if (($# == 0)); then
+  tasks=("${all_tasks[@]}")
+else
+  tasks=("$@")
+fi
+
+for task in "${tasks[@]}"; do
+  [[ -n "${task_scripts[$task]:-}" ]] || {
+    printf 'Unknown sync task: %s\nValid tasks: %s\n' "$task" "${all_tasks[*]}" >&2
+    exit 2
+  }
+done
+
+mkdir -p "$RUNTIME_DIR"
+exec 9>"$RUNTIME_DIR/naldo-sync-all.lock"
+if ! flock -n 9; then
+  log "another synchronization run is already active"
+  exit 0
+fi
+
+started="$(date --iso-8601=seconds)"
+failures=()
+
+log "started at $started"
+for task in "${tasks[@]}"; do
+  label="${task_labels[$task]}"
+  script="${task_scripts[$task]}"
+
+  log "running $label"
+  if [[ ! -x "$script" ]]; then
+    log "ERROR: missing executable: $script"
+    failures+=("$label")
+    continue
+  fi
+
+  if "$script"; then
+    log "$label complete"
+  else
+    code=$?
+    log "ERROR: $label exited with status $code"
+    failures+=("$label")
+  fi
+done
+
+if ((${#failures[@]} > 0)); then
+  message="Failed tasks: ${failures[*]}"
+  log "$message"
+  notify_failure "$message"
+  exit 1
+fi
+
+log "all requested tasks completed"

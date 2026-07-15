@@ -1,0 +1,38 @@
+# Machine-local and generated files kept in the working tree only.
+/ghostty/.config/ghostty/shaders/.shader-selection
+/ghostty/.config/ghostty/shaders/custom_background.glsl
+/ghostty/.config/ghostty/shaders/custom_combined.glsl
+/ghostty/.config/ghostty/shaders/custom_cursor.glsl
+/ghostty/.config/ghostty/themes/noctalia
+/fuzzel/.config/fuzzel/fuzzel.ini
+/fuzzel/.config/fuzzel/fuzzel_theme.ini
+/fuzzel/.config/fuzzel/themes/noctalia
+/hypr/.config/hypr/machine/profile
+/hypr/.config/hypr/monitors.lua
+/hypr/.config/hypr/noctalia.lua
+/hypr/.config/hypr/workspaces.lua
+/noctalia/.config/noctalia/full-config-export.toml.tmp
+/nvim/.config/nvim/lua/config/matugen.lua
+/nvim/.config/nvim/nvim.log
+/starship/.config/starship.toml
+/yazi/.config/yazi/theme.toml
+/yazi/.config/yazi/flavors/noctalia.yazi/flavor.toml
+/yazi/.config/yazi/flavors/noctalia.yazi/tmtheme.xml
+/zathura/.config/zathura/noctaliarc
+/zathura/.config/zathura/zathurarc
+
+# Herdr keeps only its durable configuration in this repository.
+/herdr/.config/herdr/*
+!/herdr/.config/herdr/config.toml
+
+# Pi credentials, runtime state, installed packages, and generated integration.
+/pi/.pi/agent/auth.json
+/pi/.pi/agent/agent.db*
+/pi/.pi/agent/trust.json
+/pi/.pi/agent/sessions/
+/pi/.pi/agent/git/
+/pi/.pi/agent/npm/
+/pi/.pi/agent/bin/
+/pi/.pi/agent/logs/
+/pi/.pi/agent/**/*.log
+/pi/.pi/agent/extensions/herdr-agent-state.ts

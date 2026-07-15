@@ -1,0 +1,6 @@
+# Full active config rendered from Noctalia's tracked Fuzzel template.
+/fuzzel.ini
+
+# Older generated color fragments retained only as local state.
+/fuzzel_theme.ini
+/themes/noctalia

@@ -1,0 +1,200 @@
+[bar.default]
+background_opacity = 0.59999998658895493
+center = ["group:g2", "group:g3", "group:g4"]
+end = ["group:g5", "group:g6"]
+start = ["group:g1", "workspaces"]
+
+[[bar.default.capsule_group]]
+enabled = true
+fill = "surface_variant"
+id = "g3"
+members = ["clipboard", "screenshot", "recorder"]
+opacity = 0.60000002384185791
+padding = 6.0
+
+[[bar.default.capsule_group]]
+enabled = true
+fill = "surface_variant"
+id = "g4"
+members = ["media", "audio_visualizer", "tray", "cat"]
+opacity = 0.60000002384185791
+padding = 6.0
+
+[[bar.default.capsule_group]]
+enabled = true
+fill = "surface_variant"
+id = "g5"
+members = ["network", "bluetooth", "volume", "brightness"]
+opacity = 0.60000002384185791
+padding = 6.0
+
+[[bar.default.capsule_group]]
+enabled = true
+fill = "surface_variant"
+id = "g2"
+members = ["sysmon", "clock", "notifications"]
+opacity = 0.60000002384185791
+padding = 6.0
+
+[[bar.default.capsule_group]]
+enabled = true
+fill = "surface_variant"
+id = "g1"
+members = ["control-center", "launcher", "wallpaper"]
+opacity = 0.60000002384185791
+padding = 6.0
+
+[[bar.default.capsule_group]]
+enabled = true
+fill = "surface_variant"
+id = "g6"
+members = ["battery", "session"]
+opacity = 0.60000002384185791
+padding = 6.0
+
+[brightness]
+enable_ddcutil = true
+
+[calendar]
+enabled = true
+
+[calendar.account.personal_google]
+name = "Personal Calendar"
+type = "google"
+
+[hooks]
+wallpaper_changed = "~/.config/noctalia/hooks/theme-from-wallpaper.sh"
+
+[idle]
+behavior_order = ["lock", "screen-off", "lock-and-suspend"]
+
+[idle.behavior.lock]
+action = "lock"
+enabled = true
+timeout = 600
+
+[idle.behavior.lock-and-suspend]
+action = "lock_and_suspend"
+enabled = true
+timeout = 900
+
+[idle.behavior.screen-off]
+action = "screen_off"
+enabled = true
+timeout = 660
+
+[location]
+auto_locate = true
+
+[nightlight]
+enabled = true
+
+[plugins]
+enabled = ["noctalia/screen_recorder", "noctalia/bongocat"]
+
+[shell]
+screen_time_enabled = true
+settings_show_advanced = true
+
+[shell.greeter_sync]
+auto_sync = false
+
+[shell.panel]
+clipboard_placement = "attached"
+launcher_placement = "attached"
+
+[shell.screenshot]
+directory = "~/Pictures/Screenshots"
+save_to_file = false
+
+[system.monitor]
+gpu_poll_seconds = 5
+
+[theme]
+builtin = "Tokyo-Night"
+community_palette = "Tokyo Night Moon"
+mode = "dark"
+source = "builtin"
+wallpaper_scheme = "m3-content"
+
+[theme.templates]
+builtin_ids = [
+  "btop",
+  "cava",
+  "gtk3",
+  "gtk4",
+  "hyprland",
+  "kitty",
+]
+community_ids = ["zen-browser", "discord"]
+
+[theme.templates.user.fuzzel]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/fuzzel-noctalia.ini"
+output_path = "$XDG_CONFIG_HOME/fuzzel/fuzzel.ini"
+
+[theme.templates.user.ghostty]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/ghostty-noctalia.conf"
+output_path = "$XDG_CONFIG_HOME/ghostty/themes/noctalia"
+post_hook = "pkill -USR2 -x ghostty || true"
+
+[theme.templates.user.neovim]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/neovim-noctalia.lua"
+output_path = "$XDG_CONFIG_HOME/nvim/lua/config/matugen.lua"
+post_hook = "pkill -USR1 nvim || true"
+
+[theme.templates.user.pi]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/pi-noctalia.json"
+output_path = "~/.pi/agent/themes/noctalia.json"
+
+[theme.templates.user.starship]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/starship-noctalia.toml"
+output_path = "$XDG_CONFIG_HOME/starship.toml"
+
+[theme.templates.user.yazi_flavor]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/yazi-noctalia.toml"
+output_path = "$XDG_CONFIG_HOME/yazi/flavors/noctalia.yazi/flavor.toml"
+
+[theme.templates.user.yazi_selector]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/yazi-theme.toml"
+output_path = "$XDG_CONFIG_HOME/yazi/theme.toml"
+
+[theme.templates.user.yazi_syntax]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/yazi-noctalia.tmTheme"
+output_path = "$XDG_CONFIG_HOME/yazi/flavors/noctalia.yazi/tmtheme.xml"
+
+[theme.templates.user.zathura]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/zathura-noctalia.conf"
+output_path = "$XDG_CONFIG_HOME/zathura/zathurarc"
+post_hook = "bash \"$HOME/.config/noctalia/hooks/reload-zathura-theme.sh\""
+
+[widget.battery]
+show_label = false
+
+[widget.brightness]
+show_label = false
+
+[widget.cat]
+input_devices = ["/dev/input/by-id/keyd-virtual-kbd"]
+type = "noctalia/bongocat:cat"
+
+[widget.cpu]
+show_label = false
+
+[widget.media]
+album_art_only = true
+
+[widget.network]
+show_label = false
+
+[widget.recorder]
+type = "noctalia/screen_recorder:recorder"
+
+[widget.sysmon]
+show_label = false
+
+[widget.volume]
+show_label = false
+
+[widget.workspaces]
+capsule = true
+capsule_opacity = 0.59999999999999998

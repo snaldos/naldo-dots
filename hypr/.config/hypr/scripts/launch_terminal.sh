@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+usage() {
+  printf 'Usage: %s --terminal COMMAND --app-id APP_ID [--hold] [--] [COMMAND [ARG ...]]\n' "${0##*/}" >&2
+}
+
+terminal=""
+app_id=""
+hold=false
+
+while (( $# > 0 )); do
+  case "$1" in
+  --terminal)
+    if (( $# < 2 )) || [[ -z "$2" ]]; then
+      usage
+      exit 2
+    fi
+    terminal="$2"
+    shift 2
+    ;;
+  --app-id)
+    if (( $# < 2 )) || [[ -z "$2" ]]; then
+      usage
+      exit 2
+    fi
+    app_id="$2"
+    shift 2
+    ;;
+  --hold)
+    hold=true
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+  esac
+done
+
+if [[ -z "$terminal" || -z "$app_id" ]]; then
+  usage
+  exit 2
+fi
+
+terminal_args=("$terminal" "--class=$app_id")
+if [[ "$hold" == true ]]; then
+  terminal_args+=(--wait-after-command)
+fi
+if (( $# > 0 )); then
+  terminal_args+=(-e "$@")
+fi
+
+exec uwsm app -- "${terminal_args[@]}"
