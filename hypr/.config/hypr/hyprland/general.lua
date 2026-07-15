@@ -114,7 +114,7 @@ hl.gesture({
 })
 
 hl.gesture({
-  fingers = 4,
-  direction = "horizontal",
+  fingers = 3,
+  direction = "vertical",
   action = "workspace",
 })

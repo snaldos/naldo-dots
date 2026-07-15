@@ -23,10 +23,8 @@ hl.config({
   },
 })
 
-hl.plugin.scrolloverview.gesture({ fingers = 3, direction = "vertical" })
 hl.plugin.scrolloverview.gesture({ fingers = 4, direction = "vertical", mod = vars.main_mod, scale = 1.5 })
 hl.plugin.scrolloverview.gesture({ fingers = 4, direction = "vertical", disable_inhibit = true })
-hl.plugin.scrolloverview.gesture({ fingers = 3, direction = "vertical", action = "unset" })
 
 local function toggle_overview()
   hl.plugin.scrolloverview.overview("toggle")
