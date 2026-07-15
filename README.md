@@ -4,13 +4,21 @@ GNU Stow packages whose contents mirror their paths under `$HOME`.
 
 ## Install
 
-Deploy every package and initialize machine-local Pi settings with:
+Run the complete user-level bootstrap:
 
 ```bash
-./install.sh
+./install.sh                    # prompts on a fresh interactive machine
+./install.sh --profile desktop
+./install.sh --profile laptop
+./install.sh --non-interactive  # tracked default when no profile exists
 ```
 
-Equivalent manual Stow command:
+It validates prerequisites and the selected profile, serializes against
+`sync-all`, unfolds old Stow directory links, deploys all packages, initializes
+machine-local Fish and Pi files when absent, and reloads user-systemd units. It
+does not install Arch packages or modify system files.
+
+Equivalent manual Stow command (links only):
 
 ```bash
 stow --no-folding ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine
@@ -53,8 +61,9 @@ interval is machine-local and ignored by Git. Every machine uses a local
 
 The `machine` package deploys `~/.config/naldo/machine-profile/`. Its tracked
 `default` is `laptop`; an optional machine-local `profile` file overrides it and
-must contain `desktop` or `laptop`. Set that override during installation with,
-for example, `MACHINE_PROFILE=desktop ./install.sh`.
+must contain `desktop` or `laptop`. Fresh interactive installs choose from this
+tracked enum; `MACHINE_PROFILE=desktop ./install.sh` remains supported for
+automation.
 
 ## Generated themes and machine-local settings
 
@@ -65,7 +74,9 @@ fallbacks, Yazi and the generated Fuzzel/Zathura configs fall back to
 application defaults, and Pi's extension selects built-in `dark` when
 `noctalia.json` is unavailable.
 
-Pi's active `settings.json` is machine-local because changing the live theme
-rewrites it. `settings.default.json` is the tracked durable source used by
-`install.sh` on a fresh machine. Fish similarly sources ignored
-`~/.config/fish/local.fish` after the shared configuration.
+Pi persists `/settings`, model, thinking, and theme selections in its active
+machine-local `settings.json`. The tracked `settings.default.json` initializes a
+fresh machine without pinning a provider, model, thinking level, theme, or
+mutable changelog version; an existing active file is never overwritten. Fish
+similarly sources ignored `~/.config/fish/local.fish` after the shared
+configuration.

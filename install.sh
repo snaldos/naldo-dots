@@ -17,6 +17,52 @@ fail() {
   exit 2
 }
 
+usage() {
+  cat <<'EOF'
+Usage: ./install.sh [OPTIONS]
+
+Deploy all dotfile packages and initialize machine-local state.
+
+Options:
+  --profile PROFILE  Select a value from machine-profile/profiles
+  --non-interactive  Use the tracked default when no profile exists
+  -h, --help         Show this help
+
+MACHINE_PROFILE remains supported as a non-interactive environment override.
+EOF
+}
+
+requested_profile="${MACHINE_PROFILE:-}"
+profile_request_source="MACHINE_PROFILE"
+non_interactive=0
+while (($# > 0)); do
+  case "$1" in
+    --profile)
+      (($# >= 2)) || fail "--profile requires a value"
+      requested_profile="$2"
+      profile_request_source="--profile"
+      shift 2
+      ;;
+    --profile=*)
+      requested_profile="${1#*=}"
+      [[ -n "$requested_profile" ]] || fail "--profile requires a value"
+      profile_request_source="--profile"
+      shift
+      ;;
+    --non-interactive)
+      non_interactive=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "unknown option: $1"
+      ;;
+  esac
+done
+
 entry_target() {
   local entry="$1"
   local package="${entry%%/*}"
@@ -42,6 +88,9 @@ entries_match() {
   [[ -L "$source" && -L "$target" && "$(readlink -- "$source")" == "$(readlink -- "$target")" ]]
 }
 
+for required_command in git stow flock systemctl; do
+  command -v "$required_command" >/dev/null 2>&1 || fail "missing command: $required_command"
+done
 git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
   fail "not a Git working tree: $REPO_DIR"
 
@@ -50,17 +99,62 @@ profile_dir="${MACHINE_PROFILE_DIR:-$config_home/naldo/machine-profile}"
 profile_file="${MACHINE_PROFILE_FILE:-$profile_dir/profile}"
 profile_default_source="$REPO_DIR/machine/.config/naldo/machine-profile/default"
 profile_values_source="$REPO_DIR/machine/.config/naldo/machine-profile/profiles"
-profile_override="${MACHINE_PROFILE:-}"
-profile_source="MACHINE_PROFILE"
-
-if [[ -z "$profile_override" && -f "$profile_file" && -r "$profile_file" ]]; then
-  read -r profile_override <"$profile_file"
-  profile_source="$profile_file"
-fi
-profile_override="${profile_override//[[:space:]]/}"
 
 read -r profile_default <"$profile_default_source"
 profile_default="${profile_default//[[:space:]]/}"
+grep -Fxq -- "$profile_default" "$profile_values_source" ||
+  fail "tracked default is not listed in $profile_values_source: $profile_default"
+
+choose_machine_profile() {
+  local answer choice_number index
+  local -a choices=()
+  mapfile -t choices <"$profile_values_source"
+
+  printf 'Select this machine profile:\n' >&2
+  for index in "${!choices[@]}"; do
+    printf '  %d) %s%s\n' "$((index + 1))" "${choices[$index]}" \
+      "$([[ "${choices[$index]}" == "$profile_default" ]] && printf ' (default)' || true)" >&2
+  done
+  while true; do
+    printf 'Profile [%s]: ' "$profile_default" >&2
+    IFS= read -r answer || fail "could not read machine profile"
+    answer="${answer//[[:space:]]/}"
+    if [[ -z "$answer" ]]; then
+      printf '%s\n' "$profile_default"
+      return
+    fi
+    if [[ "$answer" =~ ^[0-9]+$ ]]; then
+      choice_number=$((10#$answer))
+      if ((choice_number >= 1 && choice_number <= ${#choices[@]})); then
+        printf '%s\n' "${choices[$((choice_number - 1))]}"
+        return
+      fi
+    fi
+    if grep -Fxq -- "$answer" "$profile_values_source"; then
+      printf '%s\n' "$answer"
+      return
+    fi
+    printf 'Choose a listed number or profile name.\n' >&2
+  done
+}
+
+profile_override="$requested_profile"
+profile_source="$profile_request_source"
+if [[ -z "$profile_override" && -f "$profile_file" && -r "$profile_file" ]]; then
+  read -r profile_override <"$profile_file"
+  profile_source="$profile_file"
+elif [[ -z "$profile_override" && -r "$profile_dir/default" && -r "$profile_dir/profiles" ]]; then
+  : # Existing installation intentionally uses the tracked default.
+elif [[ -z "$profile_override" && "$non_interactive" == 1 ]]; then
+  : # Explicitly accept the tracked default on a fresh non-interactive install.
+elif [[ -z "$profile_override" && -t 0 ]]; then
+  profile_override="$(choose_machine_profile)"
+  profile_source="interactive selection"
+elif [[ -z "$profile_override" ]]; then
+  fail "fresh non-interactive install requires --profile or --non-interactive"
+fi
+profile_override="${profile_override//[[:space:]]/}"
+
 effective_profile="${profile_override:-$profile_default}"
 effective_source="$profile_default_source"
 [[ -z "$profile_override" ]] || effective_source="$profile_source"

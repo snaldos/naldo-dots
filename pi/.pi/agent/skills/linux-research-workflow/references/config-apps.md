@@ -127,10 +127,12 @@ preset defaults.
 
 ### Pi
 
-`settings.default.json` is tracked with built-in `dark`; active `settings.json`
-is ignored because `setTheme` rewrites it. The Noctalia theme extension chooses
-the generated theme only when discovered. Credentials, sessions, databases,
-and active settings must remain absent from the Git index.
+`settings.default.json` is a neutral tracked seed without provider, model,
+thinking, theme, or changelog selections. Active `settings.json` is ignored
+because Pi persists `/settings` and extension theme changes there. The Noctalia
+theme extension chooses the generated theme only when discovered and otherwise
+uses built-in `dark`. Credentials, sessions, databases, and active settings must
+remain absent from the Git index.
 
 ### Zen Browser
 

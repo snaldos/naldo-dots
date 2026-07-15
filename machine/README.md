@@ -9,11 +9,12 @@ This GNU Stow package deploys:
 └── profile    # optional machine-local override, ignored by Git
 ```
 
-Resolution is `profile` when it exists, otherwise `default`. Set an explicit
-override with, for example:
+Resolution is `profile` when it exists, otherwise `default`. A fresh interactive
+`./install.sh` prompts using `profiles`; scripts can select explicitly with:
 
 ```bash
-MACHINE_PROFILE=desktop ./install.sh
+./install.sh --profile desktop
+# or: MACHINE_PROFILE=desktop ./install.sh
 ```
 
 Desktop and laptop can both use the local path `~/backups`: each clone retains

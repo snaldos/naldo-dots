@@ -13,7 +13,7 @@
 *.log
 /extensions/herdr-agent-state.ts
 
-# Rendered by Noctalia; settings.default.json supplies the durable dark fallback.
+# Rendered by Noctalia; the theme extension falls back to built-in dark.
 /themes/noctalia.json
 
 # Temporary/editor files

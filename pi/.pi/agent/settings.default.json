@@ -1,8 +1,4 @@
 {
-  "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-5.6-sol",
-  "defaultThinkingLevel": "max",
-  "theme": "dark",
   "quietStartup": true,
   "externalEditor": "env SHELL=/bin/bash nvim",
   "collapseChangelog": true,
@@ -38,6 +34,5 @@
     "imageWidthCells": 64
   },
   "enableSkillCommands": true,
-  "lastChangelogVersion": "0.80.7",
   "hideThinkingBlock": false
 }

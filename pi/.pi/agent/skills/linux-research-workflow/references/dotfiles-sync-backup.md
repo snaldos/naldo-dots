@@ -27,9 +27,10 @@ noctalia pi desktop automation machine
 
 Important entry points:
 
-- `~/dotfiles/install.sh`: validates the machine profile, unfolds old Stow
-  directory links, moves ignored local state out of package trees, restows all
-  packages without folding, initializes local defaults, and reloads the
+- `~/dotfiles/install.sh`: runs the complete user-level bootstrap, prompts for
+  a fresh interactive machine profile, unfolds old Stow directory links, moves
+  ignored local state out of package trees, restows all packages without
+  folding, initializes local defaults, and reloads the
   user-systemd unit inventory. It shares `sync-all`'s lock and refuses to race
   an active synchronization.
 - `~/dotfiles/sync.sh`: stages all non-ignored changes, checks whitespace,
@@ -38,8 +39,9 @@ Important entry points:
 
 `sync.sh` is a Git/network mutation, not a validator. Do not invoke it unless a
 commit and push are explicitly authorized. Before editing a live path, resolve
-its source with `readlink -f`; Stow may link either a file or a parent directory.
-Never use `stow --adopt` without first reviewing every resulting source change.
+its source with `readlink -f`; portable files should be individual links and a
+folded parent is a migration issue. Never use `stow --adopt` without first
+reviewing every resulting source change.
 Always use `--no-folding`: target directories are real, portable files are
 symlinks, and generated/private files are real target-side files. Package
 `.gitignore` files are source metadata and must not appear in deployed paths.
@@ -66,8 +68,9 @@ The `machine` Stow package deploys one shared configuration directory:
 └── profile    # optional machine-local override, ignored by Git
 ```
 
-Resolution is `profile` when present, otherwise `default`. The installer accepts
-an explicit override such as `MACHINE_PROFILE=desktop ./install.sh`.
+Resolution is `profile` when present, otherwise `default`. A fresh interactive
+install prompts from the enum; automation can use `./install.sh --profile desktop`
+or `MACHINE_PROFILE=desktop ./install.sh`.
 
 The profile controls portable machine behavior, currently including:
 
@@ -105,9 +108,10 @@ Rendered outputs are ignored. Supported absence behavior is intentional:
 - Pi selects Noctalia only when its generated theme is discoverable and
   otherwise selects built-in `dark`.
 
-Pi's active `~/.pi/agent/settings.json` is ignored because live theme changes
-rewrite it. `settings.default.json` is the tracked durable default. Never add the
-active file back to Git.
+Pi's active `~/.pi/agent/settings.json` is ignored because Pi persists model,
+thinking, UI, changelog, and theme changes there. `settings.default.json` is the
+tracked fresh-machine seed and intentionally omits provider, model, thinking,
+theme, and changelog selections. Never add the active file back to Git.
 
 ## Repository Synchronization
 
