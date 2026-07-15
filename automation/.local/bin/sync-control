@@ -7,6 +7,7 @@ SERVICE_UNIT="sync-all.service"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DROPIN_DIR="$CONFIG_HOME/systemd/user/$TIMER_UNIT.d"
 INTERVAL_FILE="$DROPIN_DIR/interval.conf"
+WANTS_LINK="$CONFIG_HOME/systemd/user/timers.target.wants/$TIMER_UNIT"
 DEFAULT_INTERVAL="30min"
 
 notify() {
@@ -130,7 +131,11 @@ enable)
   notify "Timer enabled at login"
   ;;
 disable)
-  systemctl --user disable --now "$TIMER_UNIT"
+  # `systemctl disable` also removes a unit file that is itself a Stow link.
+  # Stop the timer and remove only its [Install] wants link instead.
+  systemctl --user stop "$TIMER_UNIT"
+  rm -f -- "$WANTS_LINK"
+  systemctl --user daemon-reload
   notify "Timer disabled at login"
   ;;
 interval)
