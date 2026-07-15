@@ -2,7 +2,7 @@
 
 ## Establish the Running Topology
 
-Inspect the session before changing it:
+Inspect before changing it:
 
 ```bash
 Hyprland --version-json
@@ -12,83 +12,129 @@ printf 'type=%s desktop=%s\n' "${XDG_SESSION_TYPE-}" "${XDG_CURRENT_DESKTOP-}"
 systemctl --user --no-pager --type=service --state=running
 ```
 
-Use targeted output; do not dump the full environment. Determine whether UWSM, a display manager, Hyprland Lua, or a user unit starts each component. Keep these layers separate:
+Use targeted output; never dump the full environment. Separate these layers:
 
-1. application/toolkit and native Wayland versus XWayland
+1. native Wayland application/toolkit versus XWayland
 2. Noctalia shell surface or service
-3. Hyprland compositor, output, rule, and plugin state
+3. Hyprland compositor, outputs, rules, Lua modules, and plugins
 4. UWSM/systemd-user environment and lifecycle
 5. portals, PipeWire/WirePlumber, D-Bus, and kernel/device support
 
-For screen sharing or file-picker failures, inspect the selected `xdg-desktop-portal` backend and its user journal rather than changing global environment variables blindly.
+For sharing or picker failures, inspect the selected portal implementation and
+bounded user journal before changing global environment variables.
 
 ## Hyprland 0.55+ Lua
 
 ### Ground truth
 
-The normal entry point is `~/.config/hypr/hyprland.lua`, but confirm `Hyprland --config` process arguments and module paths. Before writing API calls, inspect the files shipped by the installed package:
+The normal entry point is `~/.config/hypr/hyprland.lua`; confirm process/config
+arguments. The portable source is the `hypr` Stow package in `~/dotfiles`, not a
+separate Hyprland Git repository. Machine and generated files are ignored beside
+it.
 
-- `/usr/share/hypr/stubs/hl.meta.lua`: current `hl` types, objects, events, config keys, and namespaces
+Before using an API, inspect the installed version and files:
+
+- `/usr/share/hypr/stubs/hl.meta.lua`: current `hl` types and namespaces
 - `/usr/share/hypr/hyprland.lua`: current default Lua examples
 - `~/.config/hypr/.luarc.json`: language-server stub wiring
-- `Hyprland --help`, `hyprctl --help`, and `hyprctl <command> --help`
+- `Hyprland --help`, `hyprctl --help`, and command-specific help
 
-`hl` is an embedded Lua global, not a standalone executable. Do not translate old Hyprlang `.conf` snippets mechanically.
+`hl` is an embedded Lua global. Do not mechanically translate old Hyprlang
+snippets.
 
 ### API model
 
-- `hl.config({...})`, `hl.monitor({...})`, `hl.device({...})`, and rule functions declare configuration.
-- `hl.dsp.*` functions construct dispatchers.
-- `hl.bind(keys, dispatcher, options)` installs a bind. It may receive an `hl.dsp.*` value or a Lua callback.
-- Inside a callback, `hl.dispatch(dispatcher)` executes a dispatcher immediately.
-- `hl.on(...)`, `hl.timer(...)`, query functions, and window/workspace/monitor objects provide the in-process API.
-- `hyprctl` remains the runtime IPC client. Prefer `-j` plus `jq` for inspection. Current command-line dispatch expressions use the Lua dispatcher API, for example the harmless probe `hyprctl dispatch 'hl.dsp.no_op()'`.
+- `hl.config`, `hl.monitor`, `hl.device`, and rule functions declare state.
+- `hl.dsp.*` constructs dispatchers.
+- `hl.bind(keys, dispatcher, options)` accepts a dispatcher or Lua callback.
+- Inside callbacks, `hl.dispatch(...)` executes a dispatcher immediately.
+- Query functions, events, timers, and objects expose in-process state.
+- `hyprctl` is runtime IPC; prefer JSON plus `jq` for inspection.
 
-Prefer typed constructors such as `hl.dsp.focus({...})`, `hl.dsp.window.move({...})`, and `hl.dsp.exec_cmd(...)` over stale textual dispatcher names. Verify signatures in the installed stub/default config; plugin namespaces are version- and load-state-dependent.
+Typed constructors are preferable to stale textual names. Plugin namespaces,
+dispatchers, and configuration keys depend on the loaded plugin revision.
 
-### Ownership and generated files
+### Modules and guards
 
-Inspect `require(...)` edges and file headers. On this workstation, notable generated outputs currently include:
+The entry point requires core modules under `~/.config/hypr/hyprland/` and
+conditionally consumes root-level generated integrations. Verify both the
+`require("hyprland.NAME")` resolution and any preceding `file_exists` path. A
+wrong guard can silently skip a valid module while leaving zero config errors.
 
-- `~/.config/hypr/monitors.lua` from `nwg-displays`
-- `~/.config/hypr/noctalia.lua` from Noctalia templates
+The tracked plugin module is:
 
-Do not edit these directly unless the user explicitly wants to abandon their generator. Hyprland config is its own Git repository; inspect its status first.
+```text
+~/.config/hypr/hyprland/plugins.lua
+```
+
+It configures the HyprPM `scrolloverview` plugin and registers `SUPER+G` in the
+default and `scrolloverview` submaps. Relevant runtime checks:
+
+```bash
+hyprctl plugin list
+hyprpm list -v
+hyprctl -j binds | jq '.[] | select((.description // "") | test("scroll overview"; "i"))'
+hyprctl -j getoption plugin:scrolloverview:workspace_gap
+hyprctl -j getoption plugin:scrolloverview:scale
+```
+
+A loaded `.so` does not prove `plugins.lua` ran; confirm both bindings and
+effective plugin values.
+
+### Generated and machine-owned files
+
+Current notable root-level files include:
+
+- `machine/profile`: ignored `desktop|laptop` selector
+- `monitors.lua`: generated/machine-local when present
+- `noctalia.lua`: generated by Noctalia when present
+- `workspaces.lua`: optional generated integration when present
+
+Do not edit generated outputs directly. See
+[dotfiles-sync-backup.md](dotfiles-sync-backup.md) for ownership and profile
+semantics.
 
 ### Validation ladder
 
 ```bash
-# Syntax only; does not understand hl or plugin state
+# Syntax only
 luac -p path/to/file.lua
 
-# Isolated semantic parse
+# Isolated parse; inspect entry-point side effects first
 Hyprland --verify-config -c "$HOME/.config/hypr/hyprland.lua"
 
-# Running compositor state
+# Running compositor
 hyprctl -j configerrors | jq .
 hyprctl -j monitors | jq .
 hyprctl -j binds | jq .
+hyprctl plugin list
 ```
 
-Inspect top-level Lua before invoking `--verify-config`, because a Lua config can execute commands. Isolated verification may report plugin config keys or `hl.plugin.*` members as missing when `hyprpm` plugins are not loaded there. Never dismiss this silently: compare the pre-edit baseline, identify plugin-only diagnostics, and check the running compositor.
-
-Reload only after validation and approval when session stability matters. Prefer `hyprctl reload config-only` when monitor reload is unnecessary, then recheck `configerrors`. Do not use `hyprpm reload` as a validator.
+Isolated verification can report plugin members as unavailable when HyprPM
+plugins are not loaded. Compare baseline, identify plugin-only diagnostics, and
+verify the running compositor—never dismiss errors generically. Reload only
+after static checks and when session impact is acceptable, then recheck runtime
+errors, effective values, and bindings.
 
 ## Native Noctalia v5 Beta
 
-Noctalia v5 is a native C++23 Wayland shell with TOML configuration and `noctalia msg` IPC. It is not Quickshell: do not propose QML edits, `qs ipc`, Quickshell services, or old v4 paths.
+Noctalia v5 is the native C++ Wayland shell with TOML configuration and
+`noctalia msg` IPC. It is not Quickshell: do not propose QML, `qs ipc`, or old
+v4 paths.
 
-### Config, state, and logs
+### Config, state, and privacy
 
-Resolve XDG variables, then distinguish:
+Resolve XDG variables and distinguish:
 
-- config: `$XDG_CONFIG_HOME/noctalia/config.toml`
-- GUI/runtime overrides: `$XDG_STATE_HOME/noctalia/settings.toml`
-- other runtime state/history under `$XDG_STATE_HOME/noctalia/`
+- durable config/templates: `$XDG_CONFIG_HOME/noctalia/`
+- non-secret GUI/machine preferences: `$XDG_STATE_HOME/noctalia/settings.toml`
+- credential-bearing application state: `$XDG_STATE_HOME/noctalia/state.toml`
+- histories/caches under the remaining state tree
 - log: `$XDG_CACHE_HOME/noctalia/noctalia.log`
-- installed overview: `/usr/share/doc/noctalia/README.md`
 
-State can include clipboard, notification, location, and usage data. Inspect only what the task requires and never reproduce it wholesale.
+Treat `state.toml` as credentials: do not print, copy, or add it to snapshots.
+Clipboard, notification, location, usage, and screen-time state are private and
+normally irrelevant to configuration work.
 
 ### Inspect and validate
 
@@ -97,22 +143,26 @@ noctalia --version
 noctalia --help
 noctalia msg --help
 noctalia config --help
-noctalia config validate
 noctalia config validate "$HOME/.config/noctalia/config.toml"
-noctalia config export merged   # inspect locally; may contain private paths/data
-noctalia config export full     # defaults plus effective config when needed
 ```
 
-Use `noctalia msg <command>` names from the installed `msg --help`; the IPC is beta and can change. After an authorized edit, use `noctalia msg config-reload`, inspect only relevant status fields, and tail a bounded portion of the log. Never test with session, DPMS, lock, reboot, shutdown, or destructive history commands.
+Merged/full exports may reveal private paths or state. Inspect only when needed,
+keep output local, and never replace the maintained source without a reviewed
+diff. IPC names are beta; use installed help. After an authorized edit, reload
+only if necessary, inspect targeted status, and tail a bounded log. Never test
+with lock, DPMS, logout, reboot, shutdown, or destructive history commands.
 
-### Theme/template ownership
+### Templates
 
-Noctalia can rewrite theme fragments for Hyprland, Ghostty, Starship, Fuzzel, Yazi, Neovim, Zen, and other apps. Before editing a themed file:
+All durable user-template inputs are under
+`~/.config/noctalia/templates/`; outputs are ignored in consuming packages.
+Before changing a themed consumer:
 
-1. inspect `[theme.templates]` in the active/merged config
-2. search the target for `Generated by Noctalia` or template markers
-3. identify builtin/community versus user-template input and output
-4. edit the durable source or custom template
-5. validate every affected target before applying templates
+1. inspect active `[theme.templates]`
+2. classify builtin/community/user input and output
+3. edit the durable source or stable fallback logic
+4. validate config and all affected consumers
+5. apply templates only with authorization
 
-`noctalia msg templates-apply` is a multi-file mutation, not a harmless reload. Do not run it merely to test one config.
+`noctalia msg templates-apply` is a multi-file mutation with possible hooks, not
+a harmless validator.

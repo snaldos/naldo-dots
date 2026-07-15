@@ -1,59 +1,96 @@
 ---
 name: linux-research-workflow
-description: "Inspect, debug, validate, or configure Naldo's Arch Linux workstation: Hyprland Lua/hl, native Noctalia v5, systemd/systemd-boot, Herdr, Tailscale, Wayland/UWSM, Ghostty, Fish/Bash, Neovim/LazyVim, Starship, Fuzzel, Yazi, Zen, Arch packages, uv/pixi, scripts, and dotfiles."
-compatibility: "Arch Linux; Hyprland 0.55+ Lua configuration; native Noctalia v5 beta; UWSM/systemd; Fish interactive shell; Bash automation; Herdr; Tailscale; Ghostty; Neovim/LazyVim; Wayland."
+description: "Inspect, debug, validate, migrate, or configure Naldo's Arch Linux desktop/laptop: GNU Stow dotfiles, centralized Git synchronization and machine snapshots, Hyprland Lua/hl and plugins, native Noctalia v5, systemd/systemd-boot, Wayland/UWSM, Herdr/Tailscale, Ghostty, Fish, Neovim, Starship, Fuzzel, Yazi, Zen, packages, and scientific tooling."
+compatibility: "Arch Linux; Hyprland 0.55+ Lua configuration; native Noctalia v5 beta; GNU Stow; UWSM/systemd-user; Fish interactive shell; Bash automation; Ghostty; Neovim/LazyVim; Herdr; Tailscale."
 ---
 
 # Linux Research Workstation
 
-## Workstation Model
+## Verified Architecture, Not Assumptions
 
-Treat this as a profile, not a substitute for inspection:
+Treat this as a current profile that must still be inspected:
 
-- rolling Arch Linux; installed versions and local documentation are authoritative
-- Hyprland 0.55+ with Lua configuration and the embedded `hl` API, normally under UWSM/systemd-user
-- Noctalia v5 beta: the native C++ Wayland rewrite invoked as `noctalia`, **not** the old Quickshell/QML shell
-- Ghostty, Fish, Starship, Neovim/LazyVim, Fuzzel, Yazi, and Zen Browser
-- Herdr for persistent terminal workspaces and agent sessions
-- Tailscale for possible remote access; systemd-boot with a UKI, subject to re-verification
-- Noctalia theme templates generate parts of several other applications' configs
+- rolling Arch Linux; installed versions, help, schemas, and package files are authoritative
+- Hyprland 0.55+ with Lua configuration and embedded `hl`, normally under UWSM/systemd-user
+- HyprPM `scrolloverview`, configured by `hyprland/plugins.lua` when loaded
+- native Noctalia v5 beta invoked as `noctalia`, not the old Quickshell/QML shell
+- Ghostty, Fish, Starship, Neovim/LazyVim, Fuzzel, Yazi, Zen Browser, and Herdr
+- portable user config in the public GNU Stow repository `~/dotfiles`
+- one ignored `desktop|laptop` machine profile controlling Hyprland defaults and `~/backups-$profile`
+- one `sync-all.timer` orchestrating dotfiles, machine snapshot, notes, and wallpapers
+- Noctalia templates as durable theme sources; rendered outputs remain ignored
+- Tailscale for possible remote access and systemd-boot with a UKI, both subject to re-verification
 
-## Load the Relevant Reference
+## Load the Matching Reference
 
-Before nontrivial diagnosis or editing, read only the matching guide:
+Before nontrivial diagnosis or editing, read only the relevant guide:
 
-- Hyprland, Noctalia, UWSM, portals, or Wayland: [references/desktop-wayland.md](references/desktop-wayland.md)
-- systemd, Arch packages, systemd-boot, Herdr, Tailscale, or remote continuity: [references/system-remote.md](references/system-remote.md)
-- Fish/Bash, Lua/TOML, Ghostty, LazyVim, Starship, Fuzzel, Yazi, or Zen: [references/config-apps.md](references/config-apps.md)
+- Stow ownership, machine profiles, Git synchronization, timers, snapshots, or migration:
+  [references/dotfiles-sync-backup.md](references/dotfiles-sync-backup.md)
+- Hyprland, plugins, Noctalia, UWSM, portals, or Wayland:
+  [references/desktop-wayland.md](references/desktop-wayland.md)
+- systemd, Arch packages, systemd-boot, Herdr, Tailscale, or remote continuity:
+  [references/system-remote.md](references/system-remote.md)
+- Fish/Bash, Lua/TOML, Ghostty, LazyVim, Starship, Fuzzel, Yazi, or Zen:
+  [references/config-apps.md](references/config-apps.md)
 
-For a cross-layer problem, inspect each involved layer rather than guessing from symptoms.
+For cross-layer symptoms, inspect every involved layer. A loaded plugin does not
+prove its Lua module ran; a valid template does not prove its rendered consumer
+is valid; a successful service start does not prove every repository pushed.
 
-## Inspect Before Editing
+## Ownership Before Editing
 
-1. Determine scope and impact: user or system, static config or runtime state, local or remote session.
-2. Locate what is actually loaded: executable, process arguments, environment override, symlink target, includes/requires, XDG paths, drop-ins, and generated-file markers.
-3. Record the version and package provenance. Read matching local `--help`, man pages, package docs, schemas, stubs, or default config before using online examples.
-4. Check repository status and establish a validation baseline. Preserve unrelated changes.
-5. Edit the authoritative source with the smallest reversible diff; never hand-edit a generated target when its template/source is available.
-6. Validate in layers: syntax, application semantics, then an explicitly controlled reload or smoke test. Compare with the baseline.
-7. Report the exact files changed, checks run, runtime actions taken, warnings, and anything left untested.
+Classify the target first:
 
-Do not assume a default path merely because it exists. On rolling releases, do not assume last month's command or schema still applies.
+1. portable tracked source in a Stow package
+2. ignored machine override such as the Hyprland profile or timer interval
+3. generated output whose template/source must be edited instead
+4. runtime/private state that must remain untracked
+5. allowlisted system reconstruction data captured by `backups-$profile`
+
+Resolve live symlinks with `readlink -f`, inspect `.gitignore`, and check generator
+markers. Never duplicate Stow-managed files in the machine snapshot.
+
+## Inspection Workflow
+
+1. Determine scope: user/system, static/runtime, portable/machine/generated/private.
+2. Locate what is loaded: executable, process arguments, symlink source,
+   includes/requires, XDG paths, systemd fragments/drop-ins, and generator.
+3. Record installed version and package provenance; inspect local help, man pages,
+   stubs, schemas, defaults, or source matching that version.
+4. Establish baselines: repository status, application diagnostics, runtime
+   state, and connection path. Preserve unrelated work.
+5. Edit the smallest authoritative source. Do not hand-edit generated outputs.
+6. Validate in layers: syntax, owning-application semantics, then an explicitly
+   controlled reload or smoke test. Reinspect runtime state afterward.
+7. Report exact files, checks, runtime mutations, Git/network actions, and
+   anything untested.
+
+Do not assume a path is active merely because it exists. On a rolling release,
+do not assume an older command, plugin dispatcher, or schema still applies.
 
 ## Shell and Format Boundaries
 
-- Pi's command tool runs Bash; interactive terminal configuration targets Fish.
-- Emit Fish syntax only for `.fish` files or an explicitly requested Fish command.
-- For Bash, identify whether a file is executed or sourced before adding strict mode or changing its dialect.
-- For Lua, a generic parser checks syntax only; Hyprland's `hl` and Neovim's `vim` globals require their host validators.
-- For TOML, prefer the owning application's validator/effective-config command over a generic parser.
-- Preserve project formatting. Do not install a formatter merely to make one edit.
+- Pi's command tool executes Bash; interactive shell configuration targets Fish.
+- Emit Fish syntax only for `.fish` files or an explicitly requested interactive command.
+- Identify whether Bash is executed or sourced before changing strict mode or dialect.
+- `luac -p` checks grammar only; Hyprland's `hl` and Neovim's `vim` require host validation.
+- Prefer the owning application's effective-config/validator over generic TOML parsing.
+- Preserve local style; do not install or run broad formatters for a focused edit.
 
 ## Safety and Privacy
 
-- Prefer user-level, XDG-compliant changes. Do not use `sudo`, alter `/etc` or `/boot`, mutate packages, or restart system services unless explicitly authorized.
-- If access may be through Tailscale, SSH, or Herdr, do not restart networking, `tailscaled`, SSH, the Herdr server, the systemd user manager, UWSM, Hyprland, or the shell until the connection path and fallback are known and approval is explicit.
-- Never expose Tailscale auth/state, SSH material, browser profiles, cookies/history, clipboard or notification history, full environment dumps, session contents, or unredacted peer/account/IP data.
-- Herdr integration files such as `~/.pi/agent/extensions/herdr-agent-state.ts` are managed. Use `herdr integration status` and `herdr integration install pi`; do not edit them.
-- Treat reloads, generated-theme application, session actions, monitor changes, plugin updates, and `enable --now` as runtime mutations—not validation.
-- Never discard, commit, push, or rewrite unrelated dotfile work.
+- Prefer user-level, XDG-compliant changes. Do not use `sudo`, alter `/etc` or
+  `/boot`, mutate packages, or restart system services without explicit authorization.
+- `sync.sh`, `sync-all`, template application, package updates, `enable --now`,
+  reloads, and session actions are mutations—not validators.
+- Do not run repository sync scripts unless staging, committing, rebasing, and
+  pushing all non-ignored changes is authorized.
+- If access may use Tailscale, SSH, or Herdr, map the connection and recovery
+  path before restarting networking, the user manager, UWSM, Hyprland, or Herdr.
+- Never expose Tailscale/SSH state, browser profiles, cookies/history, clipboard
+  or notification history, full environments, Pi credentials/sessions, or
+  Noctalia credential state.
+- Herdr-generated integration files such as `herdr-agent-state.ts` are managed;
+  use Herdr's integration commands rather than editing them.
+- Never discard, overwrite, commit, push, or rewrite unrelated work.

@@ -2,88 +2,137 @@
 
 ## Validation Matrix
 
-First resolve the loaded path, includes, generated ownership, and installed help. These are preferred checks, not permission to reload or update:
+First resolve the loaded path, Stow source, includes/requires, and generator.
+These are inspection commands, not permission to reload or update:
 
-| Target | Typical durable source | Validation / inspection |
+| Target | Durable source model | Validation / inspection |
 |---|---|---|
-| Fish | `~/.config/fish/config.fish`, `conf.d/*.fish`, functions | `fish -n FILE`; inspect startup side effects before `fish -lc ...` |
-| Bash scripts | shebang-selected script | `bash -n FILE`; `shellcheck FILE` only if already installed |
-| Ghostty | active `~/.config/ghostty/*` file plus themes/includes | `ghostty +validate-config --config-file=PATH` |
-| Neovim/LazyVim | `init.lua`, `lua/config/`, `lua/plugins/` | `luac -p FILE` for syntax; `nvim --headless '+qa'` and a targeted Lua/plugin load |
-| Starship | `STARSHIP_CONFIG` or `~/.config/starship.toml` | `STARSHIP_CONFIG=PATH starship print-config >/dev/null`; inspect stderr |
-| Fuzzel | `~/.config/fuzzel/fuzzel.ini` plus includes | `fuzzel --check-config --config=PATH` |
-| Yazi | `yazi.toml`, `keymap.toml`, `theme.toml`, Lua plugins/flavors | `yazi --debug`; inspect diagnostics, not only exit status; `luac -p` for Lua |
-| Herdr/Noctalia | active TOML plus state/overrides | use their application validators described in the other references |
+| Fish | `fish/.config/fish/` Stow package | `fish -n FILE`; inspect startup side effects before executing Fish |
+| Bash scripts | shebang-selected tracked script | `bash -n FILE`; `shellcheck` only when already installed |
+| Ghostty | tracked active config plus optional generated theme | `ghostty +validate-config --config-file=PATH` |
+| Neovim/LazyVim | tracked `init.lua`, `lua/config/`, `lua/plugins/` | `luac -p`; targeted `nvim --headless` startup/module check |
+| Starship | generated active config or tracked base fallback | `STARSHIP_CONFIG=PATH starship print-config >/dev/null` |
+| Fuzzel | Noctalia-generated complete active INI | `fuzzel --check-config --config=PATH`; defaults are valid when absent |
+| Yazi | tracked behavior config plus generated selector/flavor | `yazi --debug`; inspect diagnostics, not only exit status |
+| Pi | tracked default/extensions plus ignored active settings/theme | parse JSON; test extension selection with a mock or Pi loader |
+| Noctalia | tracked config/templates plus machine state | `noctalia config validate PATH` |
 
-Do not use mutating commands such as `starship config`, `ya pkg`, Lazy sync/update, or theme application as validators.
+Do not use mutating commands such as `starship config`, `ya pkg`, Lazy
+sync/update, repository `sync.sh`, or Noctalia template application as validators.
 
 ## Bash and Fish
 
-Pi executes commands with Bash. Do not assume Fish aliases, abbreviations, universal variables, or command substitutions are available in tool calls.
+Pi executes tools with Bash. Do not assume Fish aliases, abbreviations,
+universal variables, or substitutions are available in tool calls.
 
 For scripts:
 
 - honor the shebang and whether the file is executed or sourced
-- quote expansions; use arrays for argument lists; use NUL-delimited paths when needed
+- quote expansions; use arrays for arguments and NUL-delimited paths when needed
 - do not parse `ls`
-- do not add `set -euo pipefail` mechanically to sourced files or scripts that intentionally handle nonzero statuses
+- do not add strict mode mechanically to sourced or intentionally fault-tolerant files
 - use `mktemp` and cleanup traps for multi-file generation
-- test the smallest non-destructive code path
+- test the smallest non-destructive path; mock repository/network commands when practical
 
-For Fish, preserve Fish-native `set`, `if`, `function`, and command-substitution syntax. `fish -n` parses without executing; a login/interactive test can run startup hooks and therefore needs inspection first.
+For Fish, preserve native `set`, `if`, `function`, and substitution syntax.
+`fish -n` parses without executing; interactive/login tests can run startup
+hooks and require prior inspection. `fish_variables` is generated, ignored
+machine state and must not return to Git. Portable PATH entries are declared in
+`config.fish` with `fish_add_path --path`, not universal variables.
 
 ## Lua
 
 Keep host environments distinct:
 
-- Hyprland supplies the embedded global `hl`; use its installed stub and `Hyprland --verify-config`.
-- Neovim supplies `vim`; use a headless Neovim test for semantic behavior.
-- `luac -p` checks grammar only and does not resolve either host API.
+- Hyprland supplies global `hl`; inspect `/usr/share/hypr/stubs/hl.meta.lua`.
+- Neovim supplies global `vim`; use a headless Neovim semantic test.
+- `luac -p` resolves neither host API.
 
-Preserve existing `require` boundaries and local style. Use project `stylua.toml` only when StyLua is already installed, and avoid formatting unrelated files. For LazyVim, add or change focused specs under the existing `lua/plugins/` pattern; do not edit plugin-manager internals or update `lazy-lock.json` unless requested.
+Preserve `require` boundaries and verify that guarded paths match actual module
+locations. A module can be syntactically valid yet never loaded. For LazyVim,
+change focused specs under the existing `lua/plugins/` structure; do not update
+`lazy-lock.json`, Mason, or plugins unless requested.
 
-## TOML
+## TOML and JSON
 
-TOML dotted keys, quoted keys, arrays of tables, duplicate keys, and table redefinition have semantic consequences. Preserve comments/order where practical and validate with the owning program. For tools with merged config, inspect both the user source and effective output; a valid source can still be shadowed by state overrides.
+Dotted keys, arrays of tables, duplicate tables, and merge precedence matter.
+Preserve comments/order where practical and use the owning validator. A valid
+source may still be shadowed by state overrides. Never overwrite a maintained
+source with a generated export without reviewing a diff and rollback.
 
-Never use a generated export to overwrite a hand-maintained source without diffing it first and preserving a rollback copy.
+Do not assume all JSON is safe to track: Pi's active settings and Noctalia state
+can be valid JSON/TOML while containing machine changes or credentials.
 
-## Generated Theme Chain
+## Current Noctalia Theme Chain
 
-Noctalia currently owns generated theme material in several targets. Reconfirm from `[theme.templates]` and file markers because beta versions can change paths. Typical examples are:
+All durable user-template inputs are centralized under
+`~/.config/noctalia/templates/`. The active `[theme.templates]` table is the
+source of truth; currently configured user outputs include:
 
-- Hyprland `noctalia.lua`
-- Ghostty theme `themes/noctalia`
-- Fuzzel included theme
-- Yazi `noctalia` flavor
-- the marked Noctalia palette block in `starship.toml`
-- Neovim's generated `lua/config/matugen.lua`, sourced from the user template under `~/.config/noctalia/templates/`
-- Zen Browser theme output
+- Fuzzel: complete `~/.config/fuzzel/fuzzel.ini`
+- Ghostty: optional `~/.config/ghostty/themes/noctalia` fragment
+- Neovim: `lua/config/matugen.lua`
+- Pi: `~/.pi/agent/themes/noctalia.json`
+- Starship: complete `~/.config/starship.toml`
+- Yazi: flavor, syntax theme, and `theme.toml` selector
+- Zathura: complete `~/.config/zathura/zathurarc`
 
-A file can be partly generated: edit outside marked regions only when the generator guarantees preservation. Validate every rewritten target after an authorized template application.
+Noctalia also owns selected builtin/community outputs such as Hyprland and Zen.
+Every rendered output above is ignored. Edit templates or stable consumer logic,
+not outputs. See
+[dotfiles-sync-backup.md](dotfiles-sync-backup.md) for absence fallbacks and
+ownership boundaries.
+
+`noctalia msg templates-apply` rewrites multiple applications and may run hooks.
+Use it only with explicit authorization, then validate every affected consumer.
 
 ## Application Notes
 
 ### Ghostty
 
-Confirm the active config from process arguments and Ghostty help; this workstation uses a named `config.ghostty`, not necessarily the upstream default filename. Resolve theme and shader paths relative to the active config as Ghostty does. Validate before asking a running terminal to reload; shader changes need a visual smoke test and an easy rollback.
+The tracked active file is `config.ghostty`. It uses optional config fragments
+for generated theme and shader state, so absence must remain valid. Resolve
+relative paths as Ghostty does and validate before sending reload signals.
+Shader changes require a visual check and rollback.
 
 ### Neovim/LazyVim
 
-Inspect `init.lua`, `lua/config/lazy.lua`, relevant plugin specs, `lazyvim.json`, and the lockfile status. A bare headless startup is only a baseline; test the module or event changed. Do not launch network installs, Mason updates, or plugin synchronization during validation.
+`lua/config/theme.lua` is the explicit backend selector with values
+`tokyonight`, `matugen`, or `base16`; the tracked default is `tokyonight`.
+Matugen must fall back when its generated module is missing. A bare startup is a
+baseline only—assert the active colorscheme or load the changed module.
+Neovim's local `.git` metadata is not part of the outer dotfiles repository.
 
 ### Starship
 
-`starship print-config` materializes the computed config and catches parse/schema problems. `starship config NAME VALUE` edits the file and is therefore not a check. Preserve Noctalia's marked generated palette while keeping hand-authored module settings outside it.
+Fish sets `STARSHIP_CONFIG` to generated `~/.config/starship.toml` when present
+and tracked `~/.config/starship.base.toml` otherwise. Validate both. `starship
+config NAME VALUE` edits a file and is not a check.
 
 ### Fuzzel
 
-It uses INI with include files. Validate the exact active file and ensure included generated themes exist. Do not launch its Wayland UI merely to parse config when `--check-config` suffices.
+The active INI is fully rendered by Noctalia; there is no tracked include-only
+base. Validate it when present. In an isolated missing-output test, Fuzzel must
+start from application defaults rather than fail on a missing include.
 
 ### Yazi
 
-`yazi --debug` reports effective configuration and dependency diagnostics but may still exit successfully with missing optional tools; read the output. Keep openers and rules aligned, quote shell arguments safely, and do not run `ya pkg` unless package mutation was requested.
+`yazi --debug` can exit successfully while reporting missing optional tools or
+flavors, so inspect its output. `yazi.toml` is tracked; Noctalia generates the
+theme selector and flavor. Missing generated theme files must leave Yazi on its
+preset defaults.
+
+### Pi
+
+`settings.default.json` is tracked with built-in `dark`; active `settings.json`
+is ignored because `setTheme` rewrites it. The Noctalia theme extension chooses
+the generated theme only when discovered. Credentials, sessions, databases,
+and active settings must remain absent from the Git index.
 
 ### Zen Browser
 
-Confirm native package versus Flatpak and the exact profile selected before proposing paths. Browser profiles may contain credentials, cookies, history, session tabs, extensions, and sync data. Do not inspect profile databases. Limit work to an explicitly requested `user.js`, `userChrome.css`, policies, desktop entry, flags, or generated theme, and close/restart the browser only with approval.
+Confirm native package versus Flatpak and selected profile before proposing
+paths. Profiles contain credentials, cookies, history, sessions, and extension
+state. Do not inspect profile databases. Limit work to explicitly requested CSS,
+policies, flags, desktop entries, or generated theme output; restart only with
+approval.

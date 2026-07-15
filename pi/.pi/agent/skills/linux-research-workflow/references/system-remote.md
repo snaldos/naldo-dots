@@ -25,6 +25,20 @@ After an authorized unit-file edit, `daemon-reload` updates manager metadata but
 
 Under UWSM, the Wayland session is a systemd-user lifecycle. Do not restart `user@UID.service`, UWSM session targets, or import broad environment dumps as a shortcut.
 
+### Central synchronization timer
+
+The current user setup has one periodic timer, `sync-all.timer`, activating the
+oneshot `sync-all.service`. Legacy `backups-desktop.timer` and
+`second-brain-sync.timer` should not be installed. An inactive service after a
+run is normal; inspect `Result`, exit status, journal task completions, timer
+schedule, and repository divergence before declaring success.
+
+`sync-control pause` is session-only; `disable` is persistent. Interval changes
+write an ignored machine-local drop-in. Starting synchronization can commit,
+rebase, and push four repositories, so it is never a read-only systemd test.
+Read [dotfiles-sync-backup.md](dotfiles-sync-backup.md) for exact commands,
+profile routing, and snapshot boundaries.
+
 ## Arch Package Inspection
 
 Use read-only package evidence before changing dependencies:
@@ -53,6 +67,11 @@ bootctl -x                 # $BOOT
 A permission error while opening the ESP does not prove systemd-boot is absent. Establish the complete generation path before changing anything: boot loader entry type, ESP mount, UKI location, kernel package, `/etc/kernel/cmdline`, mkinitcpio config/presets/hooks, pacman hooks, and Secure Boot state.
 
 Do not run `bootctl install/update/remove/set-*`, regenerate initramfs/UKIs, change kernel parameters, or write `/boot` or `/etc` without explicit approval and a recovery/rollback plan. Reinspect the produced UKI and `bootctl list` after any authorized boot change.
+
+The private `backups-$profile` repository stores an allowlisted reconstruction
+snapshot, not a boot image or automatic restore. Its unprivileged timer run may
+preserve an older copy of protected files; a fresh protected capture requires an
+explicitly authorized `sync.sh --sudo`. Never restore `/etc` or `/boot` wholesale.
 
 ## Herdr Sessions
 

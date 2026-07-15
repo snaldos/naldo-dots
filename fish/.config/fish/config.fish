@@ -45,10 +45,11 @@ else if test -d "$HOME/miniconda3/bin"
     fish_add_path "$HOME/miniconda3/bin"
 end
 
-# Paths
-fish_add_path "$HOME/.local/bin"
-fish_add_path "$HOME/.ghcup/bin"
-fish_add_path "$HOME/.npm-global/bin"
+# Paths are process-global; Fish's generated universal state stays machine-local.
+fish_add_path --path \
+    "$HOME/.local/bin" \
+    "$HOME/.ghcup/bin" \
+    "$HOME/.npm-global/bin"
 
 # Pixi
 if command -q pixi
