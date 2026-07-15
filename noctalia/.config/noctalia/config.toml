@@ -167,6 +167,11 @@ input_path = "$XDG_CONFIG_HOME/noctalia/templates/zathura-noctalia.conf"
 output_path = "$XDG_CONFIG_HOME/zathura/zathurarc"
 post_hook = "bash \"$HOME/.config/noctalia/hooks/reload-zathura-theme.sh\""
 
+[wallpaper]
+directory = "~/Wallpapers"
+directory_dark = "~/Wallpapers/dark"
+directory_light = "~/Wallpapers/light"
+
 [widget.battery]
 show_label = false
 
