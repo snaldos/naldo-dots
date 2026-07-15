@@ -10,7 +10,7 @@ Stow packages whose contents mirror their paths under `$HOME`.
 </p>
 
 <p align="center">
-  <em>Hyprland · Noctalia · Ghostty Cosmos · Neovim · Yazi · Zathura</em>
+  <em>Hyprland · Noctalia · Ghostty Cosmos · Pi Coding Agent · LazyVim · Zathura</em>
 </p>
 
 ## Install
