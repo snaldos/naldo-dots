@@ -63,3 +63,8 @@ set -gx VISUAL "env SHELL=/bin/bash nvim"
 
 # Keep provider prompt caches warm during long Pi study/research sessions.
 set -gx PI_CACHE_RETENTION long
+
+# Optional machine-local overrides, intentionally ignored by Git.
+if test -r "$__fish_config_dir/local.fish"
+    source "$__fish_config_dir/local.fish"
+end

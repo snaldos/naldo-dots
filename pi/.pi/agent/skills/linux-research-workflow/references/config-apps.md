@@ -38,7 +38,10 @@ For Fish, preserve native `set`, `if`, `function`, and substitution syntax.
 `fish -n` parses without executing; interactive/login tests can run startup
 hooks and require prior inspection. `fish_variables` is generated, ignored
 machine state and must not return to Git. Portable PATH entries are declared in
-`config.fish` with `fish_add_path --path`, not universal variables.
+`config.fish` with `fish_add_path --path`, not universal variables. Optional
+machine-only overrides belong in `~/.config/fish/local.fish`, which the shared
+config sources last. Both local files are excluded from Git and Stow so they
+remain real files on each machine.
 
 ## Lua
 

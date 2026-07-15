@@ -1,0 +1,11 @@
+# Preserve Stow's useful built-in metadata ignores.
+\.git
+\.gitignore
+\.gitmodules
+^/README.*
+^/LICENSE.*
+^/COPYING
+
+# These files are real, machine-local state under ~/.config/fish.
+^/\.config/fish/fish_variables$
+^/\.config/fish/local\.fish$

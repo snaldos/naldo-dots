@@ -44,6 +44,38 @@ if [[ -n "$profile_override" ]]; then
 else
   rm -f -- "$profile_file"
 fi
+
+fish_config_dir="$HOME/.config/fish"
+fish_source_dir="$REPO_DIR/fish/.config/fish"
+fish_state_temp=""
+if [[ -L "$fish_config_dir" ]]; then
+  fish_link_target="$(readlink -f "$fish_config_dir")"
+  fish_state_temp="$(mktemp -d)"
+  for name in fish_variables local.fish; do
+    [[ ! -f "$fish_config_dir/$name" ]] || cp -- "$fish_config_dir/$name" "$fish_state_temp/$name"
+  done
+  rm -- "$fish_config_dir"
+  install -d -m 700 "$fish_config_dir"
+  for name in fish_variables local.fish; do
+    [[ ! -f "$fish_state_temp/$name" ]] || install -m 600 "$fish_state_temp/$name" "$fish_config_dir/$name"
+  done
+  rm -rf -- "$fish_state_temp"
+  if [[ "$fish_link_target" == "$fish_source_dir" ]]; then
+    rm -f -- "$fish_source_dir/fish_variables" "$fish_source_dir/local.fish"
+  fi
+elif [[ -e "$fish_config_dir" && ! -d "$fish_config_dir" ]]; then
+  printf 'Fish config path must be a directory: %s\n' "$fish_config_dir" >&2
+  exit 2
+else
+  install -d -m 700 "$fish_config_dir"
+fi
+
+fish_local="$fish_config_dir/local.fish"
+if [[ ! -e "$fish_local" ]]; then
+  install -m 600 /dev/null "$fish_local"
+  printf 'Initialized empty machine-local Fish overrides: %s\n' "$fish_local"
+fi
+
 stow --dir="$REPO_DIR" --target="$HOME" --restow "${packages[@]}"
 printf 'Machine profile: %s (%s)\n' "$effective_profile" \
   "$([[ -n "$profile_override" ]] && printf '%s' "$profile_file" || printf '%s/default' "$profile_dir")"

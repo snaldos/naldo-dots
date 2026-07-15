@@ -1,2 +1,5 @@
 # Fish-generated universal variable state.
 /fish_variables
+
+# Machine-local overrides sourced after the shared config.
+/local.fish
