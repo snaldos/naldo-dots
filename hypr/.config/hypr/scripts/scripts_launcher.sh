@@ -63,7 +63,7 @@ sync_status_value() {
 
 choose_interval() {
   local current choice interval label
-  local -a values=(5min 15min 30min 1h 3h 6h 12h 1d)
+  local -a values=(1min 5min 15min 30min 1h 3h 6h 12h 1d)
   local -a items=()
   local -A value_by_label=()
 

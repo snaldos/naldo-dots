@@ -3,8 +3,25 @@
 set -Eeuo pipefail
 
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+MACHINE_PROFILE_FILE="${MACHINE_PROFILE_FILE:-$CONFIG_HOME/hypr/machine/profile}"
+MACHINE_PROFILE="${MACHINE_PROFILE:-desktop}"
+
+if [[ -r "$MACHINE_PROFILE_FILE" ]]; then
+  read -r MACHINE_PROFILE <"$MACHINE_PROFILE_FILE"
+  MACHINE_PROFILE="${MACHINE_PROFILE//[[:space:]]/}"
+fi
+
+case "$MACHINE_PROFILE" in
+  desktop|laptop) ;;
+  *)
+    printf '[sync-all] ERROR: machine profile must be desktop or laptop, got %q\n' "$MACHINE_PROFILE" >&2
+    exit 2
+    ;;
+esac
+
 DOTFILES_REPO="${DOTFILES_REPO:-$HOME/dotfiles}"
-SYSTEM_BACKUP_REPO="${SYSTEM_BACKUP_REPO:-$HOME/backups-desktop}"
+SYSTEM_BACKUP_REPO="${SYSTEM_BACKUP_REPO:-$HOME/backups-$MACHINE_PROFILE}"
 NOTES_REPO="${NOTES_REPO:-$HOME/Vaults/second-brain}"
 WALLPAPERS_REPO="${WALLPAPERS_REPO:-$HOME/Wallpapers}"
 

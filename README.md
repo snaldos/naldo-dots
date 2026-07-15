@@ -41,8 +41,11 @@ sync-control run             # run immediately
 sync-control status
 ```
 
-The Hyprland scripts launcher exposes the same controls. The selected interval
-is machine-local and ignored by Git.
+The Hyprland scripts launcher exposes the same controls, including a `1min`
+testing interval. Prefer `30min` or longer for routine use. The selected
+interval is machine-local and ignored by Git. `sync-all` reads the ignored
+Hyprland machine profile and selects `~/backups-desktop` or `~/backups-laptop`
+accordingly.
 
 ## Generated themes and machine-local settings
 
