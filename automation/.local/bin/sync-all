@@ -4,13 +4,17 @@ set -Eeuo pipefail
 
 RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-MACHINE_PROFILE_FILE="${MACHINE_PROFILE_FILE:-$CONFIG_HOME/hypr/machine/profile}"
-MACHINE_PROFILE="${MACHINE_PROFILE:-desktop}"
+MACHINE_PROFILE_FILE="${MACHINE_PROFILE_FILE:-$CONFIG_HOME/naldo/machine-profile}"
+LEGACY_MACHINE_PROFILE_FILE="$CONFIG_HOME/hypr/machine/profile"
+MACHINE_PROFILE="${MACHINE_PROFILE:-}"
 
-if [[ -r "$MACHINE_PROFILE_FILE" ]]; then
+if [[ -z "$MACHINE_PROFILE" && -r "$MACHINE_PROFILE_FILE" ]]; then
   read -r MACHINE_PROFILE <"$MACHINE_PROFILE_FILE"
-  MACHINE_PROFILE="${MACHINE_PROFILE//[[:space:]]/}"
+elif [[ -z "$MACHINE_PROFILE" && -r "$LEGACY_MACHINE_PROFILE_FILE" ]]; then
+  read -r MACHINE_PROFILE <"$LEGACY_MACHINE_PROFILE_FILE"
 fi
+MACHINE_PROFILE="${MACHINE_PROFILE:-desktop}"
+MACHINE_PROFILE="${MACHINE_PROFILE//[[:space:]]/}"
 
 case "$MACHINE_PROFILE" in
   desktop|laptop) ;;
@@ -21,7 +25,13 @@ case "$MACHINE_PROFILE" in
 esac
 
 DOTFILES_REPO="${DOTFILES_REPO:-$HOME/dotfiles}"
-SYSTEM_BACKUP_REPO="${SYSTEM_BACKUP_REPO:-$HOME/backups-$MACHINE_PROFILE}"
+if [[ -z "${SYSTEM_BACKUP_REPO:-}" ]]; then
+  SYSTEM_BACKUP_REPO="$HOME/backups"
+  legacy_system_backup_repo="$HOME/backups-$MACHINE_PROFILE"
+  if [[ ! -d "$SYSTEM_BACKUP_REPO" && -d "$legacy_system_backup_repo" ]]; then
+    SYSTEM_BACKUP_REPO="$legacy_system_backup_repo"
+  fi
+fi
 NOTES_REPO="${NOTES_REPO:-$HOME/Vaults/second-brain}"
 WALLPAPERS_REPO="${WALLPAPERS_REPO:-$HOME/Wallpapers}"
 

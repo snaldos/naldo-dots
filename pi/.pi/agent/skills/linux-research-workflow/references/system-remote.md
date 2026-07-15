@@ -68,7 +68,7 @@ A permission error while opening the ESP does not prove systemd-boot is absent. 
 
 Do not run `bootctl install/update/remove/set-*`, regenerate initramfs/UKIs, change kernel parameters, or write `/boot` or `/etc` without explicit approval and a recovery/rollback plan. Reinspect the produced UKI and `bootctl list` after any authorized boot change.
 
-The private `backups-$profile` repository stores an allowlisted reconstruction
+The private `~/backups` repository stores an allowlisted reconstruction
 snapshot, not a boot image or automatic restore. Its unprivileged timer run may
 preserve an older copy of protected files; a fresh protected capture requires an
 explicitly authorized `sync.sh --sudo`. Never restore `/etc` or `/boot` wholesale.

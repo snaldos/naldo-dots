@@ -7,7 +7,6 @@
 /fuzzel/.config/fuzzel/fuzzel.ini
 /fuzzel/.config/fuzzel/fuzzel_theme.ini
 /fuzzel/.config/fuzzel/themes/noctalia
-/hypr/.config/hypr/machine/profile
 /hypr/.config/hypr/monitors.lua
 /hypr/.config/hypr/noctalia.lua
 /hypr/.config/hypr/workspaces.lua

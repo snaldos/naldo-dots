@@ -27,17 +27,24 @@ local valid_machine_profiles = {
   laptop = true,
 }
 
-local machine_profile_path = config_dir .. "/machine/profile"
----@type HyprlandMachineProfile
-local machine_profile = "desktop"
-local machine_profile_file = io.open(machine_profile_path, "r")
+local machine_profile_path = os.getenv("MACHINE_PROFILE_FILE") or (config_home .. "/naldo/machine-profile")
+local legacy_machine_profile_path = config_dir .. "/machine/profile"
 
--- This file is intentionally gitignored so each machine can choose its own profile.
-if machine_profile_file ~= nil then
-  machine_profile = machine_profile_file:read("*a") or ""
-  machine_profile_file:close()
-  machine_profile = machine_profile:match("^%s*(.-)%s*$")
+local function read_machine_profile(path)
+  local file = io.open(path, "r")
+  if file == nil then
+    return nil
+  end
+
+  local profile = file:read("*a") or ""
+  file:close()
+  return profile:match("^%s*(.-)%s*$")
 end
+
+---@type HyprlandMachineProfile
+local machine_profile = read_machine_profile(machine_profile_path)
+  or read_machine_profile(legacy_machine_profile_path)
+  or "desktop"
 
 assert(
   valid_machine_profiles[machine_profile],

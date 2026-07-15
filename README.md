@@ -43,9 +43,13 @@ sync-control status
 
 The Hyprland scripts launcher exposes the same controls, including a `1min`
 testing interval. Prefer `30min` or longer for routine use. The selected
-interval is machine-local and ignored by Git. `sync-all` reads the ignored
-Hyprland machine profile and selects `~/backups-desktop` or `~/backups-laptop`
-accordingly.
+interval is machine-local and ignored by Git. Every machine uses a local
+`~/backups` clone with its own Git history and remote.
+
+The active `desktop|laptop` profile lives outside the repository at
+`~/.config/naldo/machine-profile`. Allowed values and the installer default are
+tracked under `machine/`; set an explicit fresh-machine value with, for example,
+`MACHINE_PROFILE=laptop ./install.sh`.
 
 ## Generated themes and machine-local settings
 

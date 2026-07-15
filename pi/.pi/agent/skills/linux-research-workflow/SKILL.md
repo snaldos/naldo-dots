@@ -16,7 +16,8 @@ Treat this as a current profile that must still be inspected:
 - native Noctalia v5 beta invoked as `noctalia`, not the old Quickshell/QML shell
 - Ghostty, Fish, Starship, Neovim/LazyVim, Fuzzel, Yazi, Zen Browser, and Herdr
 - portable user config in the public GNU Stow repository `~/dotfiles`
-- one ignored `desktop|laptop` machine profile controlling Hyprland defaults and `~/backups-$profile`
+- one machine-local `desktop|laptop` profile at `~/.config/naldo/machine-profile`
+- one private machine-snapshot clone at `~/backups`, with its own history and remote on each machine
 - one `sync-all.timer` orchestrating dotfiles, machine snapshot, notes, and wallpapers
 - Noctalia templates as durable theme sources; rendered outputs remain ignored
 - Tailscale for possible remote access and systemd-boot with a UKI, both subject to re-verification
@@ -46,7 +47,7 @@ Classify the target first:
 2. ignored machine override such as the Hyprland profile or timer interval
 3. generated output whose template/source must be edited instead
 4. runtime/private state that must remain untracked
-5. allowlisted system reconstruction data captured by `backups-$profile`
+5. allowlisted system reconstruction data captured by `~/backups`
 
 Resolve live symlinks with `readlink -f`, inspect `.gitignore`, and check generator
 markers. Never duplicate Stow-managed files in the machine snapshot.

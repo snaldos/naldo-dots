@@ -110,22 +110,8 @@ save_to_file = false
 [system.monitor]
 gpu_poll_seconds = 5
 
-[theme]
-builtin = "Tokyo-Night"
-community_palette = "Tokyo Night Moon"
-mode = "dark"
-source = "builtin"
-wallpaper_scheme = "m3-content"
-
 [theme.templates]
-builtin_ids = [
-  "btop",
-  "cava",
-  "gtk3",
-  "gtk4",
-  "hyprland",
-  "kitty",
-]
+builtin_ids = ["btop", "cava", "gtk3", "gtk4", "hyprland", "kitty"]
 community_ids = ["zen-browser", "discord"]
 
 [theme.templates.user.fuzzel]

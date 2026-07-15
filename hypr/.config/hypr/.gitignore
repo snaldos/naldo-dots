@@ -1,6 +1,3 @@
-# Selected independently on each machine: desktop or laptop.
-/machine/profile
-
 workspaces.lua
 monitors.lua
 
