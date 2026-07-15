@@ -27,7 +27,7 @@ if status is-interactive
 
     # Optional modern ls replacement
     if command -q eza
-        alias ls "eza --icons"
+        alias ls "eza --icons=auto"
     end
 
     # Kitty SSH integration
