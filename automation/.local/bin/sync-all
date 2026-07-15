@@ -47,7 +47,20 @@ notify_failure() {
   local message="$1"
 
   if command -v notify-send >/dev/null 2>&1; then
-    notify-send --urgency=critical "Sync failed" "$message" || true
+    notify-send --urgency=critical "Synchronization failed" \
+      "$message
+
+Inspect the run: sync-control logs" || true
+  fi
+}
+
+notify_success() {
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send "Synchronization complete" \
+      "All requested sync tasks finished successfully.
+
+Check status: sync-control status
+Inspect logs: sync-control logs" || true
   fi
 }
 
@@ -103,3 +116,4 @@ if ((${#failures[@]} > 0)); then
 fi
 
 log "all requested tasks completed"
+notify_success
