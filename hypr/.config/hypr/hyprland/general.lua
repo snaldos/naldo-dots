@@ -65,6 +65,7 @@ hl.config({
 
   scrolling = {
     column_width = 0.5,
+    explicit_column_widths = "0.25, 0.5, 0.75, 1.0",
     fullscreen_on_one_column = false,
     focus_fit_method = 1, -- Fit the focused column into view rather than centering it.
     follow_focus = true,
