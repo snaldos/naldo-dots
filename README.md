@@ -1,6 +1,17 @@
 # Dotfiles
 
-GNU Stow packages whose contents mirror their paths under `$HOME`.
+Portable Arch Linux and Hyprland workstation configuration, organized as GNU
+Stow packages whose contents mirror their paths under `$HOME`.
+
+<p align="center">
+  <a href="assets/screenshots/desktop-overview.png">
+    <img src="assets/screenshots/desktop-overview.png" alt="Hyprland desktop with Noctalia, Ghostty, Neovim, Yazi, and Zathura" width="100%">
+  </a>
+</p>
+
+<p align="center">
+  <em>Hyprland · Noctalia · Ghostty Cosmos · Neovim · Yazi · Zathura</em>
+</p>
 
 ## Install
 
