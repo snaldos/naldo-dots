@@ -18,18 +18,14 @@ set -Eeuo pipefail
 #
 # =============================================================================
 
-HYPR_RULES="${HYPR_RULES:-$HOME/.config/hypr/hyprland/rules.lua}"
 GHOSTTY_SHADER_SCRIPT="${GHOSTTY_SHADER_SCRIPT:-$HOME/.config/ghostty/ghostty-shaders.sh}"
 NOCTALIA="${NOCTALIA:-noctalia}"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+ZEN_BROWSER_THEME_STATE="${ZEN_BROWSER_THEME_STATE:-$STATE_HOME/hypr/zen-browser-theme}"
 
 main_items=(
   "󰊠 Ghostty"
   "󰙨 Zen Browser"
-)
-
-zen_browser_items=(
-  "󰞏 Opaque + No Blur"
-  "󰹞 Transparent + Blur"
 )
 
 ghostty_items=(
@@ -121,54 +117,89 @@ run_ghostty_change() {
   notify "$title" "$output"
 }
 
-set_zen_browser_rule() {
-  local opacity="$1"
-  local no_blur="$2"
+get_zen_browser_theme() {
+  local mode="opaque"
 
-  [[ -f "$HYPR_RULES" ]] || {
-    notify "Zen Browser" "Missing Hyprland rules.lua"
+  if [[ -r "$ZEN_BROWSER_THEME_STATE" ]]; then
+    IFS= read -r mode <"$ZEN_BROWSER_THEME_STATE" || mode="opaque"
+  fi
+
+  case "$mode" in
+  opaque|transparent) printf '%s\n' "$mode" ;;
+  *) printf 'opaque\n' ;;
+  esac
+}
+
+set_zen_browser_theme() {
+  local mode="$1"
+  local state_dir temporary reload_output
+
+  case "$mode" in
+  opaque|transparent) ;;
+  *)
+    notify "Zen Browser" "Unknown theme mode: $mode"
+    return 1
+    ;;
+  esac
+
+  command -v hyprctl >/dev/null 2>&1 || {
+    notify "Zen Browser" "hyprctl is required"
+    return 1
+  }
+  [[ ! -L "$ZEN_BROWSER_THEME_STATE" ]] || {
+    notify "Zen Browser" "Theme state must be a machine-local file"
     return 1
   }
 
-  command -v perl >/dev/null 2>&1 || {
-    notify "Zen Browser" "Perl is required to update rules.lua"
+  state_dir="$(dirname -- "$ZEN_BROWSER_THEME_STATE")"
+  if ! install -d -m 700 "$state_dir"; then
+    notify "Zen Browser" "Could not create theme state directory"
     return 1
-  }
+  fi
 
-  ZEN_OPACITY="$opacity" ZEN_NO_BLUR="$no_blur" perl -0pi -e '
-    my $opacity = $ENV{ZEN_OPACITY};
-    my $no_blur = $ENV{ZEN_NO_BLUR};
-
-    my $changed = 0;
-    $changed += s/local zen_browser_opacity = "[^"]*"/local zen_browser_opacity = "$opacity"/;
-    $changed += s/local zen_browser_no_blur = (?:true|false)/local zen_browser_no_blur = $no_blur/;
-
-    exit 2 if $changed != 2;
-  ' "$HYPR_RULES" || {
-    notify "Zen Browser" "Could not update rules.lua"
+  if ! temporary="$(mktemp --tmpdir="$state_dir" '.zen-browser-theme.XXXXXX')"; then
+    notify "Zen Browser" "Could not create temporary theme state"
     return 1
-  }
+  fi
 
-  if command -v hyprctl >/dev/null 2>&1; then
-    hyprctl reload >/dev/null 2>&1 || true
+  if ! printf '%s\n' "$mode" >"$temporary" ||
+    ! chmod 600 "$temporary" ||
+    ! mv -f -- "$temporary" "$ZEN_BROWSER_THEME_STATE"; then
+    rm -f -- "$temporary"
+    notify "Zen Browser" "Could not save theme state"
+    return 1
+  fi
+
+  if ! reload_output="$(hyprctl reload config-only 2>&1)"; then
+    notify "Zen Browser" "Theme saved, but Hyprland reload failed: $reload_output"
+    return 1
   fi
 }
 
 choose_zen_browser() {
-  local choice
+  local mode choice
+  local opaque_label="󰞏 Opaque + No Blur"
+  local transparent_label="󰹞 Transparent + Blur"
 
-  choice="$(choose_menu "Zen Browser > " "${zen_browser_items[@]}")"
+  mode="$(get_zen_browser_theme)"
+  if [[ "$mode" == "opaque" ]]; then
+    opaque_label="● $opaque_label"
+  else
+    transparent_label="● $transparent_label"
+  fi
+
+  choice="$(choose_menu "Zen Browser > " "$opaque_label" "$transparent_label")"
   [[ -z "$choice" ]] && return 0
 
   case "$choice" in
-  "󰞏 Opaque + No Blur")
-    set_zen_browser_rule "1 1" "true"
-    notify "Zen Browser" "Opacity 1 1, blur disabled"
+  "$opaque_label")
+    set_zen_browser_theme opaque
+    notify "Zen Browser" "Opaque, blur disabled"
     ;;
 
-  "󰹞 Transparent + Blur")
-    set_zen_browser_rule "0.70 0.70" "false"
-    notify "Zen Browser" "Opacity 0.70 0.70, blur enabled"
+  "$transparent_label")
+    set_zen_browser_theme transparent
+    notify "Zen Browser" "Opacity 0.70, blur enabled"
     ;;
   esac
 }

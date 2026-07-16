@@ -91,7 +91,10 @@ Current notable root-level files include:
 
 The shared machine selector is not Hyprland-owned: read optional override
 `~/.config/naldo/machine-profile/profile`, otherwise tracked `default`.
-`desktop` uses XKB `gb`; `laptop` uses `us`.
+`desktop` uses XKB `gb`; `laptop` uses `us`. The theme launcher stores the
+machine-local Zen opacity/blur choice as `opaque` or `transparent` under
+`$XDG_STATE_HOME/hypr/zen-browser-theme`; `rules.lua` reads it on every config
+load and falls back to opaque/no-blur when absent or invalid.
 Do not edit generated outputs directly. See
 [dotfiles-sync-backup.md](dotfiles-sync-backup.md) for ownership and profile
 semantics.

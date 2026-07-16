@@ -3,6 +3,37 @@ local vars = require("hyprland.variables")
 local bitwarden_title_pattern = "^Extension: %(Bitwarden Password Manager%) %- Bitwarden .+ Zen Browser$"
 local bitwarden_center_delay_ms = 450
 
+local state_home = os.getenv("XDG_STATE_HOME")
+if state_home == nil or state_home == "" then
+  state_home = assert(os.getenv("HOME"), "HOME is not set") .. "/.local/state"
+end
+
+local zen_browser_theme_modes = {
+  opaque = {
+    opacity = "1 1",
+    no_blur = true,
+  },
+  transparent = {
+    opacity = "0.70 0.70",
+    no_blur = false,
+  },
+}
+
+local function read_zen_browser_theme()
+  local file = io.open(state_home .. "/hypr/zen-browser-theme", "r")
+  if file == nil then
+    return zen_browser_theme_modes.opaque
+  end
+
+  local mode = file:read("*l")
+  file:close()
+
+  return zen_browser_theme_modes[mode] or zen_browser_theme_modes.opaque
+end
+
+-- Machine-local preference written atomically by theme_launcher.sh.
+local zen_browser_theme = read_zen_browser_theme()
+
 ---@param value string
 ---@return string
 local function escape_regex(value)
@@ -36,8 +67,8 @@ local window_rules = {
   {
     name = "zen-browser-theme",
     match = { class = exact_regex({ "zen" }) },
-    opacity = "1 1",
-    no_blur = true,
+    opacity = zen_browser_theme.opacity,
+    no_blur = zen_browser_theme.no_blur,
   },
   {
     name = "centered-floating-apps",
