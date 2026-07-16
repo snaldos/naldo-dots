@@ -122,15 +122,8 @@ source = "builtin"
 wallpaper_scheme = "m3-content"
 
 [theme.templates]
-builtin_ids = [
-  "btop",
-  "cava",
-  "gtk3",
-  "gtk4",
-  "hyprland",
-  "kitty",
-]
-community_ids = ["zen-browser", "discord"]
+builtin_ids = ["btop", "cava", "gtk3", "gtk4", "hyprland", "kitty"]
+community_ids = []
 
 [theme.templates.user.ghostty]
 input_path = "$XDG_CONFIG_HOME/noctalia/templates/ghostty-noctalia.conf"
