@@ -154,15 +154,13 @@
 #define BLACK_HOLE_SHADOW_ALPHA_BOOST 0.045
 #define BACKGROUND_DARKEN 1.00
 #define BACKGROUND_THRESHOLD 0.30
-// Match Ghostty's background-opacity and enable background-opacity-cells.
-#define TERMINAL_BACKGROUND_ALPHA 0.70
-#define TEXT_ALPHA_DIFFERENCE_START 0.015
-#define TEXT_ALPHA_DIFFERENCE_END 0.26
+#define TEXT_LOCAL_CONTRAST_START 0.025
+#define TEXT_LOCAL_CONTRAST_END 0.18
 #define TEXT_PROTECTION 0.88
 #define TEXT_PROTECTION_RADIUS_PX 1.25
 #define TEXT_PROTECTION_BRIGHTNESS_START 0.18
 #define TEXT_PROTECTION_BRIGHTNESS_END 0.58
-#define TEXT_PROTECTION_SCENE_FLOOR 0.10
+#define TEXT_PROTECTION_SCENE_FLOOR 0.30
 #define TEXT_FOREGROUND_RESTORE 1.00
 #define SPACE_EXPOSURE 1.00
 #define SPACE_BRIGHTNESS 1.00
@@ -739,17 +737,6 @@ vec3 applySaturation(vec3 color, float saturation) {
     return mix(vec3(grey), color, saturation);
 }
 
-float terminalContentMask(vec4 terminalColor) {
-    // background-opacity-cells keeps application backgrounds at the configured
-    // Ghostty opacity, while antialiased foreground glyphs rise toward alpha
-    // 1. Detect that alpha excess instead of assuming one terminal RGB color.
-    return smoothstep(
-        TEXT_ALPHA_DIFFERENCE_START,
-        TEXT_ALPHA_DIFFERENCE_END,
-        max(terminalColor.a - TERMINAL_BACKGROUND_ALPHA, 0.0)
-    );
-}
-
 float backgroundMaskFromTerminal(vec4 terminalColor) {
     float terminalLuma = luminance(terminalColor.rgb);
     float lumaMask = 1.0 - smoothstep(
@@ -761,46 +748,76 @@ float backgroundMaskFromTerminal(vec4 terminalColor) {
     return clamp(max(lumaMask, alphaMask), 0.0, 1.0);
 }
 
-float localTerminalContentMask(vec2 uv, vec4 terminalCenter) {
+float terminalSampleContrast(vec4 terminalCenter, vec4 nearbyColor) {
+    vec4 difference = abs(terminalCenter - nearbyColor);
+    float colorContrast = max(
+        difference.r,
+        max(difference.g, difference.b)
+    );
+    return max(colorContrast, difference.a);
+}
+
+float terminalForegroundContrast(vec4 terminalCenter, vec4 nearbyColor) {
+    vec3 colorDifference = abs(terminalCenter.rgb - nearbyColor.rgb);
+    float colorContrast = max(
+        colorDifference.r,
+        max(colorDifference.g, colorDifference.b)
+    );
+    float centerIsBrighter = step(
+        luminance(nearbyColor.rgb),
+        luminance(terminalCenter.rgb)
+    );
+    float alphaRise = max(terminalCenter.a - nearbyColor.a, 0.0);
+    return max(colorContrast * centerIsBrighter, alphaRise);
+}
+
+void localTerminalProtectionMasks(
+    vec2 uv,
+    vec4 terminalCenter,
+    out float foregroundMask,
+    out float nearbyMask
+) {
     vec2 radius = vec2(TEXT_PROTECTION_RADIUS_PX)
         / max(iResolution.xy, vec2(1.0));
     vec2 diagonal = radius * 0.70710678;
-    float nearbyContent = 0.0;
+    vec2 offsets[8] = vec2[](
+        vec2(radius.x, 0.0),
+        vec2(-radius.x, 0.0),
+        vec2(0.0, radius.y),
+        vec2(0.0, -radius.y),
+        diagonal,
+        -diagonal,
+        vec2(diagonal.x, -diagonal.y),
+        vec2(-diagonal.x, diagonal.y)
+    );
 
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv + vec2(radius.x, 0.0), vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv - vec2(radius.x, 0.0), vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv + vec2(0.0, radius.y), vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv - vec2(0.0, radius.y), vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv + diagonal, vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv - diagonal, vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv + vec2(diagonal.x, -diagonal.y), vec2(0.0), vec2(1.0))
-    )));
-    nearbyContent = max(nearbyContent, terminalContentMask(texture(
-        iChannel0,
-        clamp(uv + vec2(-diagonal.x, diagonal.y), vec2(0.0), vec2(1.0))
-    )));
+    float foregroundContrast = 0.0;
+    float nearbyContrast = 0.0;
+    for (int sampleIndex = 0; sampleIndex < 8; sampleIndex++) {
+        vec4 nearbyColor = texture(
+            iChannel0,
+            clamp(uv + offsets[sampleIndex], vec2(0.0), vec2(1.0))
+        );
+        foregroundContrast = max(
+            foregroundContrast,
+            terminalForegroundContrast(terminalCenter, nearbyColor)
+        );
+        nearbyContrast = max(
+            nearbyContrast,
+            terminalSampleContrast(terminalCenter, nearbyColor)
+        );
+    }
 
-    return max(terminalContentMask(terminalCenter), nearbyContent);
+    foregroundMask = smoothstep(
+        TEXT_LOCAL_CONTRAST_START,
+        TEXT_LOCAL_CONTRAST_END,
+        foregroundContrast
+    );
+    nearbyMask = smoothstep(
+        TEXT_LOCAL_CONTRAST_START,
+        TEXT_LOCAL_CONTRAST_END,
+        nearbyContrast
+    );
 }
 
 vec4 protectTerminalReadability(
@@ -809,9 +826,9 @@ vec4 protectTerminalReadability(
     float contentMask,
     float nearbyContentMask
 ) {
-    // Only pull a bright scene toward the untouched terminal background near
-    // glyphs. Empty regions retain the full galaxy, while a narrow adaptive
-    // halo keeps bright galactic arms from washing out text edges.
+    // Protect locally detected glyph edges without classifying uniform visual
+    // lines or code-block backgrounds as text. Those UI regions retain the
+    // cosmic illumination that gives the normal shader its lighter appearance.
     float brightScene = smoothstep(
         TEXT_PROTECTION_BRIGHTNESS_START,
         TEXT_PROTECTION_BRIGHTNESS_END,
@@ -2902,10 +2919,13 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2(1.0)
     );
     vec4 terminalColor = texture(iChannel0, terminalUv);
-    float terminalContent = terminalContentMask(terminalColor);
-    float nearbyTerminalContent = localTerminalContentMask(
+    float terminalContent;
+    float nearbyTerminalContent;
+    localTerminalProtectionMasks(
         terminalUv,
-        terminalColor
+        terminalColor,
+        terminalContent,
+        nearbyTerminalContent
     );
 
     vec4 originalColor;
