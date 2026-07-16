@@ -32,7 +32,8 @@ split-inherit-working-directory = true
 # Transparency
 # -----------------------------------------------------------------------------
 
-# Ghostty supplies alpha; Hyprland supplies blur.
+# Ghostty supplies alpha; Hyprland supplies blur. Keep explicit cell
+# backgrounds (Visual, CursorLine, code blocks) opaque above Cosmos.
 background-opacity = 0.70
 background-opacity-cells = true
 

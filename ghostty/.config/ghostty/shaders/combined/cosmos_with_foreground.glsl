@@ -24,7 +24,7 @@
 //   - named black-hole appearance and movement modes;
 //   - compile-time GPU quality profiles;
 //   - transparency-aware compositing;
-//   - foreground-aware protection around bright cosmic detail;
+//   - terminal-alpha compositing that leaves foreground colors untouched;
 //   - undistorted terminal geometry while the black-hole disk remains visible.
 //
 // Cursor features:
@@ -154,14 +154,6 @@
 #define BLACK_HOLE_SHADOW_ALPHA_BOOST 0.045
 #define BACKGROUND_DARKEN 1.00
 #define BACKGROUND_THRESHOLD 0.30
-#define TEXT_LOCAL_CONTRAST_START 0.025
-#define TEXT_LOCAL_CONTRAST_END 0.18
-#define TEXT_PROTECTION 0.88
-#define TEXT_PROTECTION_RADIUS_PX 1.25
-#define TEXT_PROTECTION_BRIGHTNESS_START 0.18
-#define TEXT_PROTECTION_BRIGHTNESS_END 0.58
-#define TEXT_PROTECTION_SCENE_FLOOR 0.30
-#define TEXT_FOREGROUND_RESTORE 1.00
 #define SPACE_EXPOSURE 1.00
 #define SPACE_BRIGHTNESS 1.00
 #define SPACE_SATURATION 1.00
@@ -748,109 +740,21 @@ float backgroundMaskFromTerminal(vec4 terminalColor) {
     return clamp(max(lumaMask, alphaMask), 0.0, 1.0);
 }
 
-float terminalSampleContrast(vec4 terminalCenter, vec4 nearbyColor) {
-    vec4 difference = abs(terminalCenter - nearbyColor);
-    float colorContrast = max(
-        difference.r,
-        max(difference.g, difference.b)
-    );
-    return max(colorContrast, difference.a);
-}
-
-float terminalForegroundContrast(vec4 terminalCenter, vec4 nearbyColor) {
-    vec3 colorDifference = abs(terminalCenter.rgb - nearbyColor.rgb);
-    float colorContrast = max(
-        colorDifference.r,
-        max(colorDifference.g, colorDifference.b)
-    );
-    float centerIsBrighter = step(
-        luminance(nearbyColor.rgb),
-        luminance(terminalCenter.rgb)
-    );
-    float alphaRise = max(terminalCenter.a - nearbyColor.a, 0.0);
-    return max(colorContrast * centerIsBrighter, alphaRise);
-}
-
-void localTerminalProtectionMasks(
-    vec2 uv,
-    vec4 terminalCenter,
-    out float foregroundMask,
-    out float nearbyMask
+vec4 compositeCosmosBehindTerminal(
+    vec4 cosmosColor,
+    vec4 terminalColor
 ) {
-    vec2 radius = vec2(TEXT_PROTECTION_RADIUS_PX)
-        / max(iResolution.xy, vec2(1.0));
-    vec2 diagonal = radius * 0.70710678;
-    vec2 offsets[8] = vec2[](
-        vec2(radius.x, 0.0),
-        vec2(-radius.x, 0.0),
-        vec2(0.0, radius.y),
-        vec2(0.0, -radius.y),
-        diagonal,
-        -diagonal,
-        vec2(diagonal.x, -diagonal.y),
-        vec2(-diagonal.x, diagonal.y)
+    // Ghostty's terminal alpha is the layer boundary: opaque foreground pixels
+    // remain byte-for-byte terminal colors, while transparent background pixels
+    // reveal the animated Cosmos layer. At terminal alpha 1, Cosmos contributes
+    // nothing. Keep the original alpha for the window compositor.
+    float terminalCoverage = clamp(terminalColor.a, 0.0, 1.0);
+    vec3 compositeColor = mix(
+        cosmosColor.rgb,
+        terminalColor.rgb,
+        terminalCoverage
     );
-
-    float foregroundContrast = 0.0;
-    float nearbyContrast = 0.0;
-    for (int sampleIndex = 0; sampleIndex < 8; sampleIndex++) {
-        vec4 nearbyColor = texture(
-            iChannel0,
-            clamp(uv + offsets[sampleIndex], vec2(0.0), vec2(1.0))
-        );
-        foregroundContrast = max(
-            foregroundContrast,
-            terminalForegroundContrast(terminalCenter, nearbyColor)
-        );
-        nearbyContrast = max(
-            nearbyContrast,
-            terminalSampleContrast(terminalCenter, nearbyColor)
-        );
-    }
-
-    foregroundMask = smoothstep(
-        TEXT_LOCAL_CONTRAST_START,
-        TEXT_LOCAL_CONTRAST_END,
-        foregroundContrast
-    );
-    nearbyMask = smoothstep(
-        TEXT_LOCAL_CONTRAST_START,
-        TEXT_LOCAL_CONTRAST_END,
-        nearbyContrast
-    );
-}
-
-vec4 protectTerminalReadability(
-    vec4 sceneColor,
-    vec4 terminalColor,
-    float contentMask,
-    float nearbyContentMask
-) {
-    // Protect locally detected glyph edges without classifying uniform visual
-    // lines or code-block backgrounds as text. Those UI regions retain the
-    // cosmic illumination that gives the normal shader its lighter appearance.
-    float brightScene = smoothstep(
-        TEXT_PROTECTION_BRIGHTNESS_START,
-        TEXT_PROTECTION_BRIGHTNESS_END,
-        luminance(sceneColor.rgb)
-    );
-    float haloProtection = clamp(
-        nearbyContentMask * brightScene * TEXT_PROTECTION,
-        0.0,
-        1.0
-    );
-    float haloMix = haloProtection
-        * (1.0 - TEXT_PROTECTION_SCENE_FLOOR);
-    sceneColor = mix(sceneColor, terminalColor, haloMix);
-
-    // Restore glyph pixels last so the galaxy, black-hole disk, and meteors
-    // cannot recolor terminal content.
-    float foregroundRestore = clamp(
-        contentMask * TEXT_FOREGROUND_RESTORE,
-        0.0,
-        1.0
-    );
-    return mix(sceneColor, terminalColor, foregroundRestore);
+    return vec4(compositeColor, terminalColor.a);
 }
 
 float localBackgroundAlpha(vec2 uv) {
@@ -2919,24 +2823,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2(1.0)
     );
     vec4 terminalColor = texture(iChannel0, terminalUv);
-    float terminalContent;
-    float nearbyTerminalContent;
-    localTerminalProtectionMasks(
-        terminalUv,
-        terminalColor,
-        terminalContent,
-        nearbyTerminalContent
-    );
 
     vec4 originalColor;
     renderCosmosImage(originalColor, fragCoord);
-    vec4 protectedColor = protectTerminalReadability(
+    vec4 terminalComposite = compositeCosmosBehindTerminal(
         originalColor,
-        terminalColor,
-        terminalContent,
-        nearbyTerminalContent
+        terminalColor
     );
-    fragColor = protectedColor;
+    fragColor = terminalComposite;
 
     vec2 point = normalizeScreen(fragCoord, 1.0);
     vec4 currentCursor = vec4(
@@ -3197,9 +3091,9 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
 #endif
 
-    // Composite the cursor over the protected cosmos so its glow remains a
-    // foreground effect rather than being pushed behind terminal glyphs.
-    vec4 outputColor = protectedColor;
+    // Composite the cursor over the terminal-over-Cosmos result so its glow
+    // remains a foreground effect.
+    vec4 outputColor = terminalComposite;
 
 #if CURSOR_ENABLE_NEBULA_WAKE
     outputColor.rgb = mix(
@@ -3279,8 +3173,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
 
     fragColor = mix(
         outputColor,
-        protectedColor,
+        terminalComposite,
         step(cursorDistance, 0.0)
     );
-    fragColor.a = protectedColor.a;
+    fragColor.a = terminalComposite.a;
 }
