@@ -13,7 +13,10 @@
 
 local M = {}
 
-local available_layouts = { "dwindle", "scrolling" }
+local available_layouts = {
+  dwindle = true,
+  scrolling = true,
+}
 
 ---@param dispatcher HL.Hyprland.DispatcherLike|nil
 local function run(dispatcher)
@@ -85,31 +88,20 @@ function M.by_floating_or_layout(spec)
   end
 end
 
----@param step integer
----@return string|nil new_layout
+---@param name string
 ---@return HL.Workspace|nil workspace
-function M.cycle(step)
+function M.set(name)
+  if available_layouts[name] ~= true then
+    return nil
+  end
+
   local workspace = active_workspace()
   if workspace == nil or workspace.special then
     return nil
   end
 
-  local current_index
-  for index, name in ipairs(available_layouts) do
-    if workspace.tiled_layout == name then
-      current_index = index
-      break
-    end
-  end
-
-  if current_index == nil then
-    return nil
-  end
-
-  local next_index = ((current_index - 1 + step) % #available_layouts) + 1
-  local next_layout = available_layouts[next_index]
-  hl.workspace_rule({ workspace = workspace.name, layout = next_layout })
-  return next_layout, workspace
+  hl.workspace_rule({ workspace = workspace.name, layout = name })
+  return workspace
 end
 
 return M

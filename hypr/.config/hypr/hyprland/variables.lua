@@ -10,6 +10,7 @@ local scripts = {
   app_launcher = scripts_dir .. "/app_launcher.sh",
   center_scrolling_active = scripts_dir .. "/center_scrolling_active.sh",
   launch_terminal = scripts_dir .. "/launch_terminal.sh",
+  layout_selector = scripts_dir .. "/layout_selector.sh",
   scripts_launcher = scripts_dir .. "/scripts_launcher.sh",
   snip_to_search = scripts_dir .. "/snip_to_search.sh",
   theme_launcher = scripts_dir .. "/theme_launcher.sh",
@@ -143,6 +144,7 @@ local scrolling_direction_is_left = scrolling_direction == "left"
 ---@field app_launcher string
 ---@field center_scrolling_active string
 ---@field launch_terminal string
+---@field layout_selector string
 ---@field scripts_launcher string
 ---@field snip_to_search string
 ---@field theme_launcher string

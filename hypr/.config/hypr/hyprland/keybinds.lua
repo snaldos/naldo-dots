@@ -144,24 +144,6 @@ local function scrolling_dispatch(message)
   return when_layout("scrolling", hl.dsp.layout(message))
 end
 
-local layout_labels = {
-  dwindle = "Dwindle",
-  scrolling = "Scrolling",
-}
-
-local function change_layout(step)
-  return function()
-    local next_layout, workspace = layout.cycle(step)
-    if next_layout == nil or workspace == nil then
-      return
-    end
-
-    local label = layout_labels[next_layout] or next_layout
-    local message = ("Workspace %s: %s"):format(workspace.name, label)
-    hl.exec_cmd(noctalia_command("notification-show", "Layout changed", message))
-  end
-end
-
 -- Noctalia and media.
 bind(main_mod .. " + Space", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "launcher")), {
   description = "Noctalia: Toggle launcher",
@@ -428,12 +410,13 @@ bind(
 )
 
 -- Layout switching and layout-specific actions.
-bind(main_mod .. " + SHIFT + BracketRight", change_layout(1), {
-  description = "Layout-Management: Next layout",
-})
-bind(main_mod .. " + SHIFT + BracketLeft", change_layout(-1), {
-  description = "Layout-Management: Previous layout",
-})
+bind(
+  main_mod .. " + Slash",
+  hl.dsp.exec_cmd(
+    shell.command(vars.scripts.layout_selector, vars.noctalia.executable, vars.noctalia.ipc_subcommand)
+  ),
+  { description = "Layout-Management: Select layout" }
+)
 
 bind(main_mod .. " + R", when_layout("dwindle", hl.dsp.layout("togglesplit")), {
   description = "Dwindle: Toggle split",
