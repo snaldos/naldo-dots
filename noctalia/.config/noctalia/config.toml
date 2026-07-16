@@ -1,56 +1,25 @@
 [bar.default]
-background_opacity = 0.59999998658895493
-center = ["group:g2", "group:g3", "group:g4"]
-end = ["group:g5", "group:g6"]
-start = ["group:g1", "workspaces"]
-
-[[bar.default.capsule_group]]
-enabled = true
-fill = "surface_variant"
-id = "g3"
-members = ["clipboard", "screenshot", "recorder"]
-opacity = 0.60000002384185791
-padding = 6.0
-
-[[bar.default.capsule_group]]
-enabled = true
-fill = "surface_variant"
-id = "g4"
-members = ["media", "audio_visualizer", "tray", "cat"]
-opacity = 0.60000002384185791
-padding = 6.0
-
-[[bar.default.capsule_group]]
-enabled = true
-fill = "surface_variant"
-id = "g5"
-members = ["network", "bluetooth", "volume", "brightness"]
-opacity = 0.60000002384185791
-padding = 6.0
-
-[[bar.default.capsule_group]]
-enabled = true
-fill = "surface_variant"
-id = "g2"
-members = ["sysmon", "clock", "notifications"]
-opacity = 0.60000002384185791
-padding = 6.0
-
-[[bar.default.capsule_group]]
-enabled = true
-fill = "surface_variant"
-id = "g1"
-members = ["control-center", "launcher", "wallpaper"]
-opacity = 0.60000002384185791
-padding = 6.0
-
-[[bar.default.capsule_group]]
-enabled = true
-fill = "surface_variant"
-id = "g6"
-members = ["battery", "session"]
-opacity = 0.60000002384185791
-padding = 6.0
+background_opacity = 0.70
+center = ["control-center", "media", "audio_visualizer", "cat", "wallpaper"]
+end = [
+  "tray",
+  "network",
+  "bluetooth",
+  "volume",
+  "brightness",
+  "battery",
+  "sysmon",
+  "session",
+]
+start = [
+  "workspaces",
+  "launcher",
+  "clock",
+  "notifications",
+  "clipboard",
+  "recorder",
+  "screenshot",
+]
 
 [brightness]
 enable_ddcutil = true
@@ -193,6 +162,10 @@ show_label = false
 [widget.volume]
 show_label = false
 
-[widget.workspaces]
-capsule = true
-capsule_opacity = 0.59999999999999998
+[widget.audio_visualizer]
+anchor = true
+bands = 128
+mirrored = false
+scale = 2.5
+show_when_idle = true
+width = 400
