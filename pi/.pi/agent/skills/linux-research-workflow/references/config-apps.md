@@ -12,7 +12,6 @@ These are inspection commands, not permission to reload or update:
 | Ghostty | tracked active config plus optional generated theme | `ghostty +validate-config --config-file=PATH` |
 | Neovim/LazyVim | tracked `init.lua`, `lua/config/`, `lua/plugins/` | `luac -p`; targeted `nvim --headless` startup/module check |
 | Starship | generated active config or tracked base fallback | `STARSHIP_CONFIG=PATH starship print-config >/dev/null` |
-| Fuzzel | Noctalia-generated complete active INI | `fuzzel --check-config --config=PATH`; defaults are valid when absent |
 | Yazi | tracked behavior config plus generated selector/flavor | `yazi --debug`; inspect diagnostics, not only exit status |
 | Pi | tracked default/extensions plus ignored active settings/theme | parse JSON; test extension selection with a mock or Pi loader |
 | Noctalia | tracked config/templates plus machine state | `noctalia config validate PATH` |
@@ -72,7 +71,6 @@ All durable user-template inputs are centralized under
 `~/.config/noctalia/templates/`. The active `[theme.templates]` table is the
 source of truth; currently configured user outputs include:
 
-- Fuzzel: complete `~/.config/fuzzel/fuzzel.ini`
 - Ghostty: optional `~/.config/ghostty/themes/noctalia` fragment
 - Neovim: `lua/config/matugen.lua`
 - Pi: `~/.pi/agent/themes/noctalia.json`
@@ -115,12 +113,6 @@ Neovim's local `.git` metadata is not part of the outer dotfiles repository.
 Fish sets `STARSHIP_CONFIG` to generated `~/.config/starship.toml` when present
 and tracked `~/.config/starship.base.toml` otherwise. Validate both. `starship
 config NAME VALUE` edits a file and is not a check.
-
-### Fuzzel
-
-The active INI is fully rendered by Noctalia; there is no tracked include-only
-base. Validate it when present. In an isolated missing-output test, Fuzzel must
-start from application defaults rather than fail on a missing include.
 
 ### Yazi
 

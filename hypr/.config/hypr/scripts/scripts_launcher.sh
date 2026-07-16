@@ -16,6 +16,7 @@ TERMINAL_FLOAT=(
 SYNC_CONTROL="${SYNC_CONTROL:-$HOME/.local/bin/sync-control}"
 SYNC_ALL="${SYNC_ALL:-$HOME/.local/bin/sync-all}"
 SYSTEM_SYNC="${SYSTEM_SYNC:-$HOME/backups/sync.sh}"
+NOCTALIA="${NOCTALIA:-noctalia}"
 
 notify() {
   local title="$1" message="$2"
@@ -32,7 +33,7 @@ choose_menu() {
   shift
 
   printf '%s\n' "$@" |
-    fuzzel --dmenu --prompt="$prompt" --lines="$#" --width=52 || true
+    "$NOCTALIA" dmenu -p "$prompt" || true
 }
 
 run_terminal() {
@@ -80,7 +81,7 @@ choose_interval() {
   [[ -z "$choice" ]] && return 0
 
   if [[ "$choice" == "󰅐 Custom interval…" ]]; then
-    interval="$(fuzzel --dmenu --prompt-only='Interval (e.g. 45min, 6h) > ' --width=42 || true)"
+    interval="$("$NOCTALIA" dmenu -p 'Interval (e.g. 45min, 6h) > ' </dev/null || true)"
     [[ -z "$interval" ]] && return 0
   else
     interval="${value_by_label[$choice]:-}"
@@ -225,8 +226,8 @@ main() {
     "🌙 Export Noctalia config"
   )
 
-  command -v fuzzel >/dev/null 2>&1 || {
-    printf 'fuzzel is required\n' >&2
+  command -v "$NOCTALIA" >/dev/null 2>&1 || {
+    printf 'Noctalia is required: %s\n' "$NOCTALIA" >&2
     return 1
   }
   [[ -x "$SYNC_CONTROL" ]] || {

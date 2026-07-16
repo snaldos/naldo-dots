@@ -6,7 +6,7 @@ set -Eeuo pipefail
 # Hyprland theme menu
 # =============================================================================
 #
-# Desktop-specific frontend. Fuzzel renders the menus; the UI-independent
+# Desktop-specific frontend. Noctalia renders the menus; the UI-independent
 # Ghostty backend performs all shader selection, GPU-profile injection, state
 # persistence, and Ghostty reloads.
 #
@@ -20,6 +20,7 @@ set -Eeuo pipefail
 
 HYPR_RULES="${HYPR_RULES:-$HOME/.config/hypr/hyprland/rules.lua}"
 GHOSTTY_SHADER_SCRIPT="${GHOSTTY_SHADER_SCRIPT:-$HOME/.config/ghostty/ghostty-shaders.sh}"
+NOCTALIA="${NOCTALIA:-noctalia}"
 
 main_items=(
   "󰊠 Ghostty"
@@ -58,14 +59,10 @@ notify() {
   fi
 }
 
-choose_with_fuzzel() {
+choose_with_noctalia() {
   local prompt="$1"
-  local lines="$2"
 
-  fuzzel --dmenu \
-    --prompt="$prompt" \
-    --lines="$lines" \
-    --width=48
+  "$NOCTALIA" dmenu -p "$prompt"
 }
 
 choose_menu() {
@@ -73,11 +70,11 @@ choose_menu() {
   shift
 
   printf '%s\n' "$@" |
-    choose_with_fuzzel "$prompt" "$#" || true
+    choose_with_noctalia "$prompt" || true
 }
 
 require_frontend() {
-  command -v fuzzel >/dev/null 2>&1 || fail "fuzzel is required"
+  command -v "$NOCTALIA" >/dev/null 2>&1 || fail "Noctalia is required: $NOCTALIA"
   [[ -x "$GHOSTTY_SHADER_SCRIPT" ]] || fail "Ghostty shader backend is not executable: $GHOSTTY_SHADER_SCRIPT"
 }
 

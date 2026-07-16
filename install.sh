@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 packages=(
-  ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi
+  ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi
   desktop automation machine
 )
 fail() {

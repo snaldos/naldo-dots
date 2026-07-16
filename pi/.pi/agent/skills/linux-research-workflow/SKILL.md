@@ -1,6 +1,6 @@
 ---
 name: linux-research-workflow
-description: "Inspect, debug, validate, migrate, or configure Naldo's Arch Linux desktop/laptop: GNU Stow dotfiles, centralized Git synchronization and machine snapshots, Hyprland Lua/hl and plugins, native Noctalia v5, systemd/systemd-boot, Wayland/UWSM, Herdr/Tailscale, Ghostty, Fish, Neovim, Starship, Fuzzel, Yazi, Zen, packages, and scientific tooling."
+description: "Inspect, debug, validate, migrate, or configure Naldo's Arch Linux desktop/laptop: GNU Stow dotfiles, centralized Git synchronization and machine snapshots, Hyprland Lua/hl and plugins, native Noctalia v5, systemd/systemd-boot, Wayland/UWSM, Herdr/Tailscale, Ghostty, Fish, Neovim, Starship, Yazi, Zen, packages, and scientific tooling."
 compatibility: "Arch Linux; Hyprland 0.55+ Lua configuration; native Noctalia v5 beta; GNU Stow; UWSM/systemd-user; Fish interactive shell; Bash automation; Ghostty; Neovim/LazyVim; Herdr; Tailscale."
 ---
 
@@ -14,7 +14,7 @@ Treat this as a current profile that must still be inspected:
 - Hyprland 0.55+ with Lua configuration and embedded `hl`, normally under UWSM/systemd-user
 - HyprPM `scrolloverview`, configured by `hyprland/plugins.lua` when loaded
 - native Noctalia v5 beta invoked as `noctalia`, not the old Quickshell/QML shell
-- Ghostty, Fish, Starship, Neovim/LazyVim, Fuzzel, Yazi, Zen Browser, and Herdr
+- Ghostty, Fish, Starship, Neovim/LazyVim, Yazi, Zen Browser, and Herdr
 - portable user config in the public GNU Stow repository `~/dotfiles`, deployed with `--no-folding`
 - optional machine-local profile override at `~/.config/naldo/machine-profile/profile`, falling back to tracked `default`
 - one private machine-snapshot clone at `~/backups`, with its own history and remote on each machine
@@ -32,7 +32,7 @@ Before nontrivial diagnosis or editing, read only the relevant guide:
   [references/desktop-wayland.md](references/desktop-wayland.md)
 - systemd, Arch packages, systemd-boot, Herdr, Tailscale, or remote continuity:
   [references/system-remote.md](references/system-remote.md)
-- Fish/Bash, Lua/TOML, Ghostty, LazyVim, Starship, Fuzzel, Yazi, or Zen:
+- Fish/Bash, Lua/TOML, Ghostty, LazyVim, Starship, Yazi, or Zen:
   [references/config-apps.md](references/config-apps.md)
 
 For cross-layer symptoms, inspect every involved layer. A loaded plugin does not

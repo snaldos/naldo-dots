@@ -83,6 +83,10 @@ action = "screen_off"
 enabled = true
 timeout = 660
 
+[keybinds]
+up = ["up", "ctrl+k"]
+down = ["down", "ctrl+j"]
+
 [location]
 auto_locate = true
 
@@ -127,10 +131,6 @@ builtin_ids = [
   "kitty",
 ]
 community_ids = ["zen-browser", "discord"]
-
-[theme.templates.user.fuzzel]
-input_path = "$XDG_CONFIG_HOME/noctalia/templates/fuzzel-noctalia.ini"
-output_path = "$XDG_CONFIG_HOME/fuzzel/fuzzel.ini"
 
 [theme.templates.user.ghostty]
 input_path = "$XDG_CONFIG_HOME/noctalia/templates/ghostty-noctalia.conf"

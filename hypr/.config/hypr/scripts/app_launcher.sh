@@ -12,6 +12,12 @@ TERMINAL_FLOAT=(
   --app-id "$2"
 )
 CENTERED_FLOATING_SIZE="$3"
+NOCTALIA="${NOCTALIA:-noctalia}"
+
+command -v "$NOCTALIA" >/dev/null 2>&1 || {
+  printf 'Noctalia is required: %s\n' "$NOCTALIA" >&2
+  exit 1
+}
 
 menu_items=(
   " Terminal"
@@ -20,11 +26,9 @@ menu_items=(
 )
 
 choice=$(
-  printf '%s\n' "${menu_items[@]}" | fuzzel --dmenu \
-    --prompt="Apps > " \
-    --lines=6 \
-    --width=35
-)
+  printf '%s\n' "${menu_items[@]}" |
+    "$NOCTALIA" dmenu -p "Apps > "
+) || exit 0
 
 [[ -z "$choice" ]] && exit 0
 

@@ -30,7 +30,7 @@ fail() {
   exit 1
 }
 
-for dependency in fuzzel hyprctl jq; do
+for dependency in "$NOCTALIA" hyprctl jq; do
   command -v "$dependency" >/dev/null 2>&1 || fail "$dependency is required"
 done
 
@@ -58,28 +58,23 @@ declare -A display_by_layout=(
 )
 declare -A layout_by_item=()
 items=()
-current_item=""
 
 for name in "${layouts[@]}"; do
   item="${display_by_layout[$name]}"
   if [[ "$name" == "$current_layout" ]]; then
     item="● $item"
-    current_item="$item"
+    items=("$item" "${items[@]}")
+  else
+    items+=("$item")
   fi
 
-  items+=("$item")
   layout_by_item["$item"]="$name"
 done
 
-fuzzel_args=(
-  --dmenu
-  --prompt="Layout [$workspace_name] > "
-  --lines="${#items[@]}"
-  --width=32
-)
-[[ -z "$current_item" ]] || fuzzel_args+=(--select="$current_item")
-
-choice="$(printf '%s\n' "${items[@]}" | fuzzel "${fuzzel_args[@]}")" || exit 0
+choice="$(
+  printf '%s\n' "${items[@]}" |
+    "$NOCTALIA" dmenu -p "Layout [$workspace_name] > "
+)" || exit 0
 [[ -z "$choice" ]] && exit 0
 
 selected="${layout_by_item[$choice]:-}"

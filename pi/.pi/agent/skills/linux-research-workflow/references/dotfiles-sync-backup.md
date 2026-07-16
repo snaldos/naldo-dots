@@ -21,8 +21,8 @@ exists.
 The canonical public repository is `~/dotfiles`, with these packages:
 
 ```text
-ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit
-noctalia pi desktop automation machine
+ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi
+desktop automation machine
 ```
 
 Important entry points:
@@ -48,7 +48,7 @@ symlinks, and generated/private files are real target-side files. Package
 Preferred dry run:
 
 ```bash
-packages=(ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine)
+packages=(ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi desktop automation machine)
 stow -d "$HOME/dotfiles" -t "$HOME" --no-folding -n --verbose=2 -R "${packages[@]}"
 ```
 
@@ -90,8 +90,8 @@ All durable Noctalia user-template inputs live under:
 ~/.config/noctalia/templates/
 ```
 
-Configured outputs currently cover Fuzzel, Ghostty, Neovim, Pi, Starship,
-Yazi, and Zathura; builtin/community templates also cover selected desktop
+Configured outputs currently cover Ghostty, Neovim, Pi, Starship, Yazi, and
+Zathura; builtin/community templates also cover selected desktop
 components. Read `[theme.templates]` in the active Noctalia config for the exact
 current list.
 
@@ -103,7 +103,7 @@ Rendered outputs are ignored. Supported absence behavior is intentional:
   `tokyonight`, `matugen`, or `base16`.
 - Fish selects generated Starship config when present and the tracked base
   config otherwise.
-- Fuzzel, Yazi, and Zathura use application defaults until outputs are rendered.
+- Yazi and Zathura use application defaults until outputs are rendered.
 - Pi selects Noctalia only when its generated theme is discoverable and
   otherwise selects built-in `dark`.
 

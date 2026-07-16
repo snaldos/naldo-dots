@@ -32,7 +32,7 @@ user-systemd units. It does not install Arch packages or modify system files.
 Equivalent manual Stow command (links only):
 
 ```bash
-stow --no-folding ghostty fish starship herdr nvim zathura yazi fuzzel hypr lazygit noctalia pi desktop automation machine
+stow --no-folding ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi desktop automation machine
 ```
 
 Reapply links with `stow --no-folding --restow PACKAGE`, or remove links with
@@ -82,8 +82,8 @@ Noctalia's rendered outputs are ignored; all durable template inputs live under
 active config and content-addressed shader outputs machine-local. Missing
 outputs degrade safely: Ghostty and
 Hyprland skip optional theme fragments, Neovim and Starship use tracked
-fallbacks, Yazi and the generated Fuzzel/Zathura configs fall back to
-application defaults, and Pi's extension selects built-in `dark` when
+fallbacks, Yazi and the generated Zathura config fall back to application
+defaults, and Pi's extension selects built-in `dark` when
 `noctalia.json` is unavailable.
 
 Pi persists `/settings`, model, thinking, and theme selections in its active

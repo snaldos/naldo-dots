@@ -154,6 +154,19 @@ diff. IPC names are beta; use installed help. After an authorized edit, reload
 only if necessary, inspect targeted status, and tail a bounded log. Never test
 with lock, DPMS, logout, reboot, shutdown, or destructive history commands.
 
+### Launcher and script menus
+
+Noctalia is the menu frontend for the tracked Hyprland scripts. For transient
+pickers, scripts pipe newline-separated choices to `noctalia dmenu -p PROMPT`
+and read the selected line from stdout; cancellation exits `1`. The running
+Noctalia instance must share `XDG_RUNTIME_DIR` and `WAYLAND_DISPLAY`. Persistent
+command palettes can instead use `[shell.launcher.dmenu.entry.<id>]` providers.
+
+Noctalia's centralized `[keybinds]` table applies across launcher and shell
+surfaces. Preserve arrow defaults when adding alternatives, for example
+`up = ["up", "ctrl+k"]` and `down = ["down", "ctrl+j"]`. Supported modifiers are
+`ctrl`, `shift`, and `alt`; Super bindings are rejected.
+
 ### Templates
 
 All durable user-template inputs are under
