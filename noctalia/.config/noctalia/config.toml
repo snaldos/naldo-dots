@@ -1,6 +1,6 @@
 [bar.default]
 background_opacity = 0.70
-center = ["control-center", "media", "audio_visualizer", "cat", "wallpaper"]
+center = [ "control-center", "cat", "media", "audio_visualizer", "wallpaper", "wallhaven", "mpvpaper" ]
 end = [
   "tray",
   "network",
@@ -63,7 +63,22 @@ auto_locate = true
 enabled = true
 
 [plugins]
-enabled = ["noctalia/screen_recorder", "noctalia/bongocat"]
+enabled = [
+    "noctalia/screen_recorder",
+    "noctalia/bongocat",
+    "noctalia/kaomoji",
+    "noctalia/translator",
+    "noctalia/notes",
+    "noctalia/wallhaven",
+    "noctalia/timer",
+    "noctalia/mpvpaper"
+]
+
+[plugin_settings."noctalia/notes"]
+notes_dir = "~/Vaults/second-brain/00 - Inbox"
+
+[plugin_settings."noctalia/wallhaven"]
+download_dir = "~/Wallpapers/dark/default"
 
 [shell]
 screen_time_enabled = true
@@ -155,6 +170,13 @@ show_label = false
 
 [widget.recorder]
 type = "noctalia/screen_recorder:recorder"
+
+[widget.mpvpaper]
+type = "noctalia/mpvpaper:mpvpaper"
+
+[widget.wallhaven]
+type = "noctalia/wallhaven:wallhaven"
+
 
 [widget.sysmon]
 show_label = false
