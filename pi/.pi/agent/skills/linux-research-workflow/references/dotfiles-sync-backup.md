@@ -29,9 +29,10 @@ Important entry points:
 
 - `~/dotfiles/install.sh`: runs the complete user-level bootstrap, prompts for
   a fresh interactive machine profile, rejects invalid package-source state,
-  restows all packages without folding, initializes local defaults, and reloads the
-  user-systemd unit inventory. It shares `sync-all`'s lock and refuses to race
-  an active synchronization.
+  restows all packages without folding, initializes local Noctalia, Fish, and
+  Pi files, enforces mode `0600` on them, and reloads the user-systemd unit
+  inventory. It shares `sync-all`'s lock and refuses to race an active
+  synchronization.
 - `~/dotfiles/sync.sh`: stages all non-ignored changes, checks whitespace,
   commits, fetches/rebases `origin/main`, and pushes.
 - `~/dotfiles/README.md`: concise deployment and synchronization instructions.
@@ -108,8 +109,8 @@ Rendered outputs are ignored. Supported absence behavior is intentional:
   otherwise selects built-in `dark`.
 
 Noctalia plugin credentials belong in the real, mode-`0600`, machine-local
-`~/.config/noctalia/credentials.toml`. The package tracks
-`credentials.toml.example` and ignores the populated filename. Noctalia loads
+`~/.config/noctalia/credentials.toml`. `install.sh` initializes it from the
+tracked `credentials.toml.example` and ignores the populated filename. Noctalia loads
 only top-level `*.toml` files, so do not create a `credentials/` placeholder
 directory. Keep GUI-managed `~/.local/state/noctalia/settings.toml` non-secret;
 the machine-snapshot guard rejects it if a plugin writes a credential there.

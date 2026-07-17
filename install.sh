@@ -159,15 +159,40 @@ fi
 printf 'Machine profile: %s (%s)\n' "$effective_profile" \
   "$([[ -n "$profile_override" ]] && printf '%s' "$profile_file" || printf '%s/default' "$profile_dir")"
 
+noctalia_config_dir="$config_home/noctalia"
+noctalia_credentials="$noctalia_config_dir/credentials.toml"
+noctalia_credentials_seed="$REPO_DIR/noctalia/.config/noctalia/credentials.toml.example"
+[[ -f "$noctalia_credentials_seed" ]] ||
+  fail "missing Noctalia credentials seed: $noctalia_credentials_seed"
+[[ ! -L "$noctalia_config_dir" ]] ||
+  fail "Noctalia config directory must be real: $noctalia_config_dir"
+[[ ! -e "$noctalia_config_dir" || -d "$noctalia_config_dir" ]] ||
+  fail "Noctalia config path must be a directory: $noctalia_config_dir"
+install -d -m 700 "$noctalia_config_dir"
+[[ ! -L "$noctalia_credentials" ]] ||
+  fail "Noctalia credentials must be a real file: $noctalia_credentials"
+[[ ! -e "$noctalia_credentials" || -f "$noctalia_credentials" ]] ||
+  fail "Noctalia credentials path must be a regular file: $noctalia_credentials"
+if [[ ! -e "$noctalia_credentials" ]]; then
+  install -m 600 "$noctalia_credentials_seed" "$noctalia_credentials"
+  printf 'Initialized machine-local Noctalia credentials from credentials.toml.example.\n'
+else
+  chmod 600 "$noctalia_credentials"
+fi
+
 fish_config_dir="$HOME/.config/fish"
 [[ ! -e "$fish_config_dir" || -d "$fish_config_dir" ]] ||
   fail "Fish config path must be a directory: $fish_config_dir"
 install -d -m 700 "$fish_config_dir"
 fish_local="$fish_config_dir/local.fish"
 [[ ! -L "$fish_local" ]] || fail "Fish local overrides must be a real file: $fish_local"
+[[ ! -e "$fish_local" || -f "$fish_local" ]] ||
+  fail "Fish local overrides path must be a regular file: $fish_local"
 if [[ ! -e "$fish_local" ]]; then
   install -m 600 /dev/null "$fish_local"
   printf 'Initialized empty machine-local Fish overrides: %s\n' "$fish_local"
+else
+  chmod 600 "$fish_local"
 fi
 
 pi_agent_dir="$HOME/.pi/agent"
@@ -175,9 +200,13 @@ install -d -m 700 "$pi_agent_dir"
 pi_settings="$pi_agent_dir/settings.json"
 pi_defaults="$pi_agent_dir/settings.default.json"
 [[ ! -L "$pi_settings" ]] || fail "Pi active settings must be a real file: $pi_settings"
+[[ ! -e "$pi_settings" || -f "$pi_settings" ]] ||
+  fail "Pi active settings path must be a regular file: $pi_settings"
 if [[ ! -e "$pi_settings" ]]; then
   install -m 600 "$pi_defaults" "$pi_settings"
   printf 'Initialized machine-local Pi settings from settings.default.json.\n'
+else
+  chmod 600 "$pi_settings"
 fi
 
 systemctl --user daemon-reload

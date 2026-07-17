@@ -26,8 +26,9 @@ Run the complete user-level bootstrap:
 
 It validates prerequisites and the selected profile, serializes against
 `sync-all`, enforces clean package-source boundaries, deploys all packages,
-initializes machine-local Fish and Pi files when absent, and reloads
-user-systemd units. It does not install Arch packages or modify system files.
+initializes machine-local Noctalia, Fish, and Pi files when absent, enforces mode
+`0600` on those private files, and reloads user-systemd units. It does not
+install Arch packages or modify system files.
 
 Equivalent manual Stow command (links only):
 
@@ -81,8 +82,9 @@ tracked enum; automation uses `./install.sh --profile PROFILE`.
 
 Noctalia's rendered outputs are ignored; all durable template inputs live under
 `~/.config/noctalia/templates/`. Plugin credentials belong in the real,
-machine-local `~/.config/noctalia/credentials.toml` with mode `0600`; copy the
-tracked `credentials.toml.example` and provision each machine separately.
+machine-local `~/.config/noctalia/credentials.toml` with mode `0600`;
+`install.sh` initializes it from the tracked `credentials.toml.example`, after
+which each machine is provisioned separately.
 Noctalia loads top-level `*.toml` files, so a `credentials/` directory or Git
 placeholder is unnecessary. Never enter credentials in the tracked config or
 GUI-managed `settings.toml`, which is included in the guarded machine snapshot.

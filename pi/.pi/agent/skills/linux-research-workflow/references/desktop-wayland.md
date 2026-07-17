@@ -141,8 +141,9 @@ Resolve XDG variables and distinguish:
 
 Noctalia loads top-level `*.toml` files, so keep plugin keys in
 `credentials.toml`, not a `credentials/` directory, the tracked config, or
-GUI-managed `settings.toml`. The tracked `credentials.toml.example` documents
-the schema without being loaded. Treat both `credentials.toml` and `state.toml`
+GUI-managed `settings.toml`. `install.sh` initializes the local file from the
+tracked `credentials.toml.example`, which documents the schema without being
+loaded. Treat both `credentials.toml` and `state.toml`
 as credentials: do not print, copy, or add them to snapshots. Clipboard,
 notification, location, usage, and screen-time state are private and normally
 irrelevant to configuration work.
