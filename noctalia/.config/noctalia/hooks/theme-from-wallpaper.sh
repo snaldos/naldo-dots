@@ -22,22 +22,25 @@ fi
 # Keep the current palette source when it has a matching family. The default
 # wallpaper family uses Noctalia's canonical built-in palette.
 case "$source:$wall" in
-  builtin:*/catppuccin/*)  palette="Catppuccin" ;;
-  builtin:*/rose-pine/*)   palette="Rosé Pine" ;;
-  builtin:*/tokyo-night/*) palette="Tokyo-Night" ;;
-  builtin:*/default/*)     palette="Noctalia" ;;
+builtin:*/catppuccin/*) palette="Catppuccin" ;;
+builtin:*/rose-pine/*) palette="Rosé Pine" ;;
+builtin:*/tokyo-night/*) palette="Tokyo-Night" ;;
+builtin:*/default/*) palette="Tokyo-Night" ;;
 
-  community:*/catppuccin/*)  palette="Catppuccin Lavender" ;;
-  community:*/rose-pine/*)   palette="Rose Pine Moon" ;;
-  community:*/tokyo-night/*) palette="Tokyo Night Moon" ;;
-  community:*/default/*)     source="builtin"; palette="Noctalia" ;;
+community:*/catppuccin/*) palette="Catppuccin Lavender" ;;
+community:*/rose-pine/*) palette="Rose Pine Moon" ;;
+community:*/tokyo-night/*) palette="Tokyo Night Moon" ;;
+community:*/default/*)
+  source="builtin"
+  palette="Tokyo-Night"
+  ;;
 
-  # Wallpaper palettes automatically regenerate when the default wallpaper
-  # changes, so preserve the selected generator (for example m3-content).
-  wallpaper:*) palette="$current_palette" ;;
+# Wallpaper palettes automatically regenerate when the default wallpaper
+# changes, so preserve the selected generator (for example m3-content).
+wallpaper:*) palette="$current_palette" ;;
 
-  # Do not replace an unknown source or an unmatched wallpaper family.
-  *) exit 0 ;;
+# Do not replace an unknown source or an unmatched wallpaper family.
+*) exit 0 ;;
 esac
 
 current_mode="$(noctalia msg theme-mode-get)"
