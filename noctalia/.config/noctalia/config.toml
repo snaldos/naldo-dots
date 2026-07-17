@@ -1,6 +1,14 @@
 [bar.default]
 background_opacity = 0.70
-center = [ "control-center", "cat", "media", "audio_visualizer", "wallpaper", "wallhaven", "mpvpaper" ]
+center = [
+  "control-center",
+  "cat",
+  "media",
+  "audio_visualizer",
+  "wallpaper",
+  "wallhaven",
+  "mpvpaper",
+]
 end = [
   "tray",
   "network",
@@ -64,14 +72,14 @@ enabled = true
 
 [plugins]
 enabled = [
-    "noctalia/screen_recorder",
-    "noctalia/bongocat",
-    "noctalia/kaomoji",
-    "noctalia/translator",
-    "noctalia/notes",
-    "noctalia/wallhaven",
-    "noctalia/timer",
-    "noctalia/mpvpaper"
+  "noctalia/screen_recorder",
+  "noctalia/bongocat",
+  "noctalia/kaomoji",
+  "noctalia/translator",
+  "noctalia/notes",
+  "noctalia/wallhaven",
+  "noctalia/timer",
+  "noctalia/mpvpaper",
 ]
 
 [plugin_settings."noctalia/notes"]
@@ -188,6 +196,5 @@ show_label = false
 anchor = true
 bands = 128
 mirrored = false
-scale = 2.5
 show_when_idle = true
 width = 400
