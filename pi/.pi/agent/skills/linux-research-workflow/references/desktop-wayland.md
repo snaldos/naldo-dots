@@ -132,14 +132,20 @@ v4 paths.
 Resolve XDG variables and distinguish:
 
 - durable config/templates: `$XDG_CONFIG_HOME/noctalia/`
+- machine-local plugin credentials:
+  `$XDG_CONFIG_HOME/noctalia/credentials.toml`, mode `0600`
 - non-secret GUI/machine preferences: `$XDG_STATE_HOME/noctalia/settings.toml`
 - credential-bearing application state: `$XDG_STATE_HOME/noctalia/state.toml`
 - histories/caches under the remaining state tree
 - log: `$XDG_CACHE_HOME/noctalia/noctalia.log`
 
-Treat `state.toml` as credentials: do not print, copy, or add it to snapshots.
-Clipboard, notification, location, usage, and screen-time state are private and
-normally irrelevant to configuration work.
+Noctalia loads top-level `*.toml` files, so keep plugin keys in
+`credentials.toml`, not a `credentials/` directory, the tracked config, or
+GUI-managed `settings.toml`. The tracked `credentials.toml.example` documents
+the schema without being loaded. Treat both `credentials.toml` and `state.toml`
+as credentials: do not print, copy, or add them to snapshots. Clipboard,
+notification, location, usage, and screen-time state are private and normally
+irrelevant to configuration work.
 
 ### Inspect and validate
 

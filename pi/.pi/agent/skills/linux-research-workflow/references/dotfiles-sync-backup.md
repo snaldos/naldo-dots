@@ -107,6 +107,13 @@ Rendered outputs are ignored. Supported absence behavior is intentional:
 - Pi selects Noctalia only when its generated theme is discoverable and
   otherwise selects built-in `dark`.
 
+Noctalia plugin credentials belong in the real, mode-`0600`, machine-local
+`~/.config/noctalia/credentials.toml`. The package tracks
+`credentials.toml.example` and ignores the populated filename. Noctalia loads
+only top-level `*.toml` files, so do not create a `credentials/` placeholder
+directory. Keep GUI-managed `~/.local/state/noctalia/settings.toml` non-secret;
+the machine-snapshot guard rejects it if a plugin writes a credential there.
+
 Pi's active `~/.pi/agent/settings.json` is ignored because Pi persists model,
 thinking, UI, changelog, and theme changes there. `settings.default.json` is the
 tracked fresh-machine seed and intentionally omits provider, model, thinking,
@@ -180,8 +187,10 @@ boot configuration, selected `/etc` and `/usr/local` configuration, systemd
 state, keyd and udev rules, greetd/Noctalia-greeter state, HyprPM state, and
 non-secret Noctalia settings/plugin manifests. It intentionally excludes
 portable dotfiles, browser profiles, histories, caches, logs, UKIs/EFI binaries,
-private keys, network credentials, Pi credentials, and Noctalia's
-credential-bearing `state.toml`.
+private keys, network credentials, Pi credentials, Noctalia's local
+`credentials.toml`, and its credential-bearing `state.toml`. A content guard
+aborts before replacing the snapshot if any allowlisted file resembles a
+credential.
 
 ```bash
 ~/backups/sync.sh --local  # regenerate without Git/network mutation

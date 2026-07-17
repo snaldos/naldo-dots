@@ -80,9 +80,15 @@ tracked enum; automation uses `./install.sh --profile PROFILE`.
 ## Generated themes and machine-local settings
 
 Noctalia's rendered outputs are ignored; all durable template inputs live under
-`~/.config/noctalia/templates/`. Ghostty's shader manager similarly keeps its
-active config and content-addressed shader outputs machine-local. Missing
-outputs degrade safely: Ghostty and
+`~/.config/noctalia/templates/`. Plugin credentials belong in the real,
+machine-local `~/.config/noctalia/credentials.toml` with mode `0600`; copy the
+tracked `credentials.toml.example` and provision each machine separately.
+Noctalia loads top-level `*.toml` files, so a `credentials/` directory or Git
+placeholder is unnecessary. Never enter credentials in the tracked config or
+GUI-managed `settings.toml`, which is included in the guarded machine snapshot.
+
+Ghostty's shader manager similarly keeps its active config and content-addressed
+shader outputs machine-local. Missing outputs degrade safely: Ghostty and
 Hyprland skip optional theme fragments, Neovim and Starship use tracked
 fallbacks, Yazi and the generated Zathura config fall back to application
 defaults, and Pi's extension selects built-in `dark` when
