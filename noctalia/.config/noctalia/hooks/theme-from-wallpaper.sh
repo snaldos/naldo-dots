@@ -30,10 +30,7 @@ builtin:*/default/*) palette="Tokyo-Night" ;;
 community:*/catppuccin/*) palette="Catppuccin Lavender" ;;
 community:*/rose-pine/*) palette="Rose Pine Moon" ;;
 community:*/tokyo-night/*) palette="Tokyo Night Moon" ;;
-community:*/default/*)
-  source="builtin"
-  palette="Tokyo-Night"
-  ;;
+community:*/default/*) palette="Tokyo Night Moon" ;;
 
 # Wallpaper palettes automatically regenerate when the default wallpaper
 # changes, so preserve the selected generator (for example m3-content).
