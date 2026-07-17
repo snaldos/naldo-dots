@@ -3,6 +3,7 @@
 set -Eeuo pipefail
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+CREDENTIAL_GUARD="$REPO_DIR/automation/.local/libexec/naldo/git-secret-guard"
 REMOTE="${SYNC_REMOTE:-origin}"
 BRANCH="${SYNC_BRANCH:-main}"
 HOST="$(hostname -s)"
@@ -33,6 +34,10 @@ current_branch="$(git branch --show-current)"
 
 git add -A
 git diff --cached --check
+
+[[ -x "$CREDENTIAL_GUARD" ]] || fail "missing credential guard: $CREDENTIAL_GUARD"
+log "checking public repository index for credentials"
+"$CREDENTIAL_GUARD" "$REPO_DIR" || fail "credential check failed"
 
 if git diff --cached --quiet; then
   log "no local changes to commit"

@@ -50,9 +50,11 @@ history, and other runtime state stay machine-local.
 
 ## Synchronization
 
-`./sync.sh` stages all non-ignored dotfile changes, checks whitespace, commits,
-fetches/rebases `origin/main`, and pushes. It stops on conflicts rather than
-silently choosing a side.
+`./sync.sh` stages all non-ignored dotfile changes, checks whitespace, scans the
+complete Git index for likely plaintext credentials, commits, fetches/rebases
+`origin/main`, and pushes. The credential guard reports only paths and detector
+labels, never matched values. It stops before committing on a credential match
+or conflict rather than silently choosing a side.
 
 One user timer runs all repository synchronizers:
 
