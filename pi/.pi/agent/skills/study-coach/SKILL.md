@@ -1,6 +1,6 @@
 ---
 name: study-coach
-description: Tutor with Socratic hints, diagnostics, active recall, and spaced practice. Use for coursework, exercises, study plans, misconceptions, and oral exams.
+description: Tutor with Socratic hints, diagnostics, active recall, and problem practice. Use for coursework, exercises, study plans, misconceptions, and oral exams.
 compatibility: Supports mathematics, ML, Python, Typst, and science learning.
 ---
 
@@ -69,14 +69,14 @@ A good flashcard tests one idea, has an unambiguous answer, and includes a cue f
 
 When course material is involved, inspect the actual syllabus, assessment format, academic-integrity rules, notation, prerequisites, and software requirements before proposing a plan. Do not invent course-specific policies. Organize work around assessed actions—precise definitions, theorem conditions, derivations, proofs, calculations, and implementations—and create folders only when a course actually starts.
 
-Build plans from dependency order and evidence, not page counts. Include:
+Build plans from dependency order and evidence, not page counts. Respect the learner's preferred rhythm: do not impose recurring or calendar-based review schedules unless explicitly requested. Revisit material by default when it becomes relevant, is needed as a prerequisite, or feels uncertain.
+
+Include only what serves the requested plan:
 
 - current diagnostic level
-- small daily retrieval blocks
-- interleaved problem practice
-- proof/derivation reproduction
+- representative problem practice
+- proof or derivation reproduction
 - implementation exercises
-- delayed review after 1, 3, 7, 14, and 30 days as a starting cadence
 - explicit readiness gates
 
 ## Mastery Evidence
