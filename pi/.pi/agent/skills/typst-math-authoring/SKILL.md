@@ -1,23 +1,67 @@
 ---
 name: typst-math-authoring
-description: Create, edit, structure, or debug Typst documents with native mathematics. Use for .typ notes, derivations, reports, templates, and compile errors.
-compatibility: Requires the Typst CLI for validation; optimized for Typst 0.15 or later.
+description: Create, edit, structure, or debug Typst documents with native mathematics. Use for .typ notes, derivations, proofs, equations, geometric figures, curves, and ML math.
+compatibility: Requires the Typst CLI for validation and uses the official live documentation when network access is available.
 ---
 
 # Typst Math Authoring
 
+## Guiding Principle
+
+Treat Typst as the medium for real mathematical writing, not as a separate learning exercise. Preserve the mathematical intent, source status, and the user's own reasoning; improve notation and structure without inventing proofs or claims.
+
 ## Before Editing
 
-1. Inspect the target `.typ` file, nearby imports, and the project's `lib.typ`.
-2. Determine the compilation root and the command already documented by the project.
-3. Reuse established document styles and notation.
-4. Add a macro only after repeated structure makes it worthwhile.
+1. Inspect the target `.typ`, nearby imports, the shared `lib.typ`, and the nearest README.
+2. Determine the project root and its documented compile command.
+3. Check `typst --version` before relying on version-sensitive APIs or packages.
+4. Reuse the existing document template and notation before adding helpers.
+5. Add a macro only after a visual or semantic pattern genuinely repeats.
 
-Do not transliterate LaTeX mechanically. Typst has its own syntax and content model.
+## Live Documentation
 
-## Mathematical Syntax
+Use the official live reference at <https://typst.app/docs/reference/> as the primary API source. Start from its navigation, open only pages relevant to the task, and follow related links under `/docs/reference/`, `/docs/guides/`, or `/docs/changelog/` rather than relying on a cached PDF or model memory.
 
-Prefer Typst-native forms:
+The pages are server-rendered and can be fetched when direct web tooling is unavailable:
+
+```bash
+workdir="$(mktemp -d)"
+url="https://typst.app/docs/reference/visualize/curve/"
+curl -LfsS --max-time 30 "$url" -o "$workdir/page.html"
+pandoc -f html -t plain "$workdir/page.html" -o "$workdir/page.txt"
+# Inspect page.txt, then remove the temporary directory.
+```
+
+If Pandoc is unavailable, inspect the server-rendered HTML directly with text-search and file-reading tools. Check `typst --version` against the live documentation and changelog. The website may document a newer release than the installed CLI; if a feature fails locally, verify version availability rather than rewriting blindly or updating Typst without permission. Cite the exact documentation URLs inspected, do not crawl the whole site, and do not persist documentation copies in a project.
+
+## Document Structure
+
+Use one document title supplied by the shared template; level-1 headings are sections, not a second title. Prefer topic-based filenames such as `elementary-geometry.typ` or `chain-rule-and-gradient-descent.typ`, not source titles or `first-note.typ`.
+
+A mathematical note may contain:
+
+- a motivating question or intuition
+- definitions with domains and assumptions
+- a proposition or theorem with all hypotheses
+- a derivation or proof whose status is explicit
+- examples, counterexamples, and edge cases
+- geometric diagrams or tensor-shape maps when they clarify the argument
+- open questions that are clearly marked as open
+
+This is a menu, not a mandatory outline. Split files only at a real mathematical boundary.
+
+For a project template function, prefer the native whole-document pattern:
+
+```typst
+#import "../lib.typ": math-note
+
+#show: math-note.with(
+  title: [Descriptive title],
+  subtitle: [Optional scope],
+)
+```
+
+## Typst-Native Mathematics
 
 ```typst
 $sum_(i=1)^n x_i$
@@ -28,44 +72,39 @@ $mat(1, 2; 3, 4)$
 $vec(x_1, x_2, x_3)$
 ```
 
-Rules to remember:
-
-- Multi-letter identifiers are interpreted compositionally; quote prose: `$x " is natural"$`.
+- Use `$...$` inline and `$ ... $` for a displayed equation.
+- Quote prose and multi-letter literal text in math: `$x " is feasible"$`.
 - Use `op("softmax")`, `op("argmin")`, or another custom operator only when needed.
 - Use `&` for alignment points and `\` for equation line breaks.
-- Use `$dif x$` for differentials.
-- Prefer built-in symbols such as `nabla`, `partial`, `integral`, `in`, `subset`, `RR`, and `NN`.
-- Keep notation semantically consistent across prose, equations, figures, and code mappings.
+- Prefer built-in symbols such as `nabla`, `partial`, `integral`, `dif`, `angle`, `RR`, and `NN`.
+- Label important equations and refer to them instead of writing brittle manual numbers.
+- Do not mechanically transliterate LaTeX; Typst has markup, code, content, and math modes with different syntax.
 
-## Document Structure
+For ML mathematics, state tensor shapes and reductions near the equations and keep names consistent with code. Distinguish definitions, proved statements, numerical checks, and empirical observations.
 
-For study notes, prefer:
+## Geometry, Curves, and Figures
 
-1. learning goals or motivating question
-2. intuition
-3. definitions
-4. propositions/theorems with hypotheses
-5. derivations or proof sketches
-6. examples and counterexamples
-7. exercises or active-recall prompts
-8. implementation/ML connections when relevant
+Use native `circle`, `ellipse`, `line`, `polygon`, and `curve` for simple drawings. A native curve is built from `curve.move`, `curve.line`, `curve.quad`, `curve.cubic`, and `curve.close` segments. Use CeTZ or a specialized package only when coordinates, axes, labels, transformations, or reusable geometric construction justify the dependency.
 
-For a small new project, start with `main.typ`, optionally `lib.typ`, and a short `README.md`. Split files only after the document has a real chapter boundary.
+Wrap a semantic drawing in a figure and make it understandable beyond its appearance:
 
-## Macro Discipline
+```typst
+#figure(
+  polygon(
+    fill: blue.lighten(85%),
+    stroke: blue,
+    (0%, 2cm), (20%, 0pt), (70%, 0pt), (100%, 2cm),
+  ),
+  caption: [A trapezoid used in the geometric argument.],
+  alt: "A trapezoid with a shorter top edge and a longer bottom edge.",
+) <fig:trapezoid>
+```
 
-A good macro:
-
-- removes repeated visual/semantic structure
-- has a small, predictable interface
-- uses content arguments rather than stringly typed markup
-- compiles in a minimal example
-
-Avoid a large theorem framework or notation layer for one short note.
+Check the mathematical construction separately from visual plausibility. Keep labels legible, avoid decorative color maps for quantitative data, and inspect the rendered page for clipping and overlap.
 
 ## Validation
 
-After every meaningful edit, compile to a temporary output so generated PDFs do not pollute the repository:
+Compile every changed entry document to temporary output from the intended root:
 
 ```bash
 out="$(mktemp --suffix=.pdf)"
@@ -73,13 +112,4 @@ typst compile --root . path/to/note.typ "$out"
 rm -f "$out"
 ```
 
-Use the project's documented root if it is not `.`. Read the complete diagnostic, fix the first root cause, and compile again. Also inspect the rendered PDF when layout—not just syntax—matters.
-
-Before finishing, check:
-
-- every changed entry document compiles
-- imports resolve from the intended root
-- equations fit and align
-- references/labels resolve
-- quoted words and custom operators render correctly
-- no generated PDF was accidentally added to source control
+Fix the first root diagnostic, then recompile. Render and inspect relevant pages when changing layout, headings, equations, tables, figures, or curves. Before finishing, confirm imports, labels/references, equation fit, figure captions/alternative text, and that no generated PDF entered source control.
