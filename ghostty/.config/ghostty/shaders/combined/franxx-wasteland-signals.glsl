@@ -391,10 +391,10 @@ vec3 renderPerspectiveBeam(vec2 world, float aspect, float aa) {
     vec2 focal = perspectiveFocal(aspect);
     vec2 seed = hash23(vec3(cycle, 41.7, 9.3));
     vec2 plane = vec2(
-        mix(-0.27, 0.27, seed.x) * aspect,
-        mix(-0.16, 0.20, seed.y)
+        mix(-0.34, 0.34, seed.x) * aspect,
+        mix(-0.20, 0.24, seed.y)
     );
-    float headDepth = mix(4.8, 0.62, age * age * (3.0 - 2.0 * age));
+    float headDepth = mix(4.8, 0.52, sqrt(age));
     vec2 farPoint = projectWastelandPoint(plane, 4.8, focal);
     vec2 headPoint = projectWastelandPoint(
         plane + vec2(0.025 * sin(age * PI), -0.035 * age),

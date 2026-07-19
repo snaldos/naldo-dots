@@ -180,7 +180,7 @@ vec3 renderWindowPair(
         -local.y * local.y / max(halfHeight * halfHeight * 5.0, 0.000001)
     ) * exp(-abs(local.x) / max(glowRadiusX * 2.5, 0.000001));
     return tint * intensity
-        * (core * 0.43 + glow * 0.105 + horizontalFlare * 0.017);
+        * (core * 0.54 + glow * 0.130 + horizontalFlare * 0.021);
 }
 
 vec3 renderPerspectiveCity(vec2 world, float aspect, float aa) {
@@ -198,7 +198,7 @@ vec3 renderPerspectiveCity(vec2 world, float aspect, float aa) {
         float row = float(rowIndex);
         float layerOffset = (index + 0.5) / float(PERF_CITY_CLUSTER_COUNT);
         float identity = hash13(vec3(index, 31.7, 8.9));
-        float clock = iTime * mix(0.058, 0.044, layerOffset)
+        float clock = iTime * mix(0.065, 0.050, layerOffset)
             * mix(0.90, 1.12, identity)
             + layerOffset + identity * 2.5;
         float travel = fract(clock);
@@ -243,10 +243,10 @@ vec3 renderPerspectiveCity(vec2 world, float aspect, float aa) {
         vec3 tint = cityLightColor(hash13(vec3(index, generation, 23.9)));
 
         float inverseDepth = 1.0 / max(depth, 0.001);
-        float halfWidth = mix(1.05, 1.55, identity) * pixel * inverseDepth;
-        float halfHeight = mix(0.55, 0.82, identity) * pixel * inverseDepth;
-        float pairSpacing = mix(3.4, 5.2, identity) * pixel * inverseDepth;
-        float rowSpacing = mix(6.0, 8.5, identity) * pixel * inverseDepth;
+        float halfWidth = mix(1.35, 1.95, identity) * pixel * inverseDepth;
+        float halfHeight = mix(0.68, 1.00, identity) * pixel * inverseDepth;
+        float pairSpacing = mix(4.4, 6.6, identity) * pixel * inverseDepth;
+        float rowSpacing = mix(7.5, 10.5, identity) * pixel * inverseDepth;
 
         for (int windowRow = 0; windowRow < PERF_WINDOW_ROWS; windowRow++) {
             float rowValue = float(windowRow)
@@ -293,9 +293,9 @@ vec3 renderPerspectiveCity(vec2 world, float aspect, float aa) {
             fillMask(crossBeamDistance, aa)
         );
         effect += mix(CITY_DARK, tint, 0.38)
-            * structure * lifecycle * distanceGain * 0.050;
+            * structure * lifecycle * distanceGain * 0.075;
 
-        float streakLength = mix(0.0, 20.0, nearFactor * nearFactor) * pixel;
+        float streakLength = mix(0.0, 38.0, nearFactor * nearFactor) * pixel;
         vec2 streakTail = center - motionDirection * streakLength;
         float streakDistance = sdCapsule(
             world,
@@ -305,7 +305,7 @@ vec3 renderPerspectiveCity(vec2 world, float aspect, float aa) {
         );
         float streak = fillMask(streakDistance, aa)
             * smoothstep(0.55, 1.0, nearFactor);
-        effect += tint * streak * clusterIntensity * 0.065;
+        effect += tint * streak * clusterIntensity * 0.120;
     }
 
     return effect;

@@ -267,7 +267,7 @@ vec3 renderPerspectiveFeathers(vec2 world, float aspect, float aa) {
         float index = float(featherIndex);
         float layerOffset = (index + 0.5) / float(PERF_FEATHER_COUNT);
         float identity = hash13(vec3(index, 17.3, 61.7));
-        float speed = mix(0.058, 0.043, layerOffset)
+        float speed = mix(0.067, 0.050, layerOffset)
             * mix(0.88, 1.13, identity);
         float clock = iTime * speed + layerOffset + identity * 3.4;
         float travel = fract(clock);
@@ -303,12 +303,12 @@ vec3 renderPerspectiveFeathers(vec2 world, float aspect, float aa) {
         // become an edge-on sliver before opening broadside again as it nears.
         float tumbleRate = mix(0.62, 1.20, phaseSeed);
         float tumble = travel * TAU * tumbleRate + phase;
-        float lengthView = mix(0.42, 1.0, abs(cos(tumble * 0.61 + 0.4)));
-        float widthView = mix(0.24, 1.0, abs(cos(tumble * 0.83 + 1.3)));
-        float physicalHalfLength = mix(8.5, 12.8, shapeSeed);
+        float lengthView = mix(0.55, 1.0, abs(cos(tumble * 0.61 + 0.4)));
+        float widthView = mix(0.36, 1.0, abs(cos(tumble * 0.83 + 1.3)));
+        float physicalHalfLength = mix(12.0, 18.0, shapeSeed);
         float halfLengthPixels = min(
             physicalHalfLength / max(depth, 0.001),
-            34.0
+            42.0
         ) * lengthView;
         float halfLength = halfLengthPixels / resolutionHeight;
         float halfWidth = halfLength
@@ -330,7 +330,7 @@ vec3 renderPerspectiveFeathers(vec2 world, float aspect, float aa) {
             hash13(vec3(index, generation, 12.9))
         );
         float lightFacing = mix(0.58, 1.0, widthView);
-        float distanceBrightness = mix(0.22, 1.0, pow(nearFactor, 0.70));
+        float distanceBrightness = mix(0.25, 1.08, pow(nearFactor, 0.70));
         effect += realisticFeather(
             localPoint,
             halfLength,
