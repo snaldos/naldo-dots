@@ -34,11 +34,24 @@ type Segment = {
 
 type Variables = ReadonlyMap<string, string>;
 
+type ElevationInfo = {
+  command: "sudo" | "sudoedit" | "doas";
+  invocation: string;
+  options: string[];
+};
+
 type ExecutableInfo = {
   executable: string;
   args: string[];
   elevated: boolean;
+  elevations: ElevationInfo[];
 };
+
+export const PRIVILEGE_ELEVATION_CATEGORY = "privilege elevation";
+export const UNTRUSTED_SUDO_BINARY_CATEGORY = "untrusted sudo executable";
+export const INTERACTIVE_SUDO_CATEGORY = "interactive sudo invocation";
+export const UNSAFE_SUDO_AUTH_CATEGORY = "unsafe sudo authentication";
+export const UNSUPPORTED_SUDO_TIMESTAMP_CATEGORY = "unsupported sudo timestamp control";
 
 const SYSTEM_PATHS = ["/boot", "/efi", "/etc", "/opt", "/usr", "/var/lib", "/proc", "/sys", "/dev"];
 const SAFE_DEVICE_WRITES = new Set(["/dev/null", "/dev/stdout", "/dev/stderr", "/dev/tty"]);
@@ -390,9 +403,31 @@ function shellSegments(tokens: Token[]): Segment[] {
 
 function executableInfo(words: string[]): ExecutableInfo | null {
   let index = 0;
-  let elevated = false;
-  while (index < words.length && /^[A-Za-z_][A-Za-z0-9_]*=.*/.test(words[index]!)) index += 1;
+  const elevations: ElevationInfo[] = [];
+  const optionsWithValues = new Set([
+    "-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-U", "-a", "-c", "-r", "-t",
+    "--user", "--group", "--host", "--prompt", "--close-from", "--chdir", "--chroot",
+    "--command-timeout", "--other-user", "--auth-type", "--login-class", "--role", "--type",
+  ]);
+  const skipAssignments = () => {
+    while (index < words.length && /^[A-Za-z_][A-Za-z0-9_]*=.*/.test(words[index]!)) index += 1;
+  };
+  const readElevation = (command: ElevationInfo["command"]) => {
+    const invocation = words[index]!;
+    const options: string[] = [];
+    index += 1;
+    while (index < words.length && words[index]!.startsWith("-")) {
+      const option = words[index++]!;
+      options.push(option);
+      if (option === "--") break;
+      const optionName = option.split("=", 1)[0]!;
+      if (optionsWithValues.has(optionName) && !option.includes("=") && index < words.length) index += 1;
+    }
+    elevations.push({ command, invocation, options });
+    skipAssignments();
+  };
 
+  skipAssignments();
   while (index < words.length) {
     const wrapper = basename(words[index]!).toLowerCase();
     if (["if", "then", "elif", "else", "do", "while", "until", "!"].includes(wrapper)) {
@@ -400,15 +435,17 @@ function executableInfo(words: string[]): ExecutableInfo | null {
       continue;
     }
     if (wrapper === "sudo" || wrapper === "doas") {
-      elevated = true;
-      index += 1;
-      while (index < words.length && words[index]!.startsWith("-")) {
-        const option = words[index++]!;
-        if (["-u", "-g", "-h", "-p", "-C", "-T", "--user", "--group", "--host", "--prompt", "--chdir", "--command-timeout"].includes(option)) {
-          index += 1;
-        }
-      }
+      readElevation(wrapper);
       continue;
+    }
+    if (wrapper === "sudoedit") {
+      readElevation("sudoedit");
+      return {
+        executable: "sudoedit",
+        args: words.slice(index),
+        elevated: true,
+        elevations,
+      };
     }
     if (wrapper === "env") {
       index += 1;
@@ -427,11 +464,21 @@ function executableInfo(words: string[]): ExecutableInfo | null {
     break;
   }
 
-  if (index >= words.length) return null;
+  if (index >= words.length) {
+    const lastElevation = elevations.at(-1);
+    if (!lastElevation) return null;
+    return {
+      executable: lastElevation.command,
+      args: [],
+      elevated: true,
+      elevations,
+    };
+  }
   return {
     executable: basename(words[index]!).toLowerCase(),
     args: words.slice(index + 1),
-    elevated,
+    elevated: elevations.length > 0,
+    elevations,
   };
 }
 
@@ -600,6 +647,8 @@ function classifyMutationTargets(
   } else if (["cp", "install", "ln", "rsync"].includes(executable)) {
     const explicitTarget = optionValue(args, "-t", "--target-directory");
     targets = explicitTarget ? [explicitTarget] : operands(args).slice(-1);
+  } else if (executable === "sudoedit") {
+    targets = operands(args);
   } else if (["tee", "truncate", "touch", "mkdir", "mkfifo"].includes(executable)) {
     targets = operands(args);
   } else if (["chmod", "chown", "chgrp", "chattr", "setfacl"].includes(executable)) {
@@ -908,6 +957,79 @@ function classifyRemoteOperation(executable: string, args: string[]): SafetyIssu
   return [];
 }
 
+function hasShortOption(options: string[], flag: string): boolean {
+  const consumesRemainder = new Set(["a", "c", "C", "D", "g", "h", "p", "r", "R", "t", "T", "u", "U"]);
+  return options.some((option) => {
+    if (!option.startsWith("-") || option.startsWith("--")) return false;
+    for (const candidate of option.slice(1)) {
+      if (candidate === flag) return true;
+      if (consumesRemainder.has(candidate)) return false;
+    }
+    return false;
+  });
+}
+
+function hasLongOption(options: string[], option: string): boolean {
+  return options.some((candidate) => candidate === option || candidate.startsWith(`${option}=`));
+}
+
+function classifyElevation(elevation: ElevationInfo): SafetyIssue[] {
+  const issues = [issue(
+    PRIVILEGE_ELEVATION_CATEGORY,
+    `${elevation.command} requests execution with elevated or another user's privileges.`,
+    "Would authorize this exact tool call through the system privilege policy.",
+    elevation.command,
+  )];
+
+  if (elevation.command === "doas") return issues;
+
+  const trustedBinary = elevation.command === "sudo" ? "/usr/bin/sudo" : "/usr/bin/sudoedit";
+  if (elevation.invocation !== trustedBinary) {
+    issues.push(issue(
+      UNTRUSTED_SUDO_BINARY_CATEGORY,
+      `The agent command must use ${trustedBinary} with -n; it currently invokes ${elevation.invocation}.`,
+      "Could resolve a wrapper that ignores noninteractive authentication safeguards or spoofs a password prompt.",
+      elevation.command,
+    ));
+  }
+
+  const nonInteractive = hasShortOption(elevation.options, "n")
+    || hasLongOption(elevation.options, "--non-interactive");
+  if (!nonInteractive) {
+    issues.push(issue(
+      INTERACTIVE_SUDO_CATEGORY,
+      `The agent command must invoke ${trustedBinary} with -n so the tool process can never read a password.`,
+      "Without -n, a second password reader could compete with Pi's terminal after trusted authentication closes.",
+      elevation.command,
+    ));
+  }
+
+  const unsafeInput = hasShortOption(elevation.options, "S") || hasLongOption(elevation.options, "--stdin");
+  const unsafeAskpass = hasShortOption(elevation.options, "A") || hasLongOption(elevation.options, "--askpass");
+  if (unsafeInput || unsafeAskpass) {
+    issues.push(issue(
+      UNSAFE_SUDO_AUTH_CATEGORY,
+      "The sudo command requests password input through command stdin or an external askpass helper.",
+      "Could expose authentication material outside sudo's trusted native terminal prompt.",
+      elevation.command,
+    ));
+  }
+
+  const resetsTimestamp = hasShortOption(elevation.options, "k")
+    || hasShortOption(elevation.options, "K")
+    || hasLongOption(elevation.options, "--reset-timestamp")
+    || hasLongOption(elevation.options, "--remove-timestamp");
+  if (resetsTimestamp) {
+    issues.push(issue(
+      UNSUPPORTED_SUDO_TIMESTAMP_CATEGORY,
+      "The sudo command invalidates credentials before the approved command can use Pi's native pre-authentication.",
+      "Could force an untrusted noninteractive password path after the trusted prompt closes.",
+      elevation.command,
+    ));
+  }
+  return issues;
+}
+
 function classifySegment(
   segment: Segment,
   cwd: string,
@@ -925,8 +1047,9 @@ function classifySegment(
 
   const info = executableInfo(segment.words);
   if (!info) return issues;
-  const { executable, args, elevated } = info;
+  const { executable, args, elevated, elevations } = info;
 
+  for (const elevation of elevations) issues.push(...classifyElevation(elevation));
   issues.push(...classifyMutationTargets(executable, args, cwd, home, variables));
   if (executable === "git") issues.push(...classifyGit(args));
   issues.push(...classifyPackageManager(executable, args, elevated));

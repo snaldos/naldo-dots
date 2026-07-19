@@ -1,18 +1,26 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { spawnSync } from "node:child_process";
 import { chmodSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve, sep } from "node:path";
 import {
   classifyBash,
   classifyPathTool,
+  INTERACTIVE_SUDO_CATEGORY,
+  PRIVILEGE_ELEVATION_CATEGORY,
   type SafetyClassification,
   type SafetyIssue,
+  UNSAFE_SUDO_AUTH_CATEGORY,
+  UNSUPPORTED_SUDO_TIMESTAMP_CATEGORY,
+  UNTRUSTED_SUDO_BINARY_CATEGORY,
 } from "./lib/safety-classifier.ts";
 
 const home = homedir();
 const agentRoot = resolve(home, ".pi/agent");
 const sessionsRoot = resolve(agentRoot, "sessions");
 const modeEnvironmentVariable = "PI_SAFETY_GUARD";
+const sudoBinary = "/usr/bin/sudo";
+const sudoValidationTimeoutMs = 5_000;
 const runtimeProcess = process as typeof process & { __naldoPiSafetyYoloFlagApplied?: boolean };
 
 function isWithin(path: string, root: string): boolean {
@@ -61,8 +69,11 @@ function guardEnabledFromEnvironment(): boolean {
 }
 
 function compactCommand(command: string, maxLength = 1_000): string {
-  const normalized = command.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").replace(/\s+/g, " ").trim();
-  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1)}…`;
+  const escaped = command.replace(
+    /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g,
+    (character) => `\\u${character.codePointAt(0)!.toString(16).padStart(4, "0")}`,
+  );
+  return escaped.length <= maxLength ? escaped : `${escaped.slice(0, maxLength - 1)}…`;
 }
 
 function issueSummary(issue: SafetyIssue): string[] {
@@ -93,7 +104,116 @@ function denialReason(classification: SafetyClassification): string {
     : "Confirmation required by the safety guard";
 }
 
-export default function safetyGuard(pi: ExtensionAPI) {
+type SafetyGuardDependencies = {
+  validateSudoCredential: (pi: ExtensionAPI, ctx: ExtensionContext) => Promise<boolean>;
+  authenticateSudo: (ctx: ExtensionContext, command: string) => Promise<boolean>;
+};
+
+async function validateSudoCredential(pi: ExtensionAPI, ctx: ExtensionContext): Promise<boolean> {
+  try {
+    const result = await pi.exec(sudoBinary, ["-n", "-v"], {
+      signal: ctx.signal,
+      timeout: sudoValidationTimeoutMs,
+    });
+    return result.code === 0;
+  } catch {
+    return false;
+  }
+}
+
+type NativeSudoOptions = {
+  runSudo?: (binary: string, args: string[]) => number | null;
+  write?: (text: string) => void;
+};
+
+export async function authenticateSudoInTerminal(
+  ctx: ExtensionContext,
+  command: string,
+  options: NativeSudoOptions = {},
+): Promise<boolean> {
+  if (ctx.mode !== "tui") return false;
+  const runSudo = options.runSudo ?? ((binary: string, args: string[]) =>
+    spawnSync(binary, args, { stdio: "inherit" }).status);
+  const write = options.write ?? ((text: string) => { process.stdout.write(text); });
+
+  const status = await ctx.ui.custom<number | null>((tui, _theme, _keybindings, done) => {
+    let exitCode: number | null = 1;
+    let stopped = false;
+    try {
+      tui.stop();
+      stopped = true;
+      write("\x1b[2J\x1b[H");
+      write([
+        "Pi is paused for trusted sudo authentication.",
+        "The password is read directly by /usr/bin/sudo and is never stored by Pi.",
+        "Press Ctrl+C to cancel.",
+        "",
+        "Approved command:",
+        compactCommand(command),
+        "",
+      ].join("\n"));
+      exitCode = runSudo(sudoBinary, ["-p", "[sudo] password for %p: ", "-v"]);
+    } catch {
+      exitCode = 1;
+    } finally {
+      try {
+        if (stopped) {
+          tui.start();
+          tui.requestRender(true);
+        }
+      } finally {
+        done(exitCode);
+      }
+    }
+
+    return { render: () => [], invalidate: () => {} };
+  });
+
+  return status === 0;
+}
+
+const defaultDependencies: SafetyGuardDependencies = {
+  validateSudoCredential,
+  authenticateSudo: authenticateSudoInTerminal,
+};
+
+async function ensureSudoAuthentication(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  command: string,
+  dependencies: SafetyGuardDependencies,
+): Promise<string | undefined> {
+  if (ctx.signal?.aborted) return "Sudo authentication was cancelled before the command ran";
+  if (await dependencies.validateSudoCredential(pi, ctx)) return undefined;
+  if (ctx.mode !== "tui") {
+    return "Sudo needs authentication, but only Pi's interactive TUI can open the trusted native terminal prompt";
+  }
+
+  let authenticated = false;
+  pi.events.emit("herdr:blocked", { active: true, label: "Sudo authentication" });
+  try {
+    authenticated = await dependencies.authenticateSudo(ctx, command);
+  } catch {
+    authenticated = false;
+  } finally {
+    pi.events.emit("herdr:blocked", { active: false, label: "Sudo authentication" });
+  }
+  if (!authenticated) return "Sudo authentication was cancelled or failed; the command was not executed";
+  if (ctx.signal?.aborted) return "Sudo authentication was cancelled before the command ran";
+  if (!await dependencies.validateSudoCredential(pi, ctx)) {
+    return "Sudo did not provide a reusable noninteractive credential for this tool call; run the command manually";
+  }
+  return undefined;
+}
+
+export function registerSafetyGuard(
+  pi: ExtensionAPI,
+  dependencyOverrides: Partial<SafetyGuardDependencies> = {},
+) {
+  const dependencies: SafetyGuardDependencies = {
+    validateSudoCredential: dependencyOverrides.validateSudoCredential ?? defaultDependencies.validateSudoCredential,
+    authenticateSudo: dependencyOverrides.authenticateSudo ?? defaultDependencies.authenticateSudo,
+  };
   let enabled = guardEnabledFromEnvironment();
   const completedConfirmations = new Map<string, boolean>();
   const pendingConfirmations = new Map<string, Promise<boolean>>();
@@ -234,8 +354,44 @@ export default function safetyGuard(pi: ExtensionAPI) {
       return;
     }
 
+    const unsafeSudo = classification.issues.find((candidate) =>
+      candidate.category === UNTRUSTED_SUDO_BINARY_CATEGORY
+      || candidate.category === INTERACTIVE_SUDO_CATEGORY
+      || candidate.category === UNSAFE_SUDO_AUTH_CATEGORY
+      || candidate.category === UNSUPPORTED_SUDO_TIMESTAMP_CATEGORY
+    );
+    if (unsafeSudo) {
+      return {
+        block: true,
+        reason: `${unsafeSudo.category} blocked: ${unsafeSudo.reason} Use Pi's native sudo authentication flow instead.`,
+      };
+    }
+
+    const unsupportedElevation = classification.issues.find((candidate) =>
+      candidate.category === PRIVILEGE_ELEVATION_CATEGORY && candidate.target === "doas"
+    );
+    if (unsupportedElevation) {
+      return {
+        block: true,
+        reason: "Interactive doas authentication is not supported by Pi's trusted sudo flow; run this command manually",
+      };
+    }
+
     if (classification.action === "allow") return;
     const allowed = await confirmOnce(event.toolCallId, ctx, classification);
     if (!allowed) return { block: true, reason: denialReason(classification) };
+
+    const needsSudo = classification.issues.some((candidate) =>
+      candidate.category === PRIVILEGE_ELEVATION_CATEGORY
+      && (candidate.target === "sudo" || candidate.target === "sudoedit")
+    );
+    if (needsSudo) {
+      const failure = await ensureSudoAuthentication(pi, ctx, classification.command, dependencies);
+      if (failure) return { block: true, reason: failure };
+    }
   });
+}
+
+export default function safetyGuard(pi: ExtensionAPI) {
+  registerSafetyGuard(pi);
 }

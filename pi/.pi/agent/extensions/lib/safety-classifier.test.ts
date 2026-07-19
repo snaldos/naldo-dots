@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { classifyBash, classifyPathTool } from "./safety-classifier.ts";
+import {
+  classifyBash,
+  classifyPathTool,
+  INTERACTIVE_SUDO_CATEGORY,
+  PRIVILEGE_ELEVATION_CATEGORY,
+  UNSAFE_SUDO_AUTH_CATEGORY,
+  UNSUPPORTED_SUDO_TIMESTAMP_CATEGORY,
+  UNTRUSTED_SUDO_BINARY_CATEGORY,
+} from "./safety-classifier.ts";
 
 const home = "/home/tester";
 const cwd = `${home}/project`;
@@ -65,6 +73,61 @@ describe("quiet default policy", () => {
       "git tag -n5",
     ]) {
       assert.equal(bashAction(command), "allow", command);
+    }
+  });
+});
+
+describe("privilege elevation", () => {
+  it("asks for sudo itself without matching harmless prose", () => {
+    for (const command of [
+      "sudo true",
+      "/usr/bin/sudo -n id",
+      "command sudo -u root true",
+      "env sudo FOO=bar true",
+      "sudoedit /tmp/example",
+      "bash -c 'sudo true'",
+    ]) {
+      assert.equal(bashAction(command), "ask", command);
+      assert.ok(bashCategories(command).includes(PRIVILEGE_ELEVATION_CATEGORY), command);
+    }
+
+    assert.equal(bashAction("printf 'sudo true\\n'"), "allow");
+  });
+
+  it("requires the fixed sudo binary and noninteractive execution", () => {
+    const trusted = bashCategories("/usr/bin/sudo -n true");
+    assert.ok(trusted.includes(PRIVILEGE_ELEVATION_CATEGORY));
+    assert.equal(trusted.includes(UNTRUSTED_SUDO_BINARY_CATEGORY), false);
+    assert.equal(trusted.includes(INTERACTIVE_SUDO_CATEGORY), false);
+
+    assert.ok(bashCategories("sudo -n true").includes(UNTRUSTED_SUDO_BINARY_CATEGORY));
+    for (const command of [
+      "/usr/bin/sudo true",
+      "/usr/bin/sudo -un root true",
+      "/usr/bin/sudo -pnever true",
+      "/usr/bin/sudo -C3n true",
+    ]) {
+      assert.ok(bashCategories(command).includes(INTERACTIVE_SUDO_CATEGORY), command);
+    }
+    assert.equal(bashCategories("/usr/bin/sudo -nu root true").includes(INTERACTIVE_SUDO_CATEGORY), false);
+  });
+
+  it("identifies password-routing and timestamp-control options", () => {
+    for (const command of [
+      "/usr/bin/sudo -nS true",
+      "/usr/bin/sudo -nA true",
+      "/usr/bin/sudo -n --stdin true",
+      "/usr/bin/sudo -n --askpass true",
+    ]) {
+      assert.ok(bashCategories(command).includes(UNSAFE_SUDO_AUTH_CATEGORY), command);
+    }
+    for (const command of [
+      "/usr/bin/sudo -nk true",
+      "/usr/bin/sudo -nK true",
+      "/usr/bin/sudo -n --reset-timestamp true",
+      "/usr/bin/sudo -n --remove-timestamp true",
+    ]) {
+      assert.ok(bashCategories(command).includes(UNSUPPORTED_SUDO_TIMESTAMP_CATEGORY), command);
     }
   });
 });

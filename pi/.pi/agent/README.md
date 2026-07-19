@@ -11,7 +11,7 @@ A quiet, scientific Pi harness for a Tübingen machine-learning master's workflo
 | `prompts/` | Explicit task modes | Only when invoked |
 | `extensions/ui.ts` + `extensions/lib/{pi-buddy,terminal-cursor}.ts` | Claude-inspired welcome dashboard, π mascot, hardware-cursor composer, `/pi-buddy`, responsive status, and runtime presentation | TUI startup and `/pi-buddy` |
 | `extensions/codex-usage/` | On-demand Codex allowance cache, `/usage`, and deliberate usage reset-card flow | Only `/usage`, reset-card actions, and `/doctor` |
-| `extensions/safety-guard.ts` | Permissive high-impact confirmation gate with process-scoped YOLO mode | Every tool call |
+| `extensions/safety-guard.ts` | High-impact and per-sudo approval gate with direct native-terminal authentication and process-scoped YOLO mode | Every tool call |
 | `extensions/doctor.ts` | Read-only runtime and integration diagnostics | `/doctor` |
 | `extensions/herdr-agent-state.ts` | Herdr-managed lifecycle state | Every Herdr-managed session |
 | project `AGENTS.md` / `.pi/` | Repository-specific source-of-truth and deterministic workflows | Only after project trust |
@@ -198,18 +198,19 @@ Opaque card IDs and idempotency keys remain only in memory. They are never rende
 
 ## Safety policy
 
-`safety-guard.ts` is intentionally permissive. It does not police ordinary autonomy, workspace scope, reversibility, or command keywords. The classifier looks only for a small set of high-impact boundaries, and every matched operation can be approved once; there are no permanently blocked command classes.
+`safety-guard.ts` is intentionally permissive for ordinary work. It does not police ordinary autonomy, workspace scope, or reversibility. The classifier looks for a small set of high-impact boundaries plus explicit privilege elevation. Ordinary matches can be approved once. Non-fixed or interactive sudo invocations, agent-side password routing, sudo timestamp invalidation, and unsupported interactive `doas` authentication are blocked rather than delegated to an untrusted command path.
 
 ### Silent normal work
 
-Normal work is silent regardless of whether it stays below the active directory. This includes project and dotfile edits, local cleanup, redirections, permission changes, user services, HTTP requests, project dependency changes, and routine Git inspection/staging/fetching/switching/stashing. `rm`, `sudo`, `curl`, writing outside the repository, and an unresolved path are not prompts by themselves.
+Normal work is silent regardless of whether it stays below the active directory. This includes project and dotfile edits, local cleanup, redirections, permission changes, user services, HTTP requests, project dependency changes, and routine Git inspection/staging/fetching/switching/stashing. `rm`, `curl`, writing outside the repository, and an unresolved path are not prompts by themselves.
 
-Metadata-only inspection of a private path with `stat`, `ls`, `file`, `test`, `readlink`, or a SHA command is also silent. Content access to an actual credential, private key, or private session remains a high-impact boundary.
+Metadata-only inspection of a private path with `stat`, `ls`, `file`, `test`, `readlink`, or a SHA command is also silent. Content access to an actual credential, private key, or private session remains a high-impact boundary. Accepted `/usr/bin/sudo -n` and `/usr/bin/sudoedit -n` invocations are the deliberate exception to keyword-silent operation and receive exact per-tool-call approval.
 
 ### Confirmation
 
 One precise confirmation covers one tool call. The default gate asks only for:
 
+- every accepted fixed-binary, noninteractive sudo invocation, even when the credential timestamp is already valid
 - mutation of system, boot, kernel, device, authentication, privilege, or package-managed paths
 - broad deletion of `/`, the home directory, or the active workspace root
 - system/AUR/desktop package install, remove, or upgrade transactions; project-local dependency changes stay silent
@@ -217,9 +218,11 @@ One precise confirmation covers one tool call. The default gate asks only for:
 - Git history changes, pushes, destructive cleanup/restore, ref/config/worktree metadata changes, or direct mutation below `.git`
 - credential/private-session disclosure or mutation, downloaded code piped into a shell, infrastructure mutation, and publication
 
-A `sudo` password prompt is not a safety boundary: credentials may already be cached or `NOPASSWD` may be configured, while a noninteractive command may instead fail. The gate therefore classifies the underlying package, path, service, or system operation rather than assuming `sudo` will stop it.
+Approval and authentication remain separate. Agent tool calls must spell elevation as `/usr/bin/sudo -n` or `/usr/bin/sudoedit -n`; the absolute path prevents PATH/function substitution and `-n` guarantees that the later tool process cannot read a password. After approval, the extension checks `/usr/bin/sudo -n -v`. If authentication is needed, interactive Pi suspends its TUI and launches the fixed `/usr/bin/sudo -v` binary with inherited terminal I/O. The user types into sudo's native hidden prompt; Pi then resumes and revalidates that the approved noninteractive tool call can reuse the credential. Cancellation, failed authentication, a non-reusable timestamp policy, or a required prompt outside TUI mode blocks the command.
 
-Dialogs show the risk, resolved target when available, expected effect, and exact command. High-impact operations fail closed in print/JSON mode because no confirmation UI exists.
+The password never enters model context, tool arguments, JavaScript input strings, environment variables, shell history, Pi sessions, or extension logs. Bare/path-resolved `sudo`, missing `-n`, `sudo -S`/`--stdin`, `sudo -A`/`--askpass`, and `sudo -k`/`-K` timestamp-invalidating forms are blocked while guarded. The extension never configures `NOPASSWD` and never asks the model to carry a secret.
+
+Dialogs show the risk, resolved target when available, expected effect, and exact command. High-impact operations fail closed in print/JSON mode because no confirmation UI exists. Sudo authentication additionally fails closed outside the interactive TUI unless a noninteractive credential is already valid.
 
 ### YOLO mode
 
@@ -227,7 +230,7 @@ Dialogs show the risk, resolved target when available, expected effect, and exac
 
 ## Herdr
 
-Herdr uses `host_cursor = "native"`, while its forced hidden-cursor reveal remains disabled. Pi's focus-aware hardware-cursor support exposes Ghostty's real cursor in the composer and hides it for modal widgets and popups, preventing a second cursor at the pane's right edge. `herdr-agent-state.ts` remains generated and unchanged. The safety guard is the sole tool-confirmation source. It emits `herdr:blocked` only while an actual dialog is open; silent work and YOLO mode create no permission-wait noise. A per-tool-call decision cache suppresses duplicate dialogs, and the `finally` path always clears Herdr state.
+Herdr uses `host_cursor = "native"`, while its forced hidden-cursor reveal remains disabled. Pi's focus-aware hardware-cursor support exposes Ghostty's real cursor in the composer and hides it for modal widgets and popups, preventing a second cursor at the pane's right edge. `herdr-agent-state.ts` remains generated and unchanged. The safety guard is the sole tool-confirmation source. It emits `herdr:blocked` only while an actual approval dialog or native sudo authentication prompt is open; silent work and YOLO mode create no permission-wait noise. A per-tool-call decision cache suppresses duplicate dialogs, and every `finally` path clears Herdr state.
 
 ## Runtime and private state
 
