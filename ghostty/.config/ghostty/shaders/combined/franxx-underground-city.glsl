@@ -1,40 +1,50 @@
-// FRANXX Golden Descent — ambient underground lights + acrobatic cursor
+// FRANXX Underground City — diagonal elevator flight + holographic capsule cursor
 //
-// A quiet abstraction of descending into the underground city: soft golden
-// lamps recede around a vanishing point, faint shaft hoops drift outward, and
-// warm haze moves through barely visible lift cables. No buildings or literal
-// elevator are drawn; the terminal remains the dominant visual surface.
+// This scene is viewed from a capsule descending diagonally through a dark
+// subterranean city. Window clusters and sparse structural lights live in 3D
+// depth layers: they emerge at an upper-right vanishing point, accelerate past
+// the camera, grow, and leave the frame. Shared camera drift and roll make the
+// city move coherently rather than as independent floating dots. Other elevator
+// capsules occasionally pass on converging rails.
 //
-// During cursor movement, two gold/pink ribbons corkscrew around the path and
-// resolve into rotating flip arcs at the destination, echoing Zero Two's early
-// underground acrobatics without drawing a character.
+// Cursor movement becomes a compact gold/cyan elevator capsule riding two
+// perspective rails with scan rungs and a rose navigation fin. The actual
+// Ghostty cursor block is preserved exactly.
 
 #ifndef GHOSTTY_GPU_PROFILE
 #define GHOSTTY_GPU_PROFILE 2
 #endif
 
 #if GHOSTTY_GPU_PROFILE == 0
-#define PERF_FBM_OCTAVES 3
-#define PERF_SHAFT_RINGS 6
+#define PERF_CITY_CLUSTER_COUNT 8
+#define PERF_WINDOW_ROWS 2
+#define PERF_PASSING_CAPSULES 1
 #elif GHOSTTY_GPU_PROFILE == 1
-#define PERF_FBM_OCTAVES 4
-#define PERF_SHAFT_RINGS 8
+#define PERF_CITY_CLUSTER_COUNT 12
+#define PERF_WINDOW_ROWS 3
+#define PERF_PASSING_CAPSULES 1
 #elif GHOSTTY_GPU_PROFILE == 2
-#define PERF_FBM_OCTAVES 5
-#define PERF_SHAFT_RINGS 10
+#define PERF_CITY_CLUSTER_COUNT 16
+#define PERF_WINDOW_ROWS 3
+#define PERF_PASSING_CAPSULES 2
 #else
-#define PERF_FBM_OCTAVES 5
-#define PERF_SHAFT_RINGS 12
+#define PERF_CITY_CLUSTER_COUNT 20
+#define PERF_WINDOW_ROWS 3
+#define PERF_PASSING_CAPSULES 2
 #endif
 
 const float PI = 3.14159265359;
 const float TAU = 6.28318530718;
-const vec3 AMBER_DARK = vec3(0.310, 0.135, 0.045);
-const vec3 AMBER = vec3(0.880, 0.445, 0.125);
-const vec3 GOLD = vec3(1.000, 0.710, 0.285);
-const vec3 GOLD_HOT = vec3(1.000, 0.910, 0.590);
-const vec3 ACROBAT_PINK = vec3(0.950, 0.105, 0.330);
-const vec3 ACROBAT_RED = vec3(0.820, 0.035, 0.105);
+const float CITY_FAR_DEPTH = 6.2;
+const float CITY_NEAR_DEPTH = 0.42;
+const vec2 CITY_FOCAL_UV = vec2(0.62, 0.67);
+const float CITY_CAMERA_ROLL = -0.17;
+const vec3 AMBER = vec3(0.880, 0.410, 0.090);
+const vec3 GOLD = vec3(1.000, 0.675, 0.235);
+const vec3 GOLD_HOT = vec3(1.000, 0.900, 0.590);
+const vec3 CITY_ROSE = vec3(0.880, 0.125, 0.255);
+const vec3 HOLOGRAM_CYAN = vec3(0.205, 0.700, 0.830);
+const vec3 CITY_DARK = vec3(0.045, 0.035, 0.052);
 
 float saturate(float value) {
     return clamp(value, 0.0, 1.0);
@@ -56,26 +66,11 @@ float hash13(vec3 value) {
     return fract((value.x + value.y) * value.z);
 }
 
-float valueNoise(vec2 point) {
-    vec2 cell = floor(point);
-    vec2 local = fract(point);
-    local = local * local * (3.0 - 2.0 * local);
-    float a = hash13(vec3(cell, 1.0));
-    float b = hash13(vec3(cell + vec2(1.0, 0.0), 1.0));
-    float c = hash13(vec3(cell + vec2(0.0, 1.0), 1.0));
-    float d = hash13(vec3(cell + vec2(1.0, 1.0), 1.0));
-    return mix(mix(a, b, local.x), mix(c, d, local.x), local.y);
-}
-
-float fbm(vec2 point) {
-    float result = 0.0;
-    float amplitude = 0.52;
-    for (int octave = 0; octave < PERF_FBM_OCTAVES; octave++) {
-        result += amplitude * valueNoise(point);
-        point = rotate2d(point * 2.02, 0.37) + vec2(7.1, 13.9);
-        amplitude *= 0.48;
-    }
-    return result;
+vec2 hash23(vec3 value) {
+    return vec2(
+        hash13(value + vec3(17.7, 3.1, 41.3)),
+        hash13(value + vec3(7.3, 53.9, 11.7))
+    );
 }
 
 float sdBox(vec2 point, vec2 halfSize) {
@@ -90,6 +85,11 @@ float sdCapsule(vec2 point, vec2 startPoint, vec2 endPoint, float radius) {
     return length(pa - ba * along) - radius;
 }
 
+float sdEllipse(vec2 point, vec2 radii) {
+    return (length(point / max(radii, vec2(0.0001))) - 1.0)
+        * min(radii.x, radii.y);
+}
+
 float fillMask(float distanceValue, float aa) {
     return 1.0 - smoothstep(-aa, aa, distanceValue);
 }
@@ -98,99 +98,331 @@ float strokeMask(float distanceValue, float width, float aa) {
     return 1.0 - smoothstep(width - aa, width + aa, abs(distanceValue));
 }
 
-float backgroundProtection(vec4 terminalColor) {
-    float dark = 1.0 - smoothstep(0.16, 0.72, luminance(terminalColor.rgb));
-    float transparentCell = 1.0 - smoothstep(0.76, 0.98, terminalColor.a);
-    return dark * mix(0.40, 1.0, transparentCell);
+float smoothEvent(float phase, float start, float peak, float end) {
+    return smoothstep(start, peak, phase)
+        * (1.0 - smoothstep(peak, end, phase));
 }
 
-vec3 renderGoldenDescent(vec2 world, float aspect, float aa) {
-    vec3 effect = vec3(0.0);
-    vec2 vanishingPoint = vec2(0.0, 0.075);
+float backgroundProtection(vec4 terminalColor) {
+    float dark = 1.0 - smoothstep(0.14, 0.68, luminance(terminalColor.rgb));
+    float transparentCell = 1.0 - smoothstep(0.76, 0.98, terminalColor.a);
+    return dark * mix(0.38, 1.0, transparentCell);
+}
 
-    // Warm atmospheric lift column. Its FBM moves continuously and is almost
-    // invisible except where it catches the shaft lights.
-    vec2 hazePoint = vec2(world.x * 1.25, world.y * 2.4 + iTime * 0.008);
-    float hazeNoise = fbm(hazePoint + vec2(4.7, 19.3));
-    float column = exp(-pow(world.x / max(aspect * 0.32, 0.18), 2.0));
-    float haze = smoothstep(0.40, 0.78, hazeNoise) * column;
-    effect += AMBER_DARK * haze * 0.032;
+vec2 perspectiveFocal(float aspect) {
+    return (CITY_FOCAL_UV - 0.5) * vec2(aspect, 1.0);
+}
 
-    // Four cables converge on the same vanishing point. They are light traces,
-    // not solid architecture, and stay deliberately near the visibility floor.
-    vec2 cableTargets[4];
-    cableTargets[0] = vec2(-0.48 * aspect, -0.62);
-    cableTargets[1] = vec2(-0.24 * aspect, -0.62);
-    cableTargets[2] = vec2(0.24 * aspect, -0.62);
-    cableTargets[3] = vec2(0.48 * aspect, -0.62);
-    for (int cable = 0; cable < 4; cable++) {
-        float cableDistance = sdCapsule(world, vanishingPoint, cableTargets[cable], aa * 0.32);
-        float cableGlow = exp(-max(cableDistance, 0.0) / 0.008);
-        effect += AMBER * cableGlow * 0.015;
-    }
+vec2 projectCityPoint(vec2 planePoint, float depth, vec2 focal) {
+    return focal + rotate2d(planePoint, CITY_CAMERA_ROLL)
+        / max(depth, 0.001);
+}
 
-    // Receding hoops expand past the viewer while paired lamps remain attached
-    // to each hoop. This single perspective motion conveys descent without an
-    // illustrated elevator car or cityscape.
-    for (int ringIndex = 0; ringIndex < PERF_SHAFT_RINGS; ringIndex++) {
-        float index = float(ringIndex);
-        float offset = (index + 0.5) / float(PERF_SHAFT_RINGS);
-        float clock = iTime * 0.034 + offset;
-        float depth = fract(clock);
-        float generation = floor(clock);
-        float lifecycle = smoothstep(0.02, 0.12, depth)
-            * (1.0 - smoothstep(0.80, 0.99, depth));
-        float easedDepth = depth * depth;
-        float radius = mix(0.022, 1.12, easedDepth);
-
-        vec2 ringPoint = world - vanishingPoint;
-        vec2 ellipticalPoint = vec2(ringPoint.x, ringPoint.y / 0.64);
-        float ringDistance = length(ellipticalPoint) - radius;
-        float ringWidth = mix(0.0010, 0.0032, depth);
-        float ringCore = strokeMask(ringDistance, ringWidth, aa);
-        float ringGlow = exp(-abs(ringDistance) / mix(0.008, 0.026, depth));
-
-        float angle = atan(ellipticalPoint.y, ellipticalPoint.x);
-        float structuralSegments = 0.26 + 0.74 * pow(abs(cos(angle * 4.0)), 7.0);
-        float ringBrightness = lifecycle * mix(0.20, 0.82, depth);
-        effect += AMBER * ringCore * structuralSegments * ringBrightness * 0.055;
-        effect += AMBER_DARK * ringGlow * lifecycle * 0.018;
-
-        // Symmetric lamps are anchored to the hoop at deterministic angles.
-        float lampAngle = mix(0.42, 1.12, hash13(vec3(index, generation, 31.7)));
-        for (int sideIndex = 0; sideIndex < 2; sideIndex++) {
-            float side = sideIndex == 0 ? -1.0 : 1.0;
-            vec2 lampPosition = vanishingPoint + vec2(
-                side * cos(lampAngle) * radius,
-                sin(lampAngle) * radius * 0.64
-            );
-            float lampDistance = length(world - lampPosition);
-            float lampRadius = mix(0.0025, 0.012, depth);
-            float lampCore = 1.0 - smoothstep(lampRadius * 0.20, lampRadius * 0.58 + aa, lampDistance);
-            float lampGlow = exp(
-                -lampDistance * lampDistance
-                    / max(lampRadius * lampRadius * 7.5, 0.000001)
-            );
-            float lampVariation = mix(
-                0.65,
-                1.0,
-                hash13(vec3(index, generation, 73.1 + float(sideIndex)))
-            );
-            effect += GOLD_HOT * (lampCore * 0.22 + lampGlow * 0.065)
-                * lifecycle * lampVariation;
-        }
-    }
-
-    // A soft overhead glow gives the vanishing point the feel of a distant
-    // elevator landing while remaining fully abstract.
-    vec2 landingPoint = world - vanishingPoint;
-    float landingGlow = exp(
-        -landingPoint.x * landingPoint.x / max(aspect * aspect * 0.018, 0.0001)
-        -landingPoint.y * landingPoint.y / 0.0035
+float cityNearFactor(float depth) {
+    return saturate(
+        (CITY_FAR_DEPTH - depth)
+            / max(CITY_FAR_DEPTH - CITY_NEAR_DEPTH, 0.001)
     );
-    effect += GOLD * landingGlow * 0.055;
+}
+
+vec2 cityPlanePosition(vec2 basePlane, float travel, float phase) {
+    // The world streams up-left as the observer's capsule descends down-right.
+    // Applying this displacement before projection keeps every object on the
+    // same camera trajectory and makes the flow feel architectural.
+    vec2 cameraTravel = vec2(-0.125, 0.082) * travel;
+    vec2 suspensionSway = vec2(
+        sin(iTime * 0.16 + phase),
+        cos(iTime * 0.11 + phase * 0.7)
+    ) * 0.007 * travel;
+    return basePlane + cameraTravel + suspensionSway;
+}
+
+vec3 cityLightColor(float colorSeed) {
+    if (colorSeed < 0.70) {
+        return mix(AMBER, GOLD, colorSeed / 0.70);
+    }
+    if (colorSeed < 0.91) {
+        return mix(GOLD, GOLD_HOT, (colorSeed - 0.70) / 0.21);
+    }
+    return mix(GOLD, CITY_ROSE, 0.40);
+}
+
+vec3 renderWindowPair(
+    vec2 world,
+    vec2 center,
+    vec2 horizontalAxis,
+    vec2 verticalAxis,
+    float halfWidth,
+    float halfHeight,
+    float spacing,
+    float intensity,
+    vec3 tint,
+    float aa
+) {
+    vec2 delta = world - center;
+    vec2 local = vec2(dot(delta, horizontalAxis), dot(delta, verticalAxis));
+    float leftDistance = sdBox(
+        local - vec2(-spacing * 0.5, 0.0),
+        vec2(halfWidth, halfHeight)
+    );
+    float rightDistance = sdBox(
+        local - vec2(spacing * 0.5, 0.0),
+        vec2(halfWidth, halfHeight)
+    );
+    float core = fillMask(min(leftDistance, rightDistance), aa);
+    float glowRadiusX = max(spacing * 1.35, halfWidth * 5.0);
+    float glowRadiusY = max(halfHeight * 4.5, aa);
+    float glow = exp(
+        -local.x * local.x / max(glowRadiusX * glowRadiusX, 0.000001)
+        -local.y * local.y / max(glowRadiusY * glowRadiusY, 0.000001)
+    );
+    float horizontalFlare = exp(
+        -local.y * local.y / max(halfHeight * halfHeight * 5.0, 0.000001)
+    ) * exp(-abs(local.x) / max(glowRadiusX * 2.5, 0.000001));
+    return tint * intensity
+        * (core * 0.43 + glow * 0.105 + horizontalFlare * 0.017);
+}
+
+vec3 renderPerspectiveCity(vec2 world, float aspect, float aa) {
+    vec3 effect = vec3(0.0);
+    vec2 focal = perspectiveFocal(aspect);
+    vec2 horizontalAxis = rotate2d(vec2(1.0, 0.0), CITY_CAMERA_ROLL);
+    vec2 verticalAxis = rotate2d(vec2(0.0, 1.0), CITY_CAMERA_ROLL);
+    float pixel = 1.0 / max(iResolution.y, 1.0);
+
+    for (int clusterIndex = 0; clusterIndex < PERF_CITY_CLUSTER_COUNT; clusterIndex++) {
+        int columnIndex = clusterIndex - (clusterIndex / 5) * 5;
+        int rowIndex = clusterIndex / 5;
+        float index = float(clusterIndex);
+        float column = float(columnIndex);
+        float row = float(rowIndex);
+        float layerOffset = (index + 0.5) / float(PERF_CITY_CLUSTER_COUNT);
+        float identity = hash13(vec3(index, 31.7, 8.9));
+        float clock = iTime * mix(0.058, 0.044, layerOffset)
+            * mix(0.90, 1.12, identity)
+            + layerOffset + identity * 2.5;
+        float travel = fract(clock);
+        float generation = floor(clock);
+        float depth = mix(CITY_FAR_DEPTH, CITY_NEAR_DEPTH, travel);
+        float nearFactor = cityNearFactor(depth);
+        float lifecycle = smoothstep(0.0, 0.075, travel)
+            * (1.0 - smoothstep(0.88, 1.0, travel));
+
+        vec2 jitter = hash23(vec3(index, generation, 73.1)) - 0.5;
+        vec2 basePlane = vec2(
+            mix(-0.39, 0.39, (column + 0.5) / 5.0) * aspect
+                + jitter.x * 0.075 * aspect,
+            mix(-0.29, 0.25, (row + 0.5) / 4.0)
+                + jitter.y * 0.065
+        );
+        float phase = TAU * hash13(vec3(index, generation, 19.7));
+        vec2 plane = cityPlanePosition(basePlane, travel, phase);
+        vec2 center = projectCityPoint(plane, depth, focal);
+
+        float previousTravel = max(travel - 0.014, 0.0);
+        float previousDepth = mix(CITY_FAR_DEPTH, CITY_NEAR_DEPTH, previousTravel);
+        vec2 previousCenter = projectCityPoint(
+            cityPlanePosition(basePlane, previousTravel, phase),
+            previousDepth,
+            focal
+        );
+        vec2 motion = center - previousCenter;
+        float motionLength = length(motion);
+        vec2 motionDirection = motionLength > 0.00001
+            ? motion / motionLength
+            : normalize(center - focal + vec2(0.0001));
+
+        float powerPeriod = mix(9.0, 18.0, hash13(vec3(index, 47.7, 3.1)));
+        float powerPhase = fract(iTime / powerPeriod + identity * 2.7);
+        float powerEnvelope = smoothEvent(powerPhase, 0.05, 0.22, 0.68);
+        float inhabited = step(0.14, hash13(vec3(index, generation, 5.7)));
+        float breathing = 0.92 + 0.08 * sin(iTime * 0.31 + phase);
+        float distanceGain = mix(0.22, 1.0, pow(nearFactor, 0.72));
+        float clusterIntensity = lifecycle * powerEnvelope * inhabited
+            * breathing * distanceGain;
+        vec3 tint = cityLightColor(hash13(vec3(index, generation, 23.9)));
+
+        float inverseDepth = 1.0 / max(depth, 0.001);
+        float halfWidth = mix(1.05, 1.55, identity) * pixel * inverseDepth;
+        float halfHeight = mix(0.55, 0.82, identity) * pixel * inverseDepth;
+        float pairSpacing = mix(3.4, 5.2, identity) * pixel * inverseDepth;
+        float rowSpacing = mix(6.0, 8.5, identity) * pixel * inverseDepth;
+
+        for (int windowRow = 0; windowRow < PERF_WINDOW_ROWS; windowRow++) {
+            float rowValue = float(windowRow)
+                - 0.5 * float(PERF_WINDOW_ROWS - 1);
+            vec2 rowCenter = center + verticalAxis * rowValue * rowSpacing;
+            float rowPresent = step(
+                0.24,
+                hash13(vec3(index, generation, float(windowRow) + 41.3))
+            );
+            float rowVariation = mix(
+                0.55,
+                1.0,
+                hash13(vec3(index, generation, float(windowRow) + 81.7))
+            );
+            effect += renderWindowPair(
+                world,
+                rowCenter,
+                horizontalAxis,
+                verticalAxis,
+                halfWidth,
+                halfHeight,
+                pairSpacing,
+                clusterIntensity * rowPresent * rowVariation,
+                tint,
+                aa
+            );
+        }
+
+        float facadeHalfLength = rowSpacing * float(PERF_WINDOW_ROWS) * 0.72;
+        float facadeDistance = sdCapsule(
+            world,
+            center - verticalAxis * facadeHalfLength,
+            center + verticalAxis * facadeHalfLength,
+            max(0.26 * pixel * inverseDepth, 0.16 * pixel)
+        );
+        float crossBeamDistance = sdCapsule(
+            world,
+            center - horizontalAxis * pairSpacing * 0.85,
+            center + horizontalAxis * pairSpacing * 0.85,
+            max(0.22 * pixel * inverseDepth, 0.14 * pixel)
+        );
+        float structure = max(
+            fillMask(facadeDistance, aa),
+            fillMask(crossBeamDistance, aa)
+        );
+        effect += mix(CITY_DARK, tint, 0.38)
+            * structure * lifecycle * distanceGain * 0.050;
+
+        float streakLength = mix(0.0, 20.0, nearFactor * nearFactor) * pixel;
+        vec2 streakTail = center - motionDirection * streakLength;
+        float streakDistance = sdCapsule(
+            world,
+            streakTail,
+            center,
+            max(0.30 * pixel * inverseDepth, 0.18 * pixel)
+        );
+        float streak = fillMask(streakDistance, aa)
+            * smoothstep(0.55, 1.0, nearFactor);
+        effect += tint * streak * clusterIntensity * 0.065;
+    }
 
     return effect;
+}
+
+vec3 renderPassingElevators(vec2 world, float aspect, float aa) {
+    vec3 effect = vec3(0.0);
+    vec2 focal = perspectiveFocal(aspect);
+    float pixel = 1.0 / max(iResolution.y, 1.0);
+
+    for (int capsuleIndex = 0; capsuleIndex < PERF_PASSING_CAPSULES; capsuleIndex++) {
+        float index = float(capsuleIndex);
+        float layerOffset = (index + 0.5) / float(PERF_PASSING_CAPSULES);
+        float speed = capsuleIndex == 0 ? 0.042 : 0.031;
+        float clock = iTime * speed + layerOffset * 0.71;
+        float travel = fract(clock);
+        float generation = floor(clock);
+        float depth = mix(5.5, 0.48, travel);
+        float nearFactor = saturate((5.5 - depth) / (5.5 - 0.48));
+        float presentThreshold = capsuleIndex == 0 ? 0.30 : 0.48;
+        float present = step(
+            presentThreshold,
+            hash13(vec3(index, generation, 81.7))
+        );
+        float lifecycle = smoothstep(0.0, 0.08, travel)
+            * (1.0 - smoothstep(0.84, 1.0, travel)) * present;
+        vec2 seed = hash23(vec3(index, generation, 37.1));
+        vec2 basePlane = vec2(
+            mix(-0.29, 0.29, seed.x) * aspect,
+            mix(-0.20, 0.19, seed.y)
+        );
+        float phase = TAU * hash13(vec3(index, generation, 13.7));
+        vec2 center = projectCityPoint(
+            cityPlanePosition(basePlane, travel, phase),
+            depth,
+            focal
+        );
+        float previousTravel = max(travel - 0.018, 0.0);
+        float previousDepth = mix(5.5, 0.48, previousTravel);
+        vec2 previousCenter = projectCityPoint(
+            cityPlanePosition(basePlane, previousTravel, phase),
+            previousDepth,
+            focal
+        );
+        vec2 motion = center - previousCenter;
+        float motionLength = length(motion);
+        vec2 direction = motionLength > 0.00001
+            ? motion / motionLength
+            : normalize(center - focal + vec2(0.0001));
+        vec2 normal = vec2(-direction.y, direction.x);
+        vec2 delta = world - center;
+        vec2 local = vec2(dot(delta, direction), dot(delta, normal));
+
+        float inverseDepth = 1.0 / max(depth, 0.001);
+        float halfLength = mix(9.0, 13.0, seed.x) * pixel * inverseDepth;
+        float radius = mix(3.2, 4.8, seed.y) * pixel * inverseDepth;
+        float capsuleDistance = sdCapsule(
+            local,
+            vec2(-halfLength * 0.55, 0.0),
+            vec2(halfLength * 0.55, 0.0),
+            radius
+        );
+        float shell = strokeMask(
+            capsuleDistance,
+            max(0.62 * pixel * inverseDepth, 0.25 * pixel),
+            aa
+        );
+        float interior = fillMask(capsuleDistance, aa);
+        float windowDistance = sdEllipse(
+            local - vec2(halfLength * 0.30, 0.0),
+            vec2(halfLength * 0.30, radius * 0.52)
+        );
+        float window = fillMask(windowDistance, aa);
+        float scan = pow(
+            0.5 + 0.5 * sin(local.x / max(pixel, 0.00001) * depth * 0.72 - iTime * 7.0),
+            10.0
+        ) * interior;
+        float bloom = exp(
+            -local.x * local.x / max(halfLength * halfLength * 2.5, 0.000001)
+            -local.y * local.y / max(radius * radius * 5.0, 0.000001)
+        );
+
+        vec2 farPoint = projectCityPoint(basePlane, 5.5, focal);
+        float railOffset = max(radius * 1.28, pixel);
+        float railA = fillMask(
+            sdCapsule(
+                world,
+                farPoint + normal * railOffset * 0.15,
+                center + normal * railOffset,
+                max(0.28 * pixel, aa * 0.20)
+            ),
+            aa
+        );
+        float railB = fillMask(
+            sdCapsule(
+                world,
+                farPoint - normal * railOffset * 0.15,
+                center - normal * railOffset,
+                max(0.28 * pixel, aa * 0.20)
+            ),
+            aa
+        );
+        vec3 tint = capsuleIndex == 0 ? GOLD : HOLOGRAM_CYAN;
+        float brightness = lifecycle * mix(0.34, 1.0, nearFactor);
+        effect += tint * (railA + railB) * brightness * 0.035;
+        effect += CITY_DARK * interior * brightness * 0.18;
+        effect += tint * brightness
+            * (shell * 0.34 + window * 0.18 + scan * 0.095 + bloom * 0.045);
+        effect += GOLD_HOT * shell * brightness * 0.055;
+    }
+
+    return effect;
+}
+
+vec3 renderUndergroundCity(vec2 world, float aspect, float aa) {
+    return renderPerspectiveCity(world, aspect, aa)
+        + renderPassingElevators(world, aspect, aa);
 }
 
 vec2 normalizeScreen(vec2 value, float isPosition) {
@@ -202,7 +434,7 @@ vec2 cursorCenter(vec4 cursor) {
     return vec2(cursor.x + cursor.z * 0.5, cursor.y - cursor.w * 0.5);
 }
 
-void applyAcrobaticCursor(inout vec4 color, vec2 fragCoord) {
+void applyElevatorCapsuleCursor(inout vec4 color, vec2 fragCoord) {
     vec4 untouched = color;
     vec2 point = normalizeScreen(fragCoord, 1.0);
     vec4 current = vec4(
@@ -218,83 +450,127 @@ void applyAcrobaticCursor(inout vec4 color, vec2 fragCoord) {
     vec2 movement = head - tail;
     float moved = length(movement);
     float cursorSize = max(current.z, current.w);
-    float age = saturate((iTime - iTimeCursorChange) / 0.36);
+    float age = saturate((iTime - iTimeCursorChange) / 0.34);
     if (moved <= cursorSize * 0.025 || age >= 1.0) {
         return;
     }
 
-    float life = pow(1.0 - age, 2.15);
-    float movementFactor = smoothstep(cursorSize * 0.10, cursorSize * 8.0, moved);
-    float maximumReach = cursorSize * 3.1;
+    float life = pow(1.0 - age, 2.10);
+    float movementFactor = smoothstep(cursorSize * 0.08, cursorSize * 8.0, moved);
+    float effectRadius = cursorSize * 3.5;
     if (
-        any(lessThan(point, min(head, tail) - vec2(maximumReach)))
-        || any(greaterThan(point, max(head, tail) + vec2(maximumReach)))
+        any(lessThan(point, min(head, tail) - vec2(effectRadius)))
+        || any(greaterThan(point, max(head, tail) + vec2(effectRadius)))
     ) {
         return;
     }
 
     vec2 direction = movement / max(moved, 0.000001);
     vec2 normal = vec2(-direction.y, direction.x);
+    float aa = 2.0 / max(iResolution.y, 1.0);
     float along = saturate(
         dot(point - tail, movement) / max(dot(movement, movement), 0.000001)
     );
     vec2 pathCenter = mix(tail, head, along);
     float across = dot(point - pathCenter, normal);
-    float pathWindow = smoothstep(0.0, 0.08, along)
-        * (1.0 - smoothstep(0.96, 1.0, along));
-    float flipEnvelope = sin(PI * along);
-    float flipPhase = along * TAU * mix(1.15, 2.05, movementFactor)
-        - age * TAU * 1.35;
-    float flipAmplitude = cursorSize * mix(0.42, 1.18, movementFactor)
-        * flipEnvelope;
-    float goldOffset = sin(flipPhase) * flipAmplitude;
-    float pinkOffset = sin(flipPhase + PI) * flipAmplitude;
-    float ribbonWidth = cursorSize * mix(0.055, 0.085, movementFactor);
-    float aa = 2.0 / max(iResolution.y, 1.0);
-
-    float goldRibbon = 1.0 - smoothstep(
-        ribbonWidth,
-        ribbonWidth + aa,
-        abs(across - goldOffset)
+    float railSeparation = cursorSize * mix(0.07, 0.38, along);
+    float railWidth = cursorSize * 0.050;
+    float railA = 1.0 - smoothstep(
+        railWidth,
+        railWidth + aa,
+        abs(across - railSeparation)
     );
-    float pinkRibbon = 1.0 - smoothstep(
-        ribbonWidth,
-        ribbonWidth + aa,
-        abs(across - pinkOffset)
+    float railB = 1.0 - smoothstep(
+        railWidth,
+        railWidth + aa,
+        abs(across + railSeparation)
     );
-    float goldGlow = exp(-abs(across - goldOffset) / max(cursorSize * 0.42, 0.0001));
-    float pinkGlow = exp(-abs(across - pinkOffset) / max(cursorSize * 0.42, 0.0001));
+    float railGlow = exp(
+        -min(abs(across - railSeparation), abs(across + railSeparation))
+            / max(cursorSize * 0.36, 0.0001)
+    );
+    float trailWindow = smoothstep(0.0, 0.18, along) * life;
+    float rungPhase = abs(fract(along * 8.0 - age * 2.4) - 0.5);
+    float rungPulse = 1.0 - smoothstep(0.055, 0.11, rungPhase);
+    float betweenRails = 1.0 - smoothstep(
+        railSeparation,
+        railSeparation + aa,
+        abs(across)
+    );
+    color.rgb += HOLOGRAM_CYAN * railGlow * trailWindow * 0.055;
+    color.rgb += GOLD * (railA + railB) * trailWindow * 0.23;
+    color.rgb += mix(GOLD, HOLOGRAM_CYAN, along)
+        * rungPulse * betweenRails * trailWindow * 0.13;
 
-    color.rgb += GOLD * goldGlow * pathWindow * life * 0.075;
-    color.rgb += ACROBAT_PINK * pinkGlow * pathWindow * life * 0.065;
-    color.rgb += GOLD_HOT * goldRibbon * pathWindow * life * 0.28;
-    color.rgb += ACROBAT_PINK * pinkRibbon * pathWindow * life * 0.25;
-
-    // Rotating elliptical afterimages complete the flip at the destination.
     vec2 relative = point - head;
-    float heading = atan(direction.y, direction.x);
-    vec2 orbitA = rotate2d(relative, -heading - age * TAU * 1.65);
-    vec2 orbitB = rotate2d(relative, -heading + age * TAU * 1.15 + 0.75);
-    float headRadius = cursorSize * mix(1.05, 1.72, movementFactor);
-    float ellipseA = length(vec2(orbitA.x, orbitA.y * 2.30));
-    float ellipseB = length(vec2(orbitB.x, orbitB.y * 1.85));
-    float ringA = strokeMask(ellipseA - headRadius, cursorSize * 0.060, aa) * life;
-    float ringB = strokeMask(ellipseB - headRadius * 1.28, cursorSize * 0.052, aa) * life;
-    float angleA = atan(orbitA.y, orbitA.x);
-    float angleB = atan(orbitB.y, orbitB.x);
-    ringA *= 0.35 + 0.65 * smoothstep(-0.35, 0.55, sin(angleA * 1.5 + age * TAU));
-    ringB *= 0.30 + 0.70 * smoothstep(-0.50, 0.40, cos(angleB * 1.5 - age * TAU));
-    color.rgb += GOLD_HOT * ringA * 0.32;
-    color.rgb += ACROBAT_PINK * ringB * 0.28;
+    vec2 local = vec2(dot(relative, direction), dot(relative, normal));
+    float halfLength = cursorSize * mix(0.88, 1.24, movementFactor);
+    float radius = cursorSize * 0.55;
+    float capsuleDistance = sdCapsule(
+        local,
+        vec2(-halfLength * 0.52, 0.0),
+        vec2(halfLength * 0.52, 0.0),
+        radius
+    );
+    float capsuleFill = fillMask(capsuleDistance, aa) * life;
+    float shell = strokeMask(capsuleDistance, cursorSize * 0.082, aa) * life;
+    float innerShell = strokeMask(
+        capsuleDistance + cursorSize * 0.14,
+        cursorSize * 0.030,
+        aa
+    ) * life;
+    float canopyDistance = sdEllipse(
+        local - vec2(halfLength * 0.30, 0.0),
+        vec2(halfLength * 0.31, radius * 0.52)
+    );
+    float canopy = fillMask(canopyDistance, aa) * life;
+    float canopyEdge = strokeMask(canopyDistance, cursorSize * 0.028, aa) * life;
+    float scan = pow(
+        0.5 + 0.5 * sin(local.x / max(cursorSize, 0.0001) * 15.0 - iTime * 9.0),
+        12.0
+    ) * capsuleFill;
 
-    // A compact landing diamond frames, but never repaints, the real cursor.
-    vec2 diamondPoint = rotate2d(relative, -heading);
+    vec2 finPoint = rotate2d(
+        local - vec2(-halfLength * 0.18, radius * 0.73),
+        -0.32
+    );
+    float fin = fillMask(
+        sdBox(finPoint, vec2(halfLength * 0.29, radius * 0.12)),
+        aa
+    ) * life;
+    vec2 lowerFinPoint = rotate2d(
+        local - vec2(-halfLength * 0.18, -radius * 0.73),
+        0.32
+    );
+    fin = max(
+        fin,
+        fillMask(
+            sdBox(lowerFinPoint, vec2(halfLength * 0.29, radius * 0.12)),
+            aa
+        ) * life
+    );
+    float capsuleBloom = exp(
+        -max(capsuleDistance, 0.0) / max(cursorSize * 0.62, 0.0001)
+    ) * life;
+
+    color.rgb += GOLD * capsuleBloom * 0.085;
+    color.rgb = mix(color.rgb, CITY_DARK, capsuleFill * 0.30);
+    color.rgb = mix(color.rgb, GOLD_HOT, shell * 0.72);
+    color.rgb = mix(color.rgb, AMBER, innerShell * 0.50);
+    color.rgb = mix(color.rgb, HOLOGRAM_CYAN, canopy * 0.50);
+    color.rgb = mix(color.rgb, GOLD_HOT, canopyEdge * 0.38);
+    color.rgb += HOLOGRAM_CYAN * scan * life * 0.11;
+    color.rgb = mix(color.rgb, CITY_ROSE, fin * 0.72);
+
+    vec2 diamondPoint = rotate2d(relative, -atan(direction.y, direction.x));
     float diamondDistance = abs(diamondPoint.x) + abs(diamondPoint.y)
-        - cursorSize * mix(0.72, 1.18, movementFactor);
-    float diamond = strokeMask(diamondDistance, cursorSize * 0.048, aa) * life;
-    float headGlow = exp(-dot(relative, relative) / max(cursorSize * cursorSize * 2.6, 0.000001));
-    color.rgb += GOLD * diamond * 0.28;
-    color.rgb += mix(ACROBAT_PINK, GOLD_HOT, age) * headGlow * life * 0.120;
+        - cursorSize * mix(0.88, 1.34, movementFactor);
+    float navigationDiamond = strokeMask(
+        diamondDistance,
+        cursorSize * 0.043,
+        aa
+    ) * life;
+    color.rgb += CITY_ROSE * navigationDiamond * 0.18;
 
     float cursorDistance = sdBox(point - head, current.zw * 0.5);
     color = mix(color, untouched, fillMask(cursorDistance, aa));
@@ -306,14 +582,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / resolution;
     vec2 world = (fragCoord - 0.5 * resolution) / resolution.y;
     float aspect = resolution.x / resolution.y;
-    float aa = 1.35 / resolution.y;
+    float aa = 1.25 / resolution.y;
 
     vec4 terminalColor = texture(iChannel0, uv);
-    float protection = backgroundProtection(terminalColor);
-    vec3 ambient = renderGoldenDescent(world, aspect, aa);
+    vec3 city = renderUndergroundCity(world, aspect, aa)
+        * backgroundProtection(terminalColor);
     fragColor = vec4(
-        clamp(terminalColor.rgb + ambient * protection, 0.0, 1.0),
+        clamp(terminalColor.rgb + city, 0.0, 1.0),
         terminalColor.a
     );
-    applyAcrobaticCursor(fragColor, fragCoord);
+    applyElevatorCapsuleCursor(fragColor, fragCoord);
 }
