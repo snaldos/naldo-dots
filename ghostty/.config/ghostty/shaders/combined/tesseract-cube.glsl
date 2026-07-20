@@ -451,6 +451,22 @@ const float TC_LINK_DASH_COUNT = 18.0;
 const float TC_LINK_DASH_SPEED = 1.80;
 const float TC_LINK_SECONDARY_FALLOFF = 0.72;
 const float TC_LINK_COLOR_PHASE_STEP = 0.23;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float TC_LINK_MOVEMENT_POWER = 1.15;
+const float TC_LINK_WIDTH_MIN_SCALE = 0.28;
+const float TC_LINK_WIDTH_MAX_SCALE = 1.35;
+const float TC_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float TC_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float TC_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float TC_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float TC_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float TC_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float TC_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float TC_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float TC_LINK_CULL_MIN_SCALE = 0.55;
+const float TC_LINK_CULL_MAX_SCALE = 1.70;
+const float TC_LINK_CULL_MIN_PIXELS = 4.0;
 const float TC_LINK_ENDPOINT_GLOW = 0.085;
 
 const vec3 TC_BLUE = vec3(0.180, 0.390, 1.000);
@@ -502,6 +518,37 @@ void applyTesseractCubeCursor(inout vec4 scene, vec2 fragCoord) {
         ),
         TC_MOVEMENT_RESPONSE_POWER
     );
+    float linkMovementFactor = pow(movementFactor, TC_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        TC_LINK_WIDTH_MIN_SCALE,
+        TC_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        TC_LINK_GLOW_WIDTH_MIN_SCALE,
+        TC_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        TC_LINK_INTENSITY_MIN_SCALE,
+        TC_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        TC_LINK_DASH_DENSITY_MIN_SCALE,
+        TC_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        TC_LINK_DASH_SPEED_MIN_SCALE,
+        TC_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        TC_LINK_CULL_MIN_SCALE,
+        TC_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         TC_CULL_RADIUS_MIN,
         TC_CULL_RADIUS_MAX,
@@ -515,7 +562,10 @@ void applyTesseractCubeCursor(inout vec4 scene, vec2 fragCoord) {
         max(headPixels, tailPixels) + vec2(cullRadius)
     ));
 
-    float linkCull = max(cursorPixels * 1.5, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        TC_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
 #if TC_ENABLE_RESONANCE_LINK
     for (int linkIndex = 0; linkIndex < TESSERACT_OBJECT_COUNT; linkIndex++) {
@@ -563,18 +613,19 @@ void applyTesseractCubeCursor(inout vec4 scene, vec2 fragCoord) {
             linkAlong * 0.78 + linkIdentity * TC_LINK_COLOR_PHASE_STEP
         );
         float dash = 0.64 + 0.36 * sin(
-            linkAlong * TC_LINK_DASH_COUNT
-            - iTime * TC_LINK_DASH_SPEED
+            linkAlong * TC_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * TC_LINK_DASH_SPEED * linkDashSpeedScale
             + linkIdentity * 2.17
         );
         float linkCore = exp(
-            -linkDistance / max(cursorSize * TC_LINK_WIDTH, 0.0002)
+            -linkDistance / max(cursorSize * TC_LINK_WIDTH * linkWidthScale, 0.0002)
         );
         float linkGlow = exp(
-            -linkDistance / max(cursorSize * TC_LINK_GLOW_WIDTH, 0.0005)
+            -linkDistance / max(cursorSize * TC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
         vec3 linkColor = mix(TC_VIOLET, TC_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
+        scene.rgb += linkColor * dash * linkStrength * linkIntensityScale
+            * life * contentMask * (
             linkCore * TC_LINK_CORE_STRENGTH
             + linkGlow * TC_LINK_GLOW_STRENGTH
         );
@@ -588,7 +639,7 @@ void applyTesseractCubeCursor(inout vec4 scene, vec2 fragCoord) {
             saturate(0.78 + linkIdentity * TC_LINK_COLOR_PHASE_STEP)
         );
         scene.rgb += endpointColor * endpoint * linkStrength * life
-            * TC_LINK_ENDPOINT_GLOW * contentMask;
+            * linkIntensityScale * TC_LINK_ENDPOINT_GLOW * contentMask;
     }
 #endif
 

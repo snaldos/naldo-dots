@@ -559,6 +559,22 @@ const float OC_LINK_DASH_COUNT = 20.0;
 const float OC_LINK_DASH_SPEED = 1.55;
 const float OC_LINK_SECONDARY_FALLOFF = 0.72;
 const float OC_LINK_COLOR_PHASE_STEP = 0.23;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float OC_LINK_MOVEMENT_POWER = 1.15;
+const float OC_LINK_WIDTH_MIN_SCALE = 0.28;
+const float OC_LINK_WIDTH_MAX_SCALE = 1.35;
+const float OC_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float OC_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float OC_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float OC_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float OC_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float OC_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float OC_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float OC_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float OC_LINK_CULL_MIN_SCALE = 0.55;
+const float OC_LINK_CULL_MAX_SCALE = 1.70;
+const float OC_LINK_CULL_MIN_PIXELS = 4.0;
 const float OC_LINK_ENDPOINT_GLOW = 0.085;
 
 const vec3 OC_VOID = vec3(0.010, 0.018, 0.070);
@@ -614,6 +630,37 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
         ),
         OC_MOVEMENT_RESPONSE_POWER
     );
+    float linkMovementFactor = pow(movementFactor, OC_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        OC_LINK_WIDTH_MIN_SCALE,
+        OC_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        OC_LINK_GLOW_WIDTH_MIN_SCALE,
+        OC_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        OC_LINK_INTENSITY_MIN_SCALE,
+        OC_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        OC_LINK_DASH_DENSITY_MIN_SCALE,
+        OC_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        OC_LINK_DASH_SPEED_MIN_SCALE,
+        OC_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        OC_LINK_CULL_MIN_SCALE,
+        OC_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         OC_CULL_RADIUS_MIN,
         OC_CULL_RADIUS_MAX,
@@ -626,7 +673,10 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
         fragCoord,
         max(headPixels, tailPixels) + vec2(cullRadius)
     ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        OC_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
 #if OC_ENABLE_RESONANCE_LINK
     for (int linkIndex = 0; linkIndex < ORB_OBJECT_COUNT; linkIndex++) {
@@ -674,18 +724,19 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
             linkAlong * 0.78 + linkIdentity * OC_LINK_COLOR_PHASE_STEP
         );
         float dash = 0.64 + 0.36 * sin(
-            linkAlong * OC_LINK_DASH_COUNT
-            - iTime * OC_LINK_DASH_SPEED
+            linkAlong * OC_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * OC_LINK_DASH_SPEED * linkDashSpeedScale
             + linkIdentity * 2.17
         );
         float linkCore = exp(
-            -linkDistance / max(cursorSize * OC_LINK_WIDTH, 0.0002)
+            -linkDistance / max(cursorSize * OC_LINK_WIDTH * linkWidthScale, 0.0002)
         );
         float linkGlow = exp(
-            -linkDistance / max(cursorSize * OC_LINK_GLOW_WIDTH, 0.0005)
+            -linkDistance / max(cursorSize * OC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
         vec3 linkColor = mix(OC_GOLD, OC_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
+        scene.rgb += linkColor * dash * linkStrength * linkIntensityScale
+            * life * contentMask * (
             linkCore * OC_LINK_CORE_STRENGTH
             + linkGlow * OC_LINK_GLOW_STRENGTH
         );
@@ -699,7 +750,7 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
             saturate(0.78 + linkIdentity * OC_LINK_COLOR_PHASE_STEP)
         );
         scene.rgb += endpointColor * endpoint * linkStrength * life
-            * OC_LINK_ENDPOINT_GLOW * contentMask;
+            * linkIntensityScale * OC_LINK_ENDPOINT_GLOW * contentMask;
     }
 #endif
 

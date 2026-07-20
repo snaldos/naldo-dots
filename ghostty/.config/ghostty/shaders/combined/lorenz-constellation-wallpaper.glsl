@@ -156,6 +156,24 @@ const float LC_LINK_DASH_COUNT = 23.0;
 const float LC_LINK_DASH_SPEED = 1.78;
 const float LC_LINK_SECONDARY_FALLOFF = 0.72;
 const float LC_LINK_COLOR_PHASE_STEP = 0.23;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float LC_LINK_MOVEMENT_POWER = 1.15;
+const float LC_LINK_WIDTH_MIN_SCALE = 0.28;
+const float LC_LINK_WIDTH_MAX_SCALE = 1.35;
+const float LC_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float LC_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float LC_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float LC_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float LC_LINK_OPACITY_MIN_SCALE = 0.08;
+const float LC_LINK_OPACITY_MAX_SCALE = 1.30;
+const float LC_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float LC_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float LC_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float LC_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float LC_LINK_CULL_MIN_SCALE = 0.55;
+const float LC_LINK_CULL_MAX_SCALE = 1.70;
+const float LC_LINK_CULL_MIN_PIXELS = 4.0;
 
 
 float saturate(float value) { return clamp(value, 0.0, 1.0); }
@@ -440,6 +458,42 @@ void applyLorenzCursor(inout vec4 scene, vec2 fragCoord) {
         cursorPixels * LC_GROWTH_FULL_CELLS,
         movedPixels
     );
+    float linkMovementFactor = pow(movementFactor, LC_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        LC_LINK_WIDTH_MIN_SCALE,
+        LC_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        LC_LINK_GLOW_WIDTH_MIN_SCALE,
+        LC_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        LC_LINK_INTENSITY_MIN_SCALE,
+        LC_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkOpacityScale = mix(
+        LC_LINK_OPACITY_MIN_SCALE,
+        LC_LINK_OPACITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        LC_LINK_DASH_DENSITY_MIN_SCALE,
+        LC_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        LC_LINK_DASH_SPEED_MIN_SCALE,
+        LC_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        LC_LINK_CULL_MIN_SCALE,
+        LC_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         LC_CULL_RADIUS_MIN,
         LC_CULL_RADIUS_MAX,
@@ -452,7 +506,10 @@ void applyLorenzCursor(inout vec4 scene, vec2 fragCoord) {
         fragCoord,
         max(headPixels, tailPixels) + vec2(cullRadius)
     ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        LC_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
 #if LC_ENABLE_RESONANCE_LINK
     for (int linkIndex = 0; linkIndex < LORENZ_OBJECT_COUNT; linkIndex++) {
@@ -502,24 +559,25 @@ void applyLorenzCursor(inout vec4 scene, vec2 fragCoord) {
             linkAlong * 0.78 + linkIdentity * LC_LINK_COLOR_PHASE_STEP
         );
         float dash = 0.64 + 0.36 * sin(
-            linkAlong * LC_LINK_DASH_COUNT
-            - iTime * LC_LINK_DASH_SPEED
+            linkAlong * LC_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * LC_LINK_DASH_SPEED * linkDashSpeedScale
             + linkIdentity * 2.17
         );
         float linkCore = exp(
-            -linkDistance / max(cursorSize * LC_LINK_WIDTH, 0.0002)
+            -linkDistance / max(cursorSize * LC_LINK_WIDTH * linkWidthScale, 0.0002)
         );
         float linkGlow = exp(
-            -linkDistance / max(cursorSize * LC_LINK_GLOW_WIDTH, 0.0005)
+            -linkDistance / max(cursorSize * LC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
         vec3 linkColor = mix(LORENZ_ROSE, LORENZ_CYAN, linkColorMix);
-        effectLight += linkColor * dash * linkStrength * (
+        effectLight += linkColor * dash * linkStrength * linkIntensityScale * (
             linkCore * LC_LINK_CORE_STRENGTH
             + linkGlow * LC_LINK_GLOW_STRENGTH
         );
         effectOpacity = max(
             effectOpacity,
-            linkStrength * (linkCore * 0.16 + linkGlow * 0.04)
+            linkStrength * linkOpacityScale
+                * (linkCore * 0.16 + linkGlow * 0.04)
         );
     }
 #endif

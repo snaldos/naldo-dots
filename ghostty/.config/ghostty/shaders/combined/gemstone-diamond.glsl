@@ -493,6 +493,22 @@ const float GD_LINK_DASH_COUNT = 16.0;
 const float GD_LINK_DASH_SPEED = 1.65;
 const float GD_LINK_SECONDARY_FALLOFF = 0.72;
 const float GD_LINK_COLOR_PHASE_STEP = 0.23;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float GD_LINK_MOVEMENT_POWER = 1.15;
+const float GD_LINK_WIDTH_MIN_SCALE = 0.28;
+const float GD_LINK_WIDTH_MAX_SCALE = 1.35;
+const float GD_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float GD_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float GD_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float GD_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float GD_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float GD_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float GD_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float GD_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float GD_LINK_CULL_MIN_SCALE = 0.55;
+const float GD_LINK_CULL_MAX_SCALE = 1.70;
+const float GD_LINK_CULL_MIN_PIXELS = 4.0;
 const float GD_LINK_ENDPOINT_GLOW = 0.090;
 
 const vec3 GD_DEEP = vec3(0.060, 0.030, 0.220);
@@ -545,6 +561,37 @@ void applyGemstoneDiamondCursor(inout vec4 scene, vec2 fragCoord) {
         ),
         GD_MOVEMENT_RESPONSE_POWER
     );
+    float linkMovementFactor = pow(movementFactor, GD_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        GD_LINK_WIDTH_MIN_SCALE,
+        GD_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        GD_LINK_GLOW_WIDTH_MIN_SCALE,
+        GD_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        GD_LINK_INTENSITY_MIN_SCALE,
+        GD_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        GD_LINK_DASH_DENSITY_MIN_SCALE,
+        GD_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        GD_LINK_DASH_SPEED_MIN_SCALE,
+        GD_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        GD_LINK_CULL_MIN_SCALE,
+        GD_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         GD_CULL_RADIUS_MIN,
         GD_CULL_RADIUS_MAX,
@@ -557,7 +604,10 @@ void applyGemstoneDiamondCursor(inout vec4 scene, vec2 fragCoord) {
         fragCoord,
         max(headPixels, tailPixels) + vec2(cullRadius)
     ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        GD_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
 #if GD_ENABLE_RESONANCE_LINK
     for (int linkIndex = 0; linkIndex < GEM_OBJECT_COUNT; linkIndex++) {
@@ -605,18 +655,19 @@ void applyGemstoneDiamondCursor(inout vec4 scene, vec2 fragCoord) {
             linkAlong * 0.78 + linkIdentity * GD_LINK_COLOR_PHASE_STEP
         );
         float dash = 0.62 + 0.38 * sin(
-            linkAlong * GD_LINK_DASH_COUNT
-            - iTime * GD_LINK_DASH_SPEED
+            linkAlong * GD_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * GD_LINK_DASH_SPEED * linkDashSpeedScale
             + linkIdentity * 2.17
         );
         float linkCore = exp(
-            -linkDistance / max(cursorSize * GD_LINK_WIDTH, 0.0002)
+            -linkDistance / max(cursorSize * GD_LINK_WIDTH * linkWidthScale, 0.0002)
         );
         float linkGlow = exp(
-            -linkDistance / max(cursorSize * GD_LINK_GLOW_WIDTH, 0.0005)
+            -linkDistance / max(cursorSize * GD_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
         vec3 linkColor = mix(GD_ROSE, GD_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
+        scene.rgb += linkColor * dash * linkStrength * linkIntensityScale
+            * life * contentMask * (
             linkCore * GD_LINK_CORE_STRENGTH
             + linkGlow * GD_LINK_GLOW_STRENGTH
         );
@@ -630,7 +681,7 @@ void applyGemstoneDiamondCursor(inout vec4 scene, vec2 fragCoord) {
             saturate(0.78 + linkIdentity * GD_LINK_COLOR_PHASE_STEP)
         );
         scene.rgb += endpointColor * endpoint * linkStrength * life
-            * GD_LINK_ENDPOINT_GLOW * contentMask;
+            * linkIntensityScale * GD_LINK_ENDPOINT_GLOW * contentMask;
     }
 #endif
 

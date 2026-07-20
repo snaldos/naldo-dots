@@ -146,6 +146,24 @@ const float KC_LINK_DASH_COUNT = 20.0;
 const float KC_LINK_DASH_SPEED = 1.70;
 const float KC_LINK_SECONDARY_FALLOFF = 0.72;
 const float KC_LINK_COLOR_PHASE_STEP = 0.23;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float KC_LINK_MOVEMENT_POWER = 1.15;
+const float KC_LINK_WIDTH_MIN_SCALE = 0.28;
+const float KC_LINK_WIDTH_MAX_SCALE = 1.35;
+const float KC_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float KC_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float KC_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float KC_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float KC_LINK_OPACITY_MIN_SCALE = 0.08;
+const float KC_LINK_OPACITY_MAX_SCALE = 1.30;
+const float KC_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float KC_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float KC_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float KC_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float KC_LINK_CULL_MIN_SCALE = 0.55;
+const float KC_LINK_CULL_MAX_SCALE = 1.70;
+const float KC_LINK_CULL_MIN_PIXELS = 4.0;
 
 
 float saturate(float value) { return clamp(value, 0.0, 1.0); }
@@ -381,6 +399,42 @@ void applyKnotCursor(inout vec4 scene, vec2 fragCoord) {
         cursorPixels * KC_GROWTH_FULL_CELLS,
         movedPixels
     );
+    float linkMovementFactor = pow(movementFactor, KC_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        KC_LINK_WIDTH_MIN_SCALE,
+        KC_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        KC_LINK_GLOW_WIDTH_MIN_SCALE,
+        KC_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        KC_LINK_INTENSITY_MIN_SCALE,
+        KC_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkOpacityScale = mix(
+        KC_LINK_OPACITY_MIN_SCALE,
+        KC_LINK_OPACITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        KC_LINK_DASH_DENSITY_MIN_SCALE,
+        KC_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        KC_LINK_DASH_SPEED_MIN_SCALE,
+        KC_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        KC_LINK_CULL_MIN_SCALE,
+        KC_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         KC_CULL_RADIUS_MIN,
         KC_CULL_RADIUS_MAX,
@@ -393,7 +447,10 @@ void applyKnotCursor(inout vec4 scene, vec2 fragCoord) {
         fragCoord,
         max(headPixels, tailPixels) + vec2(cullRadius)
     ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        KC_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
 #if KC_ENABLE_RESONANCE_LINK
     for (int linkIndex = 0; linkIndex < KNOT_OBJECT_COUNT; linkIndex++) {
@@ -443,24 +500,25 @@ void applyKnotCursor(inout vec4 scene, vec2 fragCoord) {
             linkAlong * 0.78 + linkIdentity * KC_LINK_COLOR_PHASE_STEP
         );
         float dash = 0.64 + 0.36 * sin(
-            linkAlong * KC_LINK_DASH_COUNT
-            - iTime * KC_LINK_DASH_SPEED
+            linkAlong * KC_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * KC_LINK_DASH_SPEED * linkDashSpeedScale
             + linkIdentity * 2.17
         );
         float linkCore = exp(
-            -linkDistance / max(cursorSize * KC_LINK_WIDTH, 0.0002)
+            -linkDistance / max(cursorSize * KC_LINK_WIDTH * linkWidthScale, 0.0002)
         );
         float linkGlow = exp(
-            -linkDistance / max(cursorSize * KC_LINK_GLOW_WIDTH, 0.0005)
+            -linkDistance / max(cursorSize * KC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
         vec3 linkColor = mix(KNOT_ROSE, KNOT_CYAN, linkColorMix);
-        effectLight += linkColor * dash * linkStrength * (
+        effectLight += linkColor * dash * linkStrength * linkIntensityScale * (
             linkCore * KC_LINK_CORE_STRENGTH
             + linkGlow * KC_LINK_GLOW_STRENGTH
         );
         effectOpacity = max(
             effectOpacity,
-            linkStrength * (linkCore * 0.16 + linkGlow * 0.04)
+            linkStrength * linkOpacityScale
+                * (linkCore * 0.16 + linkGlow * 0.04)
         );
     }
 #endif

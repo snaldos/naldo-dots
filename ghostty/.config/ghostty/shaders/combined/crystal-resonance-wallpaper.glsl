@@ -551,6 +551,22 @@ const float CR_LINK_DASH_COUNT = 22.0;
 const float CR_LINK_DASH_SPEED = 1.90;
 const float CR_LINK_SECONDARY_FALLOFF = 0.72;
 const float CR_LINK_COLOR_PHASE_STEP = 0.23;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float CR_LINK_MOVEMENT_POWER = 1.15;
+const float CR_LINK_WIDTH_MIN_SCALE = 0.28;
+const float CR_LINK_WIDTH_MAX_SCALE = 1.35;
+const float CR_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float CR_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float CR_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float CR_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float CR_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float CR_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float CR_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float CR_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float CR_LINK_CULL_MIN_SCALE = 0.55;
+const float CR_LINK_CULL_MAX_SCALE = 1.70;
+const float CR_LINK_CULL_MIN_PIXELS = 4.0;
 const float CR_LINK_ENDPOINT_GLOW = 0.095;
 
 const vec3 CR_DEEP = vec3(0.055, 0.025, 0.200);
@@ -621,6 +637,37 @@ void applyCrystalResonanceCursor(inout vec4 scene, vec2 fragCoord) {
         ),
         CR_MOVEMENT_RESPONSE_POWER
     );
+    float linkMovementFactor = pow(movementFactor, CR_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        CR_LINK_WIDTH_MIN_SCALE,
+        CR_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        CR_LINK_GLOW_WIDTH_MIN_SCALE,
+        CR_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        CR_LINK_INTENSITY_MIN_SCALE,
+        CR_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        CR_LINK_DASH_DENSITY_MIN_SCALE,
+        CR_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        CR_LINK_DASH_SPEED_MIN_SCALE,
+        CR_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        CR_LINK_CULL_MIN_SCALE,
+        CR_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         CR_CULL_RADIUS_MIN,
         CR_CULL_RADIUS_MAX,
@@ -633,7 +680,10 @@ void applyCrystalResonanceCursor(inout vec4 scene, vec2 fragCoord) {
         fragCoord,
         max(headPixels, tailPixels) + vec2(cullRadius)
     ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        CR_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
 #if CR_ENABLE_RESONANCE_LINK
     for (int linkIndex = 0; linkIndex < PET_OBJECT_COUNT; linkIndex++) {
@@ -681,18 +731,19 @@ void applyCrystalResonanceCursor(inout vec4 scene, vec2 fragCoord) {
             linkAlong * 0.78 + linkIdentity * CR_LINK_COLOR_PHASE_STEP
         );
         float dash = 0.62 + 0.38 * sin(
-            linkAlong * CR_LINK_DASH_COUNT
-            - iTime * CR_LINK_DASH_SPEED
+            linkAlong * CR_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * CR_LINK_DASH_SPEED * linkDashSpeedScale
             + linkIdentity * 2.17
         );
         float linkCore = exp(
-            -linkDistance / max(cursorSize * CR_LINK_WIDTH, 0.0002)
+            -linkDistance / max(cursorSize * CR_LINK_WIDTH * linkWidthScale, 0.0002)
         );
         float linkGlow = exp(
-            -linkDistance / max(cursorSize * CR_LINK_GLOW_WIDTH, 0.0005)
+            -linkDistance / max(cursorSize * CR_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
         vec3 linkColor = mix(CR_ROSE, CR_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
+        scene.rgb += linkColor * dash * linkStrength * linkIntensityScale
+            * life * contentMask * (
             linkCore * CR_LINK_CORE_STRENGTH
             + linkGlow * CR_LINK_GLOW_STRENGTH
         );
@@ -706,7 +757,7 @@ void applyCrystalResonanceCursor(inout vec4 scene, vec2 fragCoord) {
             saturate(0.78 + linkIdentity * CR_LINK_COLOR_PHASE_STEP)
         );
         scene.rgb += endpointColor * endpoint * linkStrength * life
-            * CR_LINK_ENDPOINT_GLOW * contentMask;
+            * linkIntensityScale * CR_LINK_ENDPOINT_GLOW * contentMask;
     }
 #endif
 

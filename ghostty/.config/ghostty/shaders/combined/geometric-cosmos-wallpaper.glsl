@@ -144,7 +144,7 @@ const float GC_LORENZ_SCALE = 1.10;
 // SHAPE-SHIFTING CURSOR, TRAIL, CONNECTION, AND RANDOMNESS
 // =============================================================================
 
-#define GCC_CURSOR_STYLE 0               // 0 time-varying shape, 1 all-family constellation
+#define GCC_CURSOR_STYLE 1               // 0 time-varying shape, 1 all-family constellation
 #define GCC_CURSOR_MODE 1                // style 0: 0 fixed, 1 shuffled, 2 sequential
 #define GCC_FIXED_TYPE 0                 // type ID used when mode == 0
 #define GCC_ENABLE_TRAIL 1
@@ -161,8 +161,8 @@ const float GCC_FADE_POWER = 1.65;
 const float GCC_MIN_MOVEMENT_CELLS = 0.025;
 const float GCC_GROWTH_START_CELLS = 0.08;
 const float GCC_GROWTH_FULL_CELLS = 8.00;
-const float GCC_SIZE_MIN = 1.05;
-const float GCC_SIZE_MAX = 2.35;
+const float GCC_SIZE_MIN = 0.30;
+const float GCC_SIZE_MAX = 1.00;
 const float GCC_SIZE_PULSE = 0.11;
 const float GCC_CULL_RADIUS_MIN = 4.5;
 const float GCC_CULL_RADIUS_MAX = 9.0;
@@ -201,6 +201,24 @@ const float GCC_LINK_DASH_COUNT = 19.0;
 const float GCC_LINK_DASH_SPEED = 1.62;
 const float GCC_LINK_SECONDARY_FALLOFF = 0.88;
 const float GCC_LINK_COLOR_PHASE_STEP = 0.12;
+// Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
+// MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
+const float GCC_LINK_MOVEMENT_POWER = 1.15;
+const float GCC_LINK_WIDTH_MIN_SCALE = 0.28;
+const float GCC_LINK_WIDTH_MAX_SCALE = 1.35;
+const float GCC_LINK_GLOW_WIDTH_MIN_SCALE = 0.22;
+const float GCC_LINK_GLOW_WIDTH_MAX_SCALE = 1.45;
+const float GCC_LINK_INTENSITY_MIN_SCALE = 0.10;
+const float GCC_LINK_INTENSITY_MAX_SCALE = 1.25;
+const float GCC_LINK_OPACITY_MIN_SCALE = 0.08;
+const float GCC_LINK_OPACITY_MAX_SCALE = 1.30;
+const float GCC_LINK_DASH_DENSITY_MIN_SCALE = 0.42;
+const float GCC_LINK_DASH_DENSITY_MAX_SCALE = 1.30;
+const float GCC_LINK_DASH_SPEED_MIN_SCALE = 0.40;
+const float GCC_LINK_DASH_SPEED_MAX_SCALE = 1.25;
+const float GCC_LINK_CULL_MIN_SCALE = 0.55;
+const float GCC_LINK_CULL_MAX_SCALE = 1.70;
+const float GCC_LINK_CULL_MIN_PIXELS = 4.0;
 
 // =============================================================================
 // SHARED MATHEMATICS AND RASTER HELPERS
@@ -1175,13 +1193,52 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
         cursorPixels * GCC_GROWTH_FULL_CELLS,
         movedPixels
     );
+    float linkMovementFactor = pow(movementFactor, GCC_LINK_MOVEMENT_POWER);
+    float linkWidthScale = mix(
+        GCC_LINK_WIDTH_MIN_SCALE,
+        GCC_LINK_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkGlowWidthScale = mix(
+        GCC_LINK_GLOW_WIDTH_MIN_SCALE,
+        GCC_LINK_GLOW_WIDTH_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkIntensityScale = mix(
+        GCC_LINK_INTENSITY_MIN_SCALE,
+        GCC_LINK_INTENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkOpacityScale = mix(
+        GCC_LINK_OPACITY_MIN_SCALE,
+        GCC_LINK_OPACITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashDensityScale = mix(
+        GCC_LINK_DASH_DENSITY_MIN_SCALE,
+        GCC_LINK_DASH_DENSITY_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkDashSpeedScale = mix(
+        GCC_LINK_DASH_SPEED_MIN_SCALE,
+        GCC_LINK_DASH_SPEED_MAX_SCALE,
+        linkMovementFactor
+    );
+    float linkCullScale = mix(
+        GCC_LINK_CULL_MIN_SCALE,
+        GCC_LINK_CULL_MAX_SCALE,
+        linkMovementFactor
+    );
     float cullRadius = cursorPixels * mix(
         GCC_CULL_RADIUS_MIN,
         GCC_CULL_RADIUS_MAX,
         movementFactor
     );
     bool nearCursor = segmentDistance(fragCoord, tailPixels, headPixels) <= cullRadius;
-    float linkCull = max(cursorPixels * 1.45, 8.0);
+    float linkCull = max(
+        cursorPixels * linkCullScale,
+        GCC_LINK_CULL_MIN_PIXELS
+    );
     bool nearAnyLink = false;
     vec2 linkObjectPixels[GC_OBJECT_COUNT];
 #if GCC_ENABLE_OBJECT_LINKS
@@ -1240,18 +1297,19 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
             saturate(alongLink * 0.78 + identity * GCC_LINK_COLOR_PHASE_STEP)
         );
         float dash = 0.64 + 0.36 * sin(
-            alongLink * GCC_LINK_DASH_COUNT
-            - iTime * GCC_LINK_DASH_SPEED
+            alongLink * GCC_LINK_DASH_COUNT * linkDashDensityScale
+            - iTime * GCC_LINK_DASH_SPEED * linkDashSpeedScale
             + identity * 1.73
         );
-        float core = exp(-distanceToLink / max(cursorSize * GCC_LINK_WIDTH, 0.0002));
-        float glow = exp(-distanceToLink / max(cursorSize * GCC_LINK_GLOW_WIDTH, 0.0005));
-        effectLight += linkColor * dash * linkStrength * (
+        float core = exp(-distanceToLink / max(cursorSize * GCC_LINK_WIDTH * linkWidthScale, 0.0002));
+        float glow = exp(-distanceToLink / max(cursorSize * GCC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005));
+        effectLight += linkColor * dash * linkStrength * linkIntensityScale * (
             core * GCC_LINK_CORE_STRENGTH + glow * GCC_LINK_GLOW_STRENGTH
         );
         effectOpacity = max(
             effectOpacity,
-            linkStrength * (core * 0.14 + glow * 0.035)
+            linkStrength * linkOpacityScale
+                * (core * 0.14 + glow * 0.035)
         );
     }
 #endif
