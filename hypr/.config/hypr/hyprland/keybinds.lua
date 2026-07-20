@@ -26,7 +26,7 @@ local function workspace_in_group(position)
   return math.floor((workspace.id - 1) / vars.workspace_group_size) * vars.workspace_group_size + position
 end
 
-local function resize_active_window_by_percent(x_percent, y_percent)
+local function dispatch_window_resize_by_percent(x_percent, y_percent, window)
   local monitor = hl.get_active_monitor()
   if monitor == nil then
     return
@@ -36,13 +36,13 @@ local function resize_active_window_by_percent(x_percent, y_percent)
     x = monitor.width * x_percent / 100,
     y = monitor.height * y_percent / 100,
     relative = true,
-    window = "active",
+    window = window or "active",
   }))
 end
 
 local function resize_window_by_percent(x_percent, y_percent)
   return function()
-    resize_active_window_by_percent(x_percent, y_percent)
+    dispatch_window_resize_by_percent(x_percent, y_percent)
   end
 end
 
@@ -50,14 +50,16 @@ local function resize_scrolling_row_by_percent(y_percent)
   return function()
     local window = hl.get_active_window()
     local layout_state = window ~= nil and window.layout or nil
+    local column = type(layout_state) == "table" and layout_state.column or nil
     local row_index = type(layout_state) == "table" and layout_state.index_in_column or nil
-    if type(row_index) ~= "number" then
+    local column_windows = type(column) == "table" and column.windows or nil
+    if type(row_index) ~= "number" or type(column_windows) ~= "table" then
       return
     end
 
-    -- Scrolling treats y as grow/shrink. Flip lower rows so J/K move the shared boundary down/up like Dwindle.
-    local adjusted_y_percent = row_index == 0 and y_percent or -y_percent
-    resize_active_window_by_percent(0, adjusted_y_percent)
+    -- Move the boundary below the active row; the last row falls back to its upper boundary.
+    local target_window = column_windows[row_index + 2] or window
+    dispatch_window_resize_by_percent(0, -y_percent, target_window)
   end
 end
 
@@ -426,6 +428,9 @@ bind(main_mod .. " + R", when_layout("dwindle", hl.dsp.layout("togglesplit")), {
   description = "Dwindle: Toggle split",
 })
 
+bind(main_mod .. " + A", scrolling_dispatch("inhibit_scroll"), {
+  description = "Scrolling: Toggle viewport lock",
+})
 bind(main_mod .. " + CTRL + Period", scrolling_dispatch("colresize +0.25"), {
   description = "Scrolling: Fine width increase",
 })
