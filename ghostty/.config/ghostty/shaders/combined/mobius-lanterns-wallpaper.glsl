@@ -1,3 +1,7 @@
+// WALLPAPER VARIANT: mobius-lanterns
+// Procedural geometry is the rear layer; terminal text is composited
+// above it, and the matching movement-reactive cursor is topmost.
+
 #ifndef GHOSTTY_GPU_PROFILE
 #define GHOSTTY_GPU_PROFILE 1
 #endif
@@ -267,7 +271,9 @@ void renderMobiusBackground(out vec4 fragColor, vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = scenePoint(fragCoord);
     float narrowScale = clamp(
@@ -275,7 +281,7 @@ void renderMobiusBackground(out vec4 fragColor, vec2 fragCoord) {
         MOBIUS_NARROW_MIN_SCALE,
         1.0
     );
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < MOBIUS_OBJECT_COUNT; objectIndex++) {
@@ -386,7 +392,7 @@ void renderMobiusBackground(out vec4 fragColor, vec2 fragCoord) {
     }
     fragColor = vec4(
         clamp(composite, 0.0, 1.0),
-        max(terminalColor.a, sceneAlpha)
+        sceneAlpha
     );
 }
 
@@ -605,7 +611,36 @@ void applyMobiusCursor(inout vec4 scene, vec2 fragCoord) {
     scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
+
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
+// =============================================================================
+
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
+    );
+}
+
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderMobiusBackground(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderMobiusBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
+
+    // The matching movement effect is applied after the terminal foreground,
+    // while the real Ghostty cursor rectangle remains exact inside its bounds.
     applyMobiusCursor(fragColor, fragCoord);
+    fragColor.a = terminalColor.a;
 }

@@ -1,3 +1,7 @@
+// BACKGROUND-ONLY WALLPAPER VARIANT: icosahedral-nebula
+// Procedural geometry is composited behind exact terminal foreground.
+// Pair this stage with any independently selected cursor shader.
+
 #ifndef GHOSTTY_GPU_PROFILE
 #define GHOSTTY_GPU_PROFILE 1
 #endif
@@ -90,67 +94,6 @@ const vec3 ICO_WHITE = vec3(0.990, 0.970, 1.000);
 const float ICO_TAU = 6.28318530718;
 
 // =============================================================================
-// MATCHED CURSOR CONTROLS
-// =============================================================================
-
-#define IC_ECHO_COUNT 2                  // quantity: 0..4
-#define IC_ENABLE_TRAIL 1
-#define IC_ENABLE_SPARKS 1
-#define IC_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
-#define IC_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-#define IC_ENABLE_CURSOR_NOVA 1
-
-const float IC_EFFECT_DURATION = 0.40;
-const float IC_FADE_POWER = 1.66;
-const float IC_MIN_MOVEMENT_CELLS = 0.025;
-const float IC_GROWTH_START_CELLS = 0.08;
-const float IC_GROWTH_FULL_CELLS = 8.00;
-const float IC_SIZE_MIN = 0.92;
-const float IC_SIZE_MAX = 1.94;
-const float IC_SIZE_PULSE = 0.12;
-const float IC_CAMERA_DISTANCE = 4.00;
-const float IC_CULL_RADIUS_MIN = 4.4;
-const float IC_CULL_RADIUS_MAX = 8.4;
-const float IC_CONTENT_PROTECTION = 0.18;
-const float IC_MASTER_BRIGHTNESS = 1.00;
-const float IC_ALPHA_MAX = 0.60;
-const float IC_ALPHA_GAIN = 1.38;
-const vec3 IC_ROTATION_SPEED = vec3(0.90, -1.08, 0.44);
-const float IC_DIRECTION_TILT = 0.20;
-const float IC_EDGE_CORE_WIDTH = 0.038;
-const float IC_EDGE_GLOW_WIDTH = 0.145;
-const float IC_EDGE_CORE_STRENGTH = 0.44;
-const float IC_EDGE_GLOW_STRENGTH = 0.068;
-const float IC_VERTEX_RADIUS = 0.085;
-const float IC_VERTEX_STRENGTH = 0.22;
-const float IC_NOVA_RADIUS = 0.70;
-const float IC_NOVA_STRENGTH = 0.17;
-const float IC_NOVA_RAY_COUNT = 8.0;
-const float IC_NOVA_RAY_STRENGTH = 0.060;
-const float IC_ECHO_START_SCALE = 1.03;
-const float IC_ECHO_END_SCALE = 2.22;
-const float IC_ECHO_DELAY = 0.14;
-const float IC_ECHO_WIDTH = 0.046;
-const float IC_ECHO_STRENGTH = 0.105;
-const float IC_ECHO_FALLOFF = 0.67;
-const float IC_TRAIL_WIDTH_MIN = 0.11;
-const float IC_TRAIL_WIDTH_MAX = 0.24;
-const float IC_TRAIL_GLOW_MULTIPLIER = 4.0;
-const float IC_TRAIL_CORE_STRENGTH = 0.22;
-const float IC_TRAIL_GLOW_STRENGTH = 0.052;
-const float IC_SPARK_RADIUS = 0.070;
-const float IC_SPARK_SPREAD = 1.85;
-const float IC_SPARK_STRENGTH = 0.24;
-const float IC_LINK_WIDTH = 0.060;
-const float IC_LINK_GLOW_WIDTH = 0.25;
-const float IC_LINK_CORE_STRENGTH = 0.045;
-const float IC_LINK_GLOW_STRENGTH = 0.011;
-const float IC_LINK_DASH_COUNT = 21.0;
-const float IC_LINK_DASH_SPEED = 1.72;
-const float IC_LINK_SECONDARY_FALLOFF = 0.72;
-const float IC_LINK_COLOR_PHASE_STEP = 0.23;
-
-
 float saturate(float value) { return clamp(value, 0.0, 1.0); }
 float luminance(vec3 color) { return dot(color, vec3(0.2126, 0.7152, 0.0722)); }
 float hash12(vec2 value) {
@@ -280,7 +223,9 @@ void renderIcosaBackground(out vec4 fragColor, vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = scenePoint(fragCoord);
     float narrowScale = clamp(
@@ -288,7 +233,7 @@ void renderIcosaBackground(out vec4 fragColor, vec2 fragCoord) {
         ICO_NARROW_MIN_SCALE,
         1.0
     );
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < ICO_OBJECT_COUNT; objectIndex++) {
@@ -413,237 +358,34 @@ void renderIcosaBackground(out vec4 fragColor, vec2 fragCoord) {
     }
     fragColor = vec4(
         clamp(composite, 0.0, 1.0),
-        max(terminalColor.a, sceneAlpha)
+        sceneAlpha
     );
 }
 
-void applyIcosaCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
-    vec2 resolution = max(iResolution.xy, vec2(1.0));
-    vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
-    vec4 terminalColor = texture(iChannel0, uv);
-    vec2 headPixels = cursorCenterPixels(iCurrentCursor);
-    vec2 tailPixels = cursorCenterPixels(iPreviousCursor);
-    float cursorPixels = max(iCurrentCursor.z, iCurrentCursor.w);
-    float movedPixels = length(headPixels - tailPixels);
-    float age = saturate((iTime - iTimeCursorChange) / IC_EFFECT_DURATION);
-    if (
-        cursorPixels <= 0.0
-        || movedPixels <= cursorPixels * IC_MIN_MOVEMENT_CELLS
-        || age >= 1.0
-    ) return;
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
+// =============================================================================
 
-    float movementFactor = smoothstep(
-        cursorPixels * IC_GROWTH_START_CELLS,
-        cursorPixels * IC_GROWTH_FULL_CELLS,
-        movedPixels
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
     );
-    float cullRadius = cursorPixels * mix(
-        IC_CULL_RADIUS_MIN,
-        IC_CULL_RADIUS_MAX,
-        movementFactor
-    );
-    bool nearCursor = all(greaterThanEqual(
-        fragCoord,
-        min(headPixels, tailPixels) - vec2(cullRadius)
-    )) && all(lessThanEqual(
-        fragCoord,
-        max(headPixels, tailPixels) + vec2(cullRadius)
-    ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
-    bool nearAnyLink = false;
-#if IC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < ICO_OBJECT_COUNT; linkIndex++) {
-        if (IC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = icosaUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        nearAnyLink = nearAnyLink || linkPixelDistance <= linkCull;
-    }
-#endif
-    if (!nearCursor && !nearAnyLink) return;
-
-    vec2 point = scenePoint(fragCoord);
-    vec2 head = scenePoint(headPixels);
-    vec2 tail = scenePoint(tailPixels);
-    vec2 movement = head - tail;
-    vec2 direction = movement / max(length(movement), 0.000001);
-    vec2 normal2d = vec2(-direction.y, direction.x);
-    float cursorSize = cursorPixels / resolution.y;
-    float life = pow(1.0 - age, IC_FADE_POWER);
-    float easedAge = 1.0 - pow(1.0 - age, 3.0);
-    float contentMask = mix(IC_CONTENT_PROTECTION, 1.0, backgroundCellMask(terminalColor));
-    vec3 effectLight = vec3(0.0);
-    float effectOpacity = 0.0;
-
-#if IC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < ICO_OBJECT_COUNT; linkIndex++) {
-        if (IC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = icosaUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        if (linkPixelDistance > linkCull) continue;
-
-        vec2 linkObject = scenePoint(linkObjectPixels);
-        float linkDistance = segmentDistance(point, head, linkObject);
-        float linkAlong = segmentParameter(point, head, linkObject);
-        float linkStrength = pow(IC_LINK_SECONDARY_FALLOFF, linkIdentity);
-        float linkColorMix = saturate(
-            linkAlong * 0.78 + linkIdentity * IC_LINK_COLOR_PHASE_STEP
-        );
-        float dash = 0.64 + 0.36 * sin(
-            linkAlong * IC_LINK_DASH_COUNT
-            - iTime * IC_LINK_DASH_SPEED
-            + linkIdentity * 2.17
-        );
-        float linkCore = exp(
-            -linkDistance / max(cursorSize * IC_LINK_WIDTH, 0.0002)
-        );
-        float linkGlow = exp(
-            -linkDistance / max(cursorSize * IC_LINK_GLOW_WIDTH, 0.0005)
-        );
-        vec3 linkColor = mix(ICO_ROSE, ICO_CYAN, linkColorMix);
-        effectLight += linkColor * dash * linkStrength * (
-            linkCore * IC_LINK_CORE_STRENGTH
-            + linkGlow * IC_LINK_GLOW_STRENGTH
-        );
-        effectOpacity = max(
-            effectOpacity,
-            linkStrength * (linkCore * 0.16 + linkGlow * 0.04)
-        );
-    }
-#endif
-
-    if (nearCursor) {
-#if IC_ENABLE_TRAIL
-        float trailDistance = segmentDistance(point, tail, head);
-        float along = segmentParameter(point, tail, head);
-        float trailWidth = cursorSize * mix(
-            IC_TRAIL_WIDTH_MIN,
-            IC_TRAIL_WIDTH_MAX,
-            movementFactor
-        );
-        float trailCore = exp(-trailDistance / max(trailWidth, 0.0002))
-            * smoothstep(0.0, 0.20, along);
-        float trailGlow = exp(-trailDistance / max(
-            trailWidth * IC_TRAIL_GLOW_MULTIPLIER,
-            0.0004
-        )) * smoothstep(0.0, 0.16, along);
-        vec3 trailColor = mix(ICO_VIOLET, ICO_CYAN, along);
-        effectLight += trailColor * (
-            trailCore * IC_TRAIL_CORE_STRENGTH
-            + trailGlow * IC_TRAIL_GLOW_STRENGTH
-        );
-        effectOpacity = max(effectOpacity, trailCore * 0.28 + trailGlow * 0.07);
-#endif
-
-        float shapeScale = cursorSize * mix(IC_SIZE_MIN, IC_SIZE_MAX, movementFactor)
-            * (1.0 + IC_SIZE_PULSE * sin(age * 3.14159265359));
-        vec3 angle = iTime * IC_ROTATION_SPEED;
-        angle.z += atan(direction.y, direction.x) * IC_DIRECTION_TILT;
-        vec2 projected[12];
-        float depth[12];
-        for (int vertexIndex = 0; vertexIndex < 12; vertexIndex++) {
-            vec3 vertex = rotateXYZ(icosaVertex(vertexIndex), angle);
-            projected[vertexIndex] = projectPoint(
-                vertex,
-                head,
-                shapeScale,
-                IC_CAMERA_DISTANCE,
-                depth[vertexIndex]
-            );
-        }
-        for (int first = 0; first < 12; first++) {
-            for (int second = first + 1; second < 12; second++) {
-                if (!isIcosaEdge(first, second)) continue;
-                float edgeDistance = segmentDistance(point, projected[first], projected[second]);
-                float core = exp(-edgeDistance / max(cursorSize * IC_EDGE_CORE_WIDTH, 0.0001));
-                float glow = exp(-edgeDistance / max(cursorSize * IC_EDGE_GLOW_WIDTH, 0.00024));
-                float nearFactor = saturate((IC_CAMERA_DISTANCE + 0.8 - 0.5 * (
-                    depth[first] + depth[second]
-                )) / 1.8);
-                vec3 color = mix(ICO_VIOLET, ICO_CYAN, nearFactor);
-                color = mix(color, ICO_WHITE, nearFactor * 0.32);
-                effectLight += color * (
-                    core * IC_EDGE_CORE_STRENGTH + glow * IC_EDGE_GLOW_STRENGTH
-                );
-                effectOpacity = max(effectOpacity, core * 0.62 + glow * 0.12);
-                for (int echoIndex = 0; echoIndex < IC_ECHO_COUNT; echoIndex++) {
-                    float delay = float(echoIndex) * IC_ECHO_DELAY;
-                    float progress = saturate((easedAge - delay) / max(1.0 - delay, 0.001));
-                    float echoActive = step(delay, easedAge);
-                    float scaleValue = mix(IC_ECHO_START_SCALE, IC_ECHO_END_SCALE, progress);
-                    vec2 echo0 = head + (projected[first] - head) * scaleValue;
-                    vec2 echo1 = head + (projected[second] - head) * scaleValue;
-                    float echoDistance = segmentDistance(point, echo0, echo1);
-                    float echo = exp(-echoDistance / max(cursorSize * IC_ECHO_WIDTH, 0.00011))
-                        * (1.0 - progress) * echoActive;
-                    effectLight += mix(ICO_BLUE, ICO_ROSE, nearFactor) * echo
-                        * IC_ECHO_STRENGTH * pow(IC_ECHO_FALLOFF, float(echoIndex));
-                    effectOpacity = max(effectOpacity, echo * 0.16);
-                }
-            }
-        }
-        for (int vertexIndex = 0; vertexIndex < 12; vertexIndex++) {
-            float star = gaussianPoint(
-                point - projected[vertexIndex],
-                cursorSize * IC_VERTEX_RADIUS
-            );
-            effectLight += mix(ICO_GOLD, ICO_CYAN, float(vertexIndex) / 11.0)
-                * star * IC_VERTEX_STRENGTH;
-            effectOpacity = max(effectOpacity, star * 0.20);
-        }
-
-#if IC_ENABLE_CURSOR_NOVA
-        vec2 novaPoint = (point - head) / max(shapeScale, 0.0001);
-        float novaRadius = length(novaPoint);
-        float novaAngle = atan(novaPoint.y, novaPoint.x);
-        float nova = gaussianPoint(point - head, shapeScale * IC_NOVA_RADIUS);
-        float rays = pow(abs(cos(novaAngle * 0.5 * IC_NOVA_RAY_COUNT)), 18.0)
-            * exp(-novaRadius * 2.8);
-        effectLight += mix(ICO_VIOLET, ICO_CYAN, 0.54)
-            * nova * IC_NOVA_STRENGTH;
-        effectLight += ICO_WHITE * rays * IC_NOVA_RAY_STRENGTH;
-        effectOpacity = max(effectOpacity, nova * 0.24 + rays * 0.12);
-#endif
-
-#if IC_ENABLE_SPARKS && IC_SPARK_COUNT > 0
-        vec2 eventSeed = headPixels * 0.037 + tailPixels * 0.091;
-        for (int sparkIndex = 0; sparkIndex < IC_SPARK_COUNT; sparkIndex++) {
-            float index = float(sparkIndex);
-            float positionRandom = hash12(eventSeed + vec2(index * 11.7, index * 31.9));
-            float sideRandom = hash12(eventSeed + vec2(index * 43.1, index * 7.3));
-            vec2 sparkCenter = mix(tail, head, positionRandom)
-                + normal2d * (sideRandom - 0.5) * cursorSize * IC_SPARK_SPREAD;
-            float spark = gaussianPoint(point - sparkCenter, cursorSize * IC_SPARK_RADIUS);
-            effectLight += mix(ICO_CYAN, ICO_GOLD, sideRandom)
-                * spark * IC_SPARK_STRENGTH;
-            effectOpacity = max(effectOpacity, spark * 0.18);
-        }
-#endif
-    }
-
-    effectLight *= life * contentMask * IC_MASTER_BRIGHTNESS;
-    scene.rgb += effectLight;
-    scene.a = max(
-        scene.a,
-        life * contentMask * IC_ALPHA_MAX
-            * saturate(effectOpacity + luminance(effectLight) * IC_ALPHA_GAIN)
-    );
-    float cursorCoverage = insideCursor(fragCoord, iCurrentCursor);
-    scene = mix(scene, terminalColor, cursorCoverage);
-    scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderIcosaBackground(fragColor, fragCoord);
-    applyIcosaCursor(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderIcosaBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
 }

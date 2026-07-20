@@ -1,3 +1,7 @@
+// BACKGROUND-ONLY WALLPAPER VARIANT: mobius-lanterns
+// Procedural geometry is composited behind exact terminal foreground.
+// Pair this stage with any independently selected cursor shader.
+
 #ifndef GHOSTTY_GPU_PROFILE
 #define GHOSTTY_GPU_PROFILE 1
 #endif
@@ -93,63 +97,6 @@ const vec3 MOBIUS_WHITE = vec3(0.980, 0.970, 1.000);
 const float MOBIUS_TAU = 6.28318530718;
 
 // =============================================================================
-// MATCHED CURSOR CONTROLS
-// =============================================================================
-
-#define MC_RAIL_COUNT 3                  // cursor ribbon rails: 2..6
-#define MC_RIB_COUNT 8                   // cursor transverse ribs: 0..14
-#define MC_ECHO_COUNT 2                  // quantity: 0..3
-#define MC_ENABLE_TRAIL 1
-#define MC_ENABLE_SPARKS 1
-#define MC_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
-#define MC_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-
-const float MC_EFFECT_DURATION = 0.40;
-const float MC_FADE_POWER = 1.68;
-const float MC_MIN_MOVEMENT_CELLS = 0.025;
-const float MC_GROWTH_START_CELLS = 0.08;
-const float MC_GROWTH_FULL_CELLS = 8.00;
-const float MC_SIZE_MIN = 0.76;
-const float MC_SIZE_MAX = 1.72;
-const float MC_SIZE_PULSE = 0.11;
-const float MC_CAMERA_DISTANCE = 4.00;
-const float MC_CULL_RADIUS_MIN = 4.2;
-const float MC_CULL_RADIUS_MAX = 7.8;
-const float MC_CONTENT_PROTECTION = 0.18;
-const float MC_MASTER_BRIGHTNESS = 1.00;
-const float MC_ALPHA_MAX = 0.58;
-const float MC_ALPHA_GAIN = 1.35;
-const vec3 MC_ROTATION_SPEED = vec3(0.84, -1.02, 0.40);
-const float MC_DIRECTION_TILT = 0.20;
-const float MC_CORE_WIDTH = 0.038;
-const float MC_GLOW_WIDTH = 0.145;
-const float MC_CORE_STRENGTH = 0.42;
-const float MC_GLOW_STRENGTH = 0.067;
-const float MC_RIB_STRENGTH = 0.72;
-const float MC_ECHO_START_SCALE = 1.03;
-const float MC_ECHO_END_SCALE = 2.16;
-const float MC_ECHO_DELAY = 0.15;
-const float MC_ECHO_WIDTH = 0.046;
-const float MC_ECHO_STRENGTH = 0.10;
-const float MC_ECHO_FALLOFF = 0.66;
-const float MC_TRAIL_WIDTH_MIN = 0.11;
-const float MC_TRAIL_WIDTH_MAX = 0.24;
-const float MC_TRAIL_GLOW_MULTIPLIER = 4.0;
-const float MC_TRAIL_CORE_STRENGTH = 0.22;
-const float MC_TRAIL_GLOW_STRENGTH = 0.052;
-const float MC_SPARK_RADIUS = 0.070;
-const float MC_SPARK_SPREAD = 1.75;
-const float MC_SPARK_STRENGTH = 0.23;
-const float MC_LINK_WIDTH = 0.060;
-const float MC_LINK_GLOW_WIDTH = 0.25;
-const float MC_LINK_CORE_STRENGTH = 0.045;
-const float MC_LINK_GLOW_STRENGTH = 0.011;
-const float MC_LINK_DASH_COUNT = 18.0;
-const float MC_LINK_DASH_SPEED = 1.62;
-const float MC_LINK_SECONDARY_FALLOFF = 0.72;
-const float MC_LINK_COLOR_PHASE_STEP = 0.23;
-
-
 float saturate(float value) { return clamp(value, 0.0, 1.0); }
 float luminance(vec3 color) { return dot(color, vec3(0.2126, 0.7152, 0.0722)); }
 float hash12(vec2 value) {
@@ -267,7 +214,9 @@ void renderMobiusBackground(out vec4 fragColor, vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = scenePoint(fragCoord);
     float narrowScale = clamp(
@@ -275,7 +224,7 @@ void renderMobiusBackground(out vec4 fragColor, vec2 fragCoord) {
         MOBIUS_NARROW_MIN_SCALE,
         1.0
     );
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < MOBIUS_OBJECT_COUNT; objectIndex++) {
@@ -386,226 +335,34 @@ void renderMobiusBackground(out vec4 fragColor, vec2 fragCoord) {
     }
     fragColor = vec4(
         clamp(composite, 0.0, 1.0),
-        max(terminalColor.a, sceneAlpha)
+        sceneAlpha
     );
 }
 
-void applyMobiusCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
-    vec2 resolution = max(iResolution.xy, vec2(1.0));
-    vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
-    vec4 terminalColor = texture(iChannel0, uv);
-    vec2 headPixels = cursorCenterPixels(iCurrentCursor);
-    vec2 tailPixels = cursorCenterPixels(iPreviousCursor);
-    float cursorPixels = max(iCurrentCursor.z, iCurrentCursor.w);
-    float movedPixels = length(headPixels - tailPixels);
-    float age = saturate((iTime - iTimeCursorChange) / MC_EFFECT_DURATION);
-    if (
-        cursorPixels <= 0.0
-        || movedPixels <= cursorPixels * MC_MIN_MOVEMENT_CELLS
-        || age >= 1.0
-    ) return;
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
+// =============================================================================
 
-    float movementFactor = smoothstep(
-        cursorPixels * MC_GROWTH_START_CELLS,
-        cursorPixels * MC_GROWTH_FULL_CELLS,
-        movedPixels
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
     );
-    float cullRadius = cursorPixels * mix(
-        MC_CULL_RADIUS_MIN,
-        MC_CULL_RADIUS_MAX,
-        movementFactor
-    );
-    bool nearCursor = all(greaterThanEqual(
-        fragCoord,
-        min(headPixels, tailPixels) - vec2(cullRadius)
-    )) && all(lessThanEqual(
-        fragCoord,
-        max(headPixels, tailPixels) + vec2(cullRadius)
-    ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
-    bool nearAnyLink = false;
-#if MC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < MOBIUS_OBJECT_COUNT; linkIndex++) {
-        if (MC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = mobiusUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        nearAnyLink = nearAnyLink || linkPixelDistance <= linkCull;
-    }
-#endif
-    if (!nearCursor && !nearAnyLink) return;
-
-    vec2 point = scenePoint(fragCoord);
-    vec2 head = scenePoint(headPixels);
-    vec2 tail = scenePoint(tailPixels);
-    vec2 movement = head - tail;
-    vec2 direction = movement / max(length(movement), 0.000001);
-    vec2 normal2d = vec2(-direction.y, direction.x);
-    float cursorSize = cursorPixels / resolution.y;
-    float life = pow(1.0 - age, MC_FADE_POWER);
-    float easedAge = 1.0 - pow(1.0 - age, 3.0);
-    float contentMask = mix(MC_CONTENT_PROTECTION, 1.0, backgroundCellMask(terminalColor));
-    vec3 effectLight = vec3(0.0);
-    float effectOpacity = 0.0;
-
-#if MC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < MOBIUS_OBJECT_COUNT; linkIndex++) {
-        if (MC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = mobiusUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        if (linkPixelDistance > linkCull) continue;
-
-        vec2 linkObject = scenePoint(linkObjectPixels);
-        float linkDistance = segmentDistance(point, head, linkObject);
-        float linkAlong = segmentParameter(point, head, linkObject);
-        float linkStrength = pow(MC_LINK_SECONDARY_FALLOFF, linkIdentity);
-        float linkColorMix = saturate(
-            linkAlong * 0.78 + linkIdentity * MC_LINK_COLOR_PHASE_STEP
-        );
-        float dash = 0.64 + 0.36 * sin(
-            linkAlong * MC_LINK_DASH_COUNT
-            - iTime * MC_LINK_DASH_SPEED
-            + linkIdentity * 2.17
-        );
-        float linkCore = exp(
-            -linkDistance / max(cursorSize * MC_LINK_WIDTH, 0.0002)
-        );
-        float linkGlow = exp(
-            -linkDistance / max(cursorSize * MC_LINK_GLOW_WIDTH, 0.0005)
-        );
-        vec3 linkColor = mix(MOBIUS_GOLD, MOBIUS_CYAN, linkColorMix);
-        effectLight += linkColor * dash * linkStrength * (
-            linkCore * MC_LINK_CORE_STRENGTH
-            + linkGlow * MC_LINK_GLOW_STRENGTH
-        );
-        effectOpacity = max(
-            effectOpacity,
-            linkStrength * (linkCore * 0.16 + linkGlow * 0.04)
-        );
-    }
-#endif
-
-    if (nearCursor) {
-#if MC_ENABLE_TRAIL
-        float trailDistance = segmentDistance(point, tail, head);
-        float along = segmentParameter(point, tail, head);
-        float trailWidth = cursorSize * mix(
-            MC_TRAIL_WIDTH_MIN,
-            MC_TRAIL_WIDTH_MAX,
-            movementFactor
-        );
-        float trailCore = exp(-trailDistance / max(trailWidth, 0.0002))
-            * smoothstep(0.0, 0.20, along);
-        float trailGlow = exp(-trailDistance / max(
-            trailWidth * MC_TRAIL_GLOW_MULTIPLIER,
-            0.0004
-        )) * smoothstep(0.0, 0.16, along);
-        vec3 trailColor = mix(MOBIUS_VIOLET, MOBIUS_CYAN, along);
-        effectLight += trailColor * (
-            trailCore * MC_TRAIL_CORE_STRENGTH
-            + trailGlow * MC_TRAIL_GLOW_STRENGTH
-        );
-        effectOpacity = max(effectOpacity, trailCore * 0.28 + trailGlow * 0.07);
-#endif
-
-        float ribbonScale = cursorSize * mix(MC_SIZE_MIN, MC_SIZE_MAX, movementFactor)
-            * (1.0 + MC_SIZE_PULSE * sin(age * 3.14159265359));
-        vec3 angle = iTime * MC_ROTATION_SPEED;
-        angle.z += atan(direction.y, direction.x) * MC_DIRECTION_TILT;
-        for (int railIndex = 0; railIndex < MC_RAIL_COUNT; railIndex++) {
-            float railPhase = float(railIndex) / max(float(MC_RAIL_COUNT - 1), 1.0);
-            float transverse = mix(-MOBIUS_HALF_WIDTH, MOBIUS_HALF_WIDTH, railPhase);
-            for (int segmentIndex = 0; segmentIndex < MC_U_SEGMENT_COUNT; segmentIndex++) {
-                float phase0 = float(segmentIndex) / float(MC_U_SEGMENT_COUNT);
-                float phase1 = float(segmentIndex + 1) / float(MC_U_SEGMENT_COUNT);
-                vec3 vertex0 = rotateXYZ(mobiusPoint(phase0 * MOBIUS_TAU, transverse), angle);
-                vec3 vertex1 = rotateXYZ(mobiusPoint(phase1 * MOBIUS_TAU, transverse), angle);
-                float depth0, depth1;
-                vec2 projected0 = projectPoint(vertex0, head, ribbonScale, MC_CAMERA_DISTANCE, depth0);
-                vec2 projected1 = projectPoint(vertex1, head, ribbonScale, MC_CAMERA_DISTANCE, depth1);
-                float meshDistance = segmentDistance(point, projected0, projected1);
-                float core = exp(-meshDistance / max(cursorSize * MC_CORE_WIDTH, 0.0001));
-                float glow = exp(-meshDistance / max(cursorSize * MC_GLOW_WIDTH, 0.00024));
-                float nearFactor = saturate((MC_CAMERA_DISTANCE + 0.8 - 0.5 * (depth0 + depth1)) / 1.8);
-                vec3 color = mix(MOBIUS_ROSE, MOBIUS_CYAN, railPhase);
-                color = mix(color, MOBIUS_WHITE, nearFactor * 0.30);
-                effectLight += color * (
-                    core * MC_CORE_STRENGTH + glow * MC_GLOW_STRENGTH
-                );
-                effectOpacity = max(effectOpacity, core * 0.60 + glow * 0.12);
-                for (int echoIndex = 0; echoIndex < MC_ECHO_COUNT; echoIndex++) {
-                    float delay = float(echoIndex) * MC_ECHO_DELAY;
-                    float progress = saturate((easedAge - delay) / max(1.0 - delay, 0.001));
-                    float echoActive = step(delay, easedAge);
-                    float scaleValue = mix(MC_ECHO_START_SCALE, MC_ECHO_END_SCALE, progress);
-                    vec2 echo0 = head + (projected0 - head) * scaleValue;
-                    vec2 echo1 = head + (projected1 - head) * scaleValue;
-                    float echoDistance = segmentDistance(point, echo0, echo1);
-                    float echo = exp(-echoDistance / max(cursorSize * MC_ECHO_WIDTH, 0.00011))
-                        * (1.0 - progress) * echoActive;
-                    effectLight += mix(MOBIUS_BLUE, MOBIUS_VIOLET, railPhase)
-                        * echo * MC_ECHO_STRENGTH * pow(MC_ECHO_FALLOFF, float(echoIndex));
-                    effectOpacity = max(effectOpacity, echo * 0.15);
-                }
-            }
-        }
-
-        for (int ribIndex = 0; ribIndex < MC_RIB_COUNT; ribIndex++) {
-            float parameter = float(ribIndex) / float(MC_RIB_COUNT) * MOBIUS_TAU;
-            vec3 vertex0 = rotateXYZ(mobiusPoint(parameter, -MOBIUS_HALF_WIDTH), angle);
-            vec3 vertex1 = rotateXYZ(mobiusPoint(parameter,  MOBIUS_HALF_WIDTH), angle);
-            float depth0, depth1;
-            vec2 projected0 = projectPoint(vertex0, head, ribbonScale, MC_CAMERA_DISTANCE, depth0);
-            vec2 projected1 = projectPoint(vertex1, head, ribbonScale, MC_CAMERA_DISTANCE, depth1);
-            float meshDistance = segmentDistance(point, projected0, projected1);
-            float core = exp(-meshDistance / max(cursorSize * MC_CORE_WIDTH, 0.0001));
-            float glow = exp(-meshDistance / max(cursorSize * MC_GLOW_WIDTH, 0.00024));
-            effectLight += mix(MOBIUS_GOLD, MOBIUS_CYAN, float(ribIndex) / max(float(MC_RIB_COUNT - 1), 1.0))
-                * MC_RIB_STRENGTH * (
-                    core * MC_CORE_STRENGTH + glow * MC_GLOW_STRENGTH
-                );
-            effectOpacity = max(effectOpacity, core * 0.48 + glow * 0.10);
-        }
-
-#if MC_ENABLE_SPARKS && MC_SPARK_COUNT > 0
-        vec2 eventSeed = headPixels * 0.037 + tailPixels * 0.091;
-        for (int sparkIndex = 0; sparkIndex < MC_SPARK_COUNT; sparkIndex++) {
-            float index = float(sparkIndex);
-            float positionRandom = hash12(eventSeed + vec2(index * 11.7, index * 31.9));
-            float sideRandom = hash12(eventSeed + vec2(index * 43.1, index * 7.3));
-            vec2 sparkCenter = mix(tail, head, positionRandom)
-                + normal2d * (sideRandom - 0.5) * cursorSize * MC_SPARK_SPREAD;
-            float spark = gaussianPoint(point - sparkCenter, cursorSize * MC_SPARK_RADIUS);
-            effectLight += mix(MOBIUS_CYAN, MOBIUS_GOLD, sideRandom)
-                * spark * MC_SPARK_STRENGTH;
-            effectOpacity = max(effectOpacity, spark * 0.18);
-        }
-#endif
-    }
-
-    effectLight *= life * contentMask * MC_MASTER_BRIGHTNESS;
-    scene.rgb += effectLight;
-    scene.a = max(
-        scene.a,
-        life * contentMask * MC_ALPHA_MAX
-            * saturate(effectOpacity + luminance(effectLight) * MC_ALPHA_GAIN)
-    );
-    float cursorCoverage = insideCursor(fragCoord, iCurrentCursor);
-    scene = mix(scene, terminalColor, cursorCoverage);
-    scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderMobiusBackground(fragColor, fragCoord);
-    applyMobiusCursor(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderMobiusBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
 }

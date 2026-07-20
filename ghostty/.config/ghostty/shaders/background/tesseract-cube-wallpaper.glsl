@@ -1,3 +1,7 @@
+// BACKGROUND-ONLY WALLPAPER VARIANT: tesseract-cube
+// Procedural geometry is composited behind exact terminal foreground.
+// Pair this stage with any independently selected cursor shader.
+
 // Tesseract Cube — coordinated combined 3D background and cursor for Ghostty
 //
 // Floating nested hypercubes share color and motion with a movement-scaled 3D
@@ -311,7 +315,9 @@ void renderTesseractBackground(out vec4 fragColor, in vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = (fragCoord - 0.5 * resolution) / resolution.y;
     float narrowScale = clamp(
@@ -320,7 +326,7 @@ void renderTesseractBackground(out vec4 fragColor, in vec2 fragCoord) {
         1.0
     );
 
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < TESSERACT_OBJECT_COUNT; objectIndex++) {
@@ -375,316 +381,38 @@ void renderTesseractBackground(out vec4 fragColor, in vec2 fragCoord) {
         }
     }
 
-    fragColor = vec4(clamp(composite, 0.0, 1.0), max(terminalColor.a, sceneAlpha));
+    fragColor = vec4(
+        clamp(composite, 0.0, 1.0),
+        sceneAlpha
+    );
 }
 
 // =============================================================================
-// MATCHED CUBE CURSOR — QUANTITY, SIZE, SPEED, AND RESPONSE
+
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
 // =============================================================================
 
-#if GHOSTTY_GPU_PROFILE == TESSERACT_GPU_ECO
-#define TC_SPARK_COUNT 0
-#elif GHOSTTY_GPU_PROFILE == TESSERACT_GPU_BALANCED
-#define TC_SPARK_COUNT 2
-#elif GHOSTTY_GPU_PROFILE == TESSERACT_GPU_QUALITY
-#define TC_SPARK_COUNT 4
-#else
-#define TC_SPARK_COUNT 7
-#endif
-
-#define TC_ECHO_COUNT 2                  // quantity: 0..4
-#define TC_ENABLE_TRAIL 1
-#define TC_ENABLE_SPARKS 1
-#define TC_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
-#define TC_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-
-const float TC_EFFECT_DURATION = 0.32;
-const float TC_FADE_POWER = 1.80;
-const float TC_MIN_MOVEMENT_CELLS = 0.025;
-const float TC_GROWTH_START_CELLS = 0.08;
-const float TC_GROWTH_FULL_CELLS = 8.00;
-const float TC_MOVEMENT_RESPONSE_POWER = 1.00;
-const float TC_CONTENT_PROTECTION = 0.18;
-const float TC_CULL_RADIUS_MIN = 3.20;
-const float TC_CULL_RADIUS_MAX = 6.40;
-const float TC_MASTER_BRIGHTNESS = 1.00;
-
-const float TC_SIZE_MIN = 0.78;
-const float TC_SIZE_MAX = 1.82;
-const float TC_SIZE_PULSE = 0.11;
-const float TC_CAMERA_DISTANCE = 4.00;
-const vec3 TC_ROTATION_BASE = vec3(0.58, -0.68, 0.00);
-const vec3 TC_ROTATION_SPEED = vec3(0.24, 0.31, 0.00);
-const float TC_DIRECTION_TILT = 0.12;
-
-const float TC_EDGE_CORE_WIDTH = 0.040;
-const float TC_EDGE_GLOW_WIDTH = 0.150;
-const float TC_EDGE_CORE_STRENGTH = 0.50;
-const float TC_EDGE_GLOW_STRENGTH = 0.080;
-const float TC_NEAR_DEPTH_CENTER = 4.90;
-const float TC_NEAR_DEPTH_RANGE = 1.80;
-const float TC_NEAR_WHITE_MIX = 0.34;
-
-const float TC_ECHO_START_SCALE = 1.02;
-const float TC_ECHO_END_SCALE = 2.20;
-const float TC_ECHO_DELAY = 0.13;
-const float TC_ECHO_WIDTH = 0.050;
-const float TC_ECHO_STRENGTH = 0.17;
-const float TC_ECHO_FALLOFF = 0.72;
-const float TC_ECHO_FADE_POWER = 1.00;
-
-const float TC_TRAIL_WIDTH_MIN = 0.12;
-const float TC_TRAIL_WIDTH_MAX = 0.25;
-const float TC_TRAIL_GLOW_MULTIPLIER = 3.80;
-const float TC_TRAIL_GLOW_STRENGTH = 0.055;
-const float TC_TRAIL_CORE_STRENGTH = 0.24;
-const float TC_TRAIL_TAIL_FADE = 0.22;
-const float TC_SPARK_RADIUS = 0.075;
-const float TC_SPARK_SPREAD = 1.50;
-const float TC_SPARK_STRENGTH = 0.24;
-
-const float TC_LINK_WIDTH = 0.060;
-const float TC_LINK_GLOW_WIDTH = 0.24;
-const float TC_LINK_CORE_STRENGTH = 0.050;
-const float TC_LINK_GLOW_STRENGTH = 0.012;
-const float TC_LINK_DASH_COUNT = 18.0;
-const float TC_LINK_DASH_SPEED = 1.80;
-const float TC_LINK_SECONDARY_FALLOFF = 0.72;
-const float TC_LINK_COLOR_PHASE_STEP = 0.23;
-const float TC_LINK_ENDPOINT_GLOW = 0.085;
-
-const vec3 TC_BLUE = vec3(0.180, 0.390, 1.000);
-const vec3 TC_CYAN = vec3(0.220, 0.840, 1.000);
-const vec3 TC_VIOLET = vec3(0.650, 0.300, 1.000);
-const vec3 TC_MAGENTA = vec3(0.940, 0.220, 0.760);
-const vec3 TC_WHITE = vec3(0.970, 0.970, 1.000);
-const float TC_PI = 3.14159265359;
-
-vec2 tcCursorCenterPixels(vec4 cursorRectangle) {
-    return vec2(
-        cursorRectangle.x + cursorRectangle.z * 0.5,
-        cursorRectangle.y - cursorRectangle.w * 0.5
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
     );
-}
-
-vec2 tcScenePoint(vec2 pixelPoint) {
-    return (pixelPoint - 0.5 * iResolution.xy) / max(iResolution.y, 1.0);
-}
-
-float tcInsideCursor(vec2 point, vec4 cursorRectangle) {
-    vec2 minimumPoint = vec2(cursorRectangle.x, cursorRectangle.y - cursorRectangle.w);
-    vec2 maximumPoint = vec2(cursorRectangle.x + cursorRectangle.z, cursorRectangle.y);
-    return step(minimumPoint.x, point.x) * step(minimumPoint.y, point.y)
-        * step(point.x, maximumPoint.x) * step(point.y, maximumPoint.y);
-}
-
-void applyTesseractCubeCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
-    vec2 resolution = max(iResolution.xy, vec2(1.0));
-    vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
-    vec4 terminalColor = texture(iChannel0, uv);
-    vec2 headPixels = tcCursorCenterPixels(iCurrentCursor);
-    vec2 tailPixels = tcCursorCenterPixels(iPreviousCursor);
-    float cursorPixels = max(iCurrentCursor.z, iCurrentCursor.w);
-    float movedPixels = length(headPixels - tailPixels);
-    float age = saturate((iTime - iTimeCursorChange) / TC_EFFECT_DURATION);
-    if (
-        cursorPixels <= 0.0
-        || movedPixels <= cursorPixels * TC_MIN_MOVEMENT_CELLS
-        || age >= 1.0
-    ) return;
-
-    float movementFactor = pow(
-        smoothstep(
-            cursorPixels * TC_GROWTH_START_CELLS,
-            cursorPixels * TC_GROWTH_FULL_CELLS,
-            movedPixels
-        ),
-        TC_MOVEMENT_RESPONSE_POWER
-    );
-    float cullRadius = cursorPixels * mix(
-        TC_CULL_RADIUS_MIN,
-        TC_CULL_RADIUS_MAX,
-        movementFactor
-    );
-    bool nearCursor = all(greaterThanEqual(
-        fragCoord,
-        min(headPixels, tailPixels) - vec2(cullRadius)
-    )) && all(lessThanEqual(
-        fragCoord,
-        max(headPixels, tailPixels) + vec2(cullRadius)
-    ));
-
-    float linkCull = max(cursorPixels * 1.5, 8.0);
-    bool nearAnyLink = false;
-#if TC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < TESSERACT_OBJECT_COUNT; linkIndex++) {
-        if (TC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = tesseractUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        nearAnyLink = nearAnyLink || linkPixelDistance <= linkCull;
-    }
-#endif
-    if (!nearCursor && !nearAnyLink) return;
-
-    vec2 point = tcScenePoint(fragCoord);
-    vec2 head = tcScenePoint(headPixels);
-    vec2 tail = tcScenePoint(tailPixels);
-    vec2 movement = head - tail;
-    vec2 direction = movement / max(length(movement), 0.000001);
-    vec2 normal = vec2(-direction.y, direction.x);
-    float cursorSize = cursorPixels / resolution.y;
-    float easedAge = 1.0 - pow(1.0 - age, 3.0);
-    float life = pow(1.0 - age, TC_FADE_POWER);
-    float contentMask = mix(TC_CONTENT_PROTECTION, 1.0, backgroundCellMask(terminalColor));
-
-#if TC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < TESSERACT_OBJECT_COUNT; linkIndex++) {
-        if (TC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = tesseractUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        if (linkPixelDistance > linkCull) continue;
-
-        vec2 linkObject = tcScenePoint(linkObjectPixels);
-        float linkDistance = segmentDistance(point, head, linkObject);
-        float linkAlong = segmentParameter(point, head, linkObject);
-        float linkStrength = pow(TC_LINK_SECONDARY_FALLOFF, linkIdentity);
-        float linkColorMix = saturate(
-            linkAlong * 0.78 + linkIdentity * TC_LINK_COLOR_PHASE_STEP
-        );
-        float dash = 0.64 + 0.36 * sin(
-            linkAlong * TC_LINK_DASH_COUNT
-            - iTime * TC_LINK_DASH_SPEED
-            + linkIdentity * 2.17
-        );
-        float linkCore = exp(
-            -linkDistance / max(cursorSize * TC_LINK_WIDTH, 0.0002)
-        );
-        float linkGlow = exp(
-            -linkDistance / max(cursorSize * TC_LINK_GLOW_WIDTH, 0.0005)
-        );
-        vec3 linkColor = mix(TC_VIOLET, TC_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
-            linkCore * TC_LINK_CORE_STRENGTH
-            + linkGlow * TC_LINK_GLOW_STRENGTH
-        );
-        float endpoint = gaussianPoint(
-            point - linkObject,
-            cursorSize * 0.70
-        );
-        vec3 endpointColor = mix(
-            TC_VIOLET,
-            TC_CYAN,
-            saturate(0.78 + linkIdentity * TC_LINK_COLOR_PHASE_STEP)
-        );
-        scene.rgb += endpointColor * endpoint * linkStrength * life
-            * TC_LINK_ENDPOINT_GLOW * contentMask;
-    }
-#endif
-
-    if (nearCursor) {
-#if TC_ENABLE_TRAIL
-        float trailDistance = segmentDistance(point, tail, head);
-        float along = segmentParameter(point, tail, head);
-        float trailWidth = cursorSize * mix(
-            TC_TRAIL_WIDTH_MIN,
-            TC_TRAIL_WIDTH_MAX,
-            movementFactor
-        );
-        float trailCore = exp(-trailDistance / max(trailWidth, 0.0002))
-            * smoothstep(0.0, TC_TRAIL_TAIL_FADE, along) * life;
-        float trailGlow = exp(
-            -trailDistance / max(trailWidth * TC_TRAIL_GLOW_MULTIPLIER, 0.0004)
-        ) * smoothstep(0.0, TC_TRAIL_TAIL_FADE * 0.82, along) * life;
-        vec3 trailColor = mix(TC_VIOLET, TC_CYAN, along);
-        trailColor = mix(trailColor, TC_MAGENTA, smoothstep(0.76, 1.0, along) * 0.35);
-        scene.rgb += trailColor * trailGlow * TC_TRAIL_GLOW_STRENGTH * contentMask;
-        scene.rgb += trailColor * trailCore * TC_TRAIL_CORE_STRENGTH * contentMask;
-#endif
-
-        vec2 projected[8];
-        float depth[8];
-        float cubeHalf = cursorSize * mix(TC_SIZE_MIN, TC_SIZE_MAX, movementFactor)
-            * (1.0 + TC_SIZE_PULSE * sin(age * TC_PI));
-        vec3 angle = TC_ROTATION_BASE + iTime * TC_ROTATION_SPEED;
-        angle.z += atan(direction.y, direction.x) * TC_DIRECTION_TILT;
-        for (int vertexIndex = 0; vertexIndex < 8; vertexIndex++) {
-            vec3 vertex = vec3(
-                (vertexIndex & 1) != 0 ? 1.0 : -1.0,
-                (vertexIndex & 2) != 0 ? 1.0 : -1.0,
-                (vertexIndex & 4) != 0 ? 1.0 : -1.0
-            );
-            vertex = rotateZ(rotateY(rotateX(vertex, angle.x), angle.y), angle.z);
-            depth[vertexIndex] = TC_CAMERA_DISTANCE - vertex.z;
-            projected[vertexIndex] = head
-                + vertex.xy * cubeHalf * TC_CAMERA_DISTANCE / depth[vertexIndex];
-        }
-
-        const int edgeA[12] = int[12](0,1,3,2, 4,5,7,6, 0,1,2,3);
-        const int edgeB[12] = int[12](1,3,2,0, 5,7,6,4, 4,5,6,7);
-        vec3 cubeLight = vec3(0.0);
-        for (int edgeIndex = 0; edgeIndex < 12; edgeIndex++) {
-            int first = edgeA[edgeIndex], second = edgeB[edgeIndex];
-            float nearFactor = saturate(
-                (TC_NEAR_DEPTH_CENTER - 0.5 * (depth[first] + depth[second]))
-                    / TC_NEAR_DEPTH_RANGE
-            );
-            float edgeDistance = segmentDistance(point, projected[first], projected[second]);
-            float core = exp(-edgeDistance / max(cursorSize * TC_EDGE_CORE_WIDTH, 0.0001));
-            float glow = exp(-edgeDistance / max(cursorSize * TC_EDGE_GLOW_WIDTH, 0.00025));
-            vec3 edgeColor = mix(TC_VIOLET, TC_CYAN, nearFactor);
-            edgeColor = mix(edgeColor, TC_WHITE, nearFactor * TC_NEAR_WHITE_MIX);
-            cubeLight += edgeColor * (
-                core * TC_EDGE_CORE_STRENGTH + glow * TC_EDGE_GLOW_STRENGTH
-            );
-
-            for (int echoIndex = 0; echoIndex < TC_ECHO_COUNT; echoIndex++) {
-                float delay = float(echoIndex) * TC_ECHO_DELAY;
-                float progress = saturate((easedAge - delay) / max(1.0 - delay, 0.001));
-                float echoActive = step(delay, easedAge);
-                float scaleValue = mix(TC_ECHO_START_SCALE, TC_ECHO_END_SCALE, progress);
-                vec2 echoFirst = head + (projected[first] - head) * scaleValue;
-                vec2 echoSecond = head + (projected[second] - head) * scaleValue;
-                float echoDistance = segmentDistance(point, echoFirst, echoSecond);
-                float echo = exp(-echoDistance / max(cursorSize * TC_ECHO_WIDTH, 0.00012))
-                    * pow(1.0 - progress, TC_ECHO_FADE_POWER) * echoActive;
-                cubeLight += mix(TC_BLUE, TC_VIOLET, nearFactor) * echo
-                    * TC_ECHO_STRENGTH * pow(TC_ECHO_FALLOFF, float(echoIndex));
-            }
-        }
-        scene.rgb += cubeLight * life * contentMask * TC_MASTER_BRIGHTNESS;
-
-#if TC_ENABLE_SPARKS && TC_SPARK_COUNT > 0
-        vec2 eventSeed = headPixels * 0.037 + tailPixels * 0.091;
-        for (int sparkIndex = 0; sparkIndex < TC_SPARK_COUNT; sparkIndex++) {
-            float index = float(sparkIndex);
-            float positionRandom = hash12(eventSeed + vec2(index * 11.7, index * 31.9));
-            float sideRandom = hash12(eventSeed + vec2(index * 43.1, index * 7.3));
-            vec2 sparkCenter = mix(tail, head, positionRandom)
-                + normal * (sideRandom - 0.5) * cursorSize * TC_SPARK_SPREAD;
-            float spark = gaussianPoint(point - sparkCenter, cursorSize * TC_SPARK_RADIUS) * life;
-            scene.rgb += mix(TC_CYAN, TC_MAGENTA, sideRandom)
-                * spark * TC_SPARK_STRENGTH * contentMask;
-        }
-#endif
-    }
-
-    float cursorCoverage = tcInsideCursor(fragCoord, iCurrentCursor);
-    scene = mix(scene, terminalColor, cursorCoverage);
-    scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderTesseractBackground(fragColor, fragCoord);
-    applyTesseractCubeCursor(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderTesseractBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
 }

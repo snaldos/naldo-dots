@@ -1,3 +1,7 @@
+// BACKGROUND-ONLY WALLPAPER VARIANT: orbital-orrery
+// Procedural geometry is composited behind exact terminal foreground.
+// Pair this stage with any independently selected cursor shader.
+
 // Orbital Orrery — coordinated floating planets and miniature cursor system
 //
 // Wandering ringed planets share their palette with a movement-scaled cursor
@@ -394,12 +398,14 @@ void renderOrbitalBackground(out vec4 fragColor, in vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = (fragCoord - 0.5 * resolution) / resolution.y;
     float narrowScale = clamp(aspect / ORB_NARROW_REFERENCE_ASPECT, ORB_NARROW_MIN_SCALE, 1.0);
 
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < ORB_OBJECT_COUNT; objectIndex++) {
@@ -449,406 +455,38 @@ void renderOrbitalBackground(out vec4 fragColor, in vec2 fragCoord) {
         }
     }
 
-    fragColor = vec4(clamp(composite, 0.0, 1.0), max(terminalColor.a, sceneAlpha));
+    fragColor = vec4(
+        clamp(composite, 0.0, 1.0),
+        sceneAlpha
+    );
 }
 
 // =============================================================================
-// MATCHED ORRERY CURSOR — PLANET, RINGS, MOONS, QUANTITIES, AND RESPONSE
+
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
 // =============================================================================
 
-#if GHOSTTY_GPU_PROFILE == ORB_GPU_ECO
-#define OC_STAR_COUNT 0
-#elif GHOSTTY_GPU_PROFILE == ORB_GPU_BALANCED
-#define OC_STAR_COUNT 2
-#elif GHOSTTY_GPU_PROFILE == ORB_GPU_QUALITY
-#define OC_STAR_COUNT 4
-#else
-#define OC_STAR_COUNT 7
-#endif
-
-#define OC_RING_COUNT 2                  // quantity around cursor: 0..4
-#define OC_MOON_COUNT 2                  // quantity around cursor: 0..4
-#define OC_PULSE_COUNT 2                 // expanding orbital echoes: 0..4
-#define OC_ENABLE_TRAIL 1
-#define OC_ENABLE_STARS 1
-#define OC_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
-#define OC_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-
-const float OC_EFFECT_DURATION = 0.38;
-const float OC_FADE_POWER = 1.65;
-const float OC_MIN_MOVEMENT_CELLS = 0.025;
-const float OC_GROWTH_START_CELLS = 0.08;
-const float OC_GROWTH_FULL_CELLS = 8.00;
-const float OC_MOVEMENT_RESPONSE_POWER = 1.00;
-const float OC_CONTENT_PROTECTION = 0.18;
-const float OC_CULL_RADIUS_MIN = 4.00;
-const float OC_CULL_RADIUS_MAX = 8.20;
-const float OC_MASTER_BRIGHTNESS = 1.00;
-
-const float OC_PLANET_RADIUS_MIN = 0.72;
-const float OC_PLANET_RADIUS_MAX = 1.62;
-const float OC_SIZE_PULSE = 0.10;
-const vec3 OC_LIGHT_DIRECTION = vec3(-0.62, 0.72, 1.25);
-const float OC_AMBIENT_LIGHT = 0.18;
-const float OC_DIFFUSE_LIGHT = 0.82;
-const float OC_FRESNEL_POWER = 2.00;
-const float OC_FRESNEL_STRENGTH = 0.34;
-const float OC_SPECULAR_POWER = 34.0;
-const float OC_SPECULAR_STRENGTH = 0.62;
-const float OC_BODY_OPACITY = 0.58;
-const float OC_SURFACE_BAND_COUNT = 6.0;
-const float OC_SURFACE_SPIN_SPEED = 1.25;
-const float OC_SURFACE_BAND_STRENGTH = 0.28;
-
-const float OC_RING_RADIUS_START = 1.34;
-const float OC_RING_RADIUS_SPACING = 0.28;
-const float OC_RING_COMPRESSION = 0.34;
-const float OC_RING_ROLL = -0.38;
-const float OC_RING_ROLL_SPEED = 0.72;
-const float OC_RING_WIDTH = 0.028;
-const float OC_RING_GLOW_WIDTH = 0.090;
-const float OC_RING_CORE_STRENGTH = 0.40;
-const float OC_RING_GLOW_STRENGTH = 0.085;
-const float OC_RING_STRENGTH_FALLOFF = 0.76;
-const float OC_RING_DASH_COUNT = 9.0;
-const float OC_RING_DASH_SPEED = 1.70;
-const float OC_RING_DASH_STRENGTH = 0.28;
-
-const float OC_MOON_ORBIT_RADIUS = 1.78;
-const float OC_MOON_ORBIT_SPACING = 0.34;
-const float OC_MOON_ORBIT_SPEED = 2.10;
-const float OC_MOON_ORBIT_SPEED_STEP = 0.55;
-const float OC_MOON_RADIUS = 0.13;
-const float OC_MOON_RADIUS_FALLOFF = 0.82;
-const float OC_MOON_BODY_STRENGTH = 0.72;
-const float OC_MOON_GLOW_RADIUS = 2.70;
-const float OC_MOON_GLOW_STRENGTH = 0.12;
-
-const float OC_PULSE_START_SCALE = 1.04;
-const float OC_PULSE_END_SCALE = 2.55;
-const float OC_PULSE_DELAY = 0.14;
-const float OC_PULSE_WIDTH = 0.030;
-const float OC_PULSE_GLOW_WIDTH = 0.095;
-const float OC_PULSE_STRENGTH = 0.18;
-const float OC_PULSE_FALLOFF = 0.68;
-
-const float OC_TRAIL_WIDTH_MIN = 0.12;
-const float OC_TRAIL_WIDTH_MAX = 0.26;
-const float OC_TRAIL_GLOW_MULTIPLIER = 4.20;
-const float OC_TRAIL_GLOW_STRENGTH = 0.052;
-const float OC_TRAIL_CORE_STRENGTH = 0.22;
-const float OC_TRAIL_TAIL_FADE = 0.20;
-const float OC_STAR_RADIUS = 0.070;
-const float OC_STAR_SPREAD = 1.80;
-const float OC_STAR_STRENGTH = 0.24;
-
-const float OC_LINK_WIDTH = 0.060;
-const float OC_LINK_GLOW_WIDTH = 0.25;
-const float OC_LINK_CORE_STRENGTH = 0.045;
-const float OC_LINK_GLOW_STRENGTH = 0.011;
-const float OC_LINK_DASH_COUNT = 20.0;
-const float OC_LINK_DASH_SPEED = 1.55;
-const float OC_LINK_SECONDARY_FALLOFF = 0.72;
-const float OC_LINK_COLOR_PHASE_STEP = 0.23;
-const float OC_LINK_ENDPOINT_GLOW = 0.085;
-
-const vec3 OC_VOID = vec3(0.010, 0.018, 0.070);
-const vec3 OC_BLUE = vec3(0.090, 0.340, 0.960);
-const vec3 OC_CYAN = vec3(0.140, 0.860, 1.000);
-const vec3 OC_TEAL = vec3(0.100, 0.740, 0.650);
-const vec3 OC_VIOLET = vec3(0.600, 0.240, 1.000);
-const vec3 OC_ROSE = vec3(0.950, 0.220, 0.620);
-const vec3 OC_GOLD = vec3(1.000, 0.710, 0.270);
-const vec3 OC_WHITE = vec3(0.970, 0.980, 1.000);
-const float OC_PI = 3.14159265359;
-const float OC_TAU = 6.28318530718;
-
-vec2 ocCursorCenterPixels(vec4 cursorRectangle) {
-    return vec2(
-        cursorRectangle.x + cursorRectangle.z * 0.5,
-        cursorRectangle.y - cursorRectangle.w * 0.5
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
     );
-}
-
-vec2 ocScenePoint(vec2 pixelPoint) {
-    return (pixelPoint - 0.5 * iResolution.xy) / max(iResolution.y, 1.0);
-}
-
-float ocInsideCursor(vec2 point, vec4 cursorRectangle) {
-    vec2 minimumPoint = vec2(cursorRectangle.x, cursorRectangle.y - cursorRectangle.w);
-    vec2 maximumPoint = vec2(cursorRectangle.x + cursorRectangle.z, cursorRectangle.y);
-    return step(minimumPoint.x, point.x) * step(minimumPoint.y, point.y)
-        * step(point.x, maximumPoint.x) * step(point.y, maximumPoint.y);
-}
-
-void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
-    vec2 resolution = max(iResolution.xy, vec2(1.0));
-    vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
-    vec4 terminalColor = texture(iChannel0, uv);
-    vec2 headPixels = ocCursorCenterPixels(iCurrentCursor);
-    vec2 tailPixels = ocCursorCenterPixels(iPreviousCursor);
-    float cursorPixels = max(iCurrentCursor.z, iCurrentCursor.w);
-    float movedPixels = length(headPixels - tailPixels);
-    float age = saturate((iTime - iTimeCursorChange) / OC_EFFECT_DURATION);
-    if (
-        cursorPixels <= 0.0
-        || movedPixels <= cursorPixels * OC_MIN_MOVEMENT_CELLS
-        || age >= 1.0
-    ) return;
-
-    float movementFactor = pow(
-        smoothstep(
-            cursorPixels * OC_GROWTH_START_CELLS,
-            cursorPixels * OC_GROWTH_FULL_CELLS,
-            movedPixels
-        ),
-        OC_MOVEMENT_RESPONSE_POWER
-    );
-    float cullRadius = cursorPixels * mix(
-        OC_CULL_RADIUS_MIN,
-        OC_CULL_RADIUS_MAX,
-        movementFactor
-    );
-    bool nearCursor = all(greaterThanEqual(
-        fragCoord,
-        min(headPixels, tailPixels) - vec2(cullRadius)
-    )) && all(lessThanEqual(
-        fragCoord,
-        max(headPixels, tailPixels) + vec2(cullRadius)
-    ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
-    bool nearAnyLink = false;
-#if OC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < ORB_OBJECT_COUNT; linkIndex++) {
-        if (OC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = orbUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        nearAnyLink = nearAnyLink || linkPixelDistance <= linkCull;
-    }
-#endif
-    if (!nearCursor && !nearAnyLink) return;
-
-    vec2 point = ocScenePoint(fragCoord);
-    vec2 head = ocScenePoint(headPixels);
-    vec2 tail = ocScenePoint(tailPixels);
-    vec2 movement = head - tail;
-    vec2 direction = movement / max(length(movement), 0.000001);
-    vec2 normal2d = vec2(-direction.y, direction.x);
-    float cursorSize = cursorPixels / resolution.y;
-    float easedAge = 1.0 - pow(1.0 - age, 3.0);
-    float life = pow(1.0 - age, OC_FADE_POWER);
-    float contentMask = mix(OC_CONTENT_PROTECTION, 1.0, backgroundCellMask(terminalColor));
-
-#if OC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < ORB_OBJECT_COUNT; linkIndex++) {
-        if (OC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = orbUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        if (linkPixelDistance > linkCull) continue;
-
-        vec2 linkObject = ocScenePoint(linkObjectPixels);
-        float linkDistance = segmentDistance(point, head, linkObject);
-        float linkAlong = segmentParameter(point, head, linkObject);
-        float linkStrength = pow(OC_LINK_SECONDARY_FALLOFF, linkIdentity);
-        float linkColorMix = saturate(
-            linkAlong * 0.78 + linkIdentity * OC_LINK_COLOR_PHASE_STEP
-        );
-        float dash = 0.64 + 0.36 * sin(
-            linkAlong * OC_LINK_DASH_COUNT
-            - iTime * OC_LINK_DASH_SPEED
-            + linkIdentity * 2.17
-        );
-        float linkCore = exp(
-            -linkDistance / max(cursorSize * OC_LINK_WIDTH, 0.0002)
-        );
-        float linkGlow = exp(
-            -linkDistance / max(cursorSize * OC_LINK_GLOW_WIDTH, 0.0005)
-        );
-        vec3 linkColor = mix(OC_GOLD, OC_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
-            linkCore * OC_LINK_CORE_STRENGTH
-            + linkGlow * OC_LINK_GLOW_STRENGTH
-        );
-        float endpoint = gaussianPoint(
-            point - linkObject,
-            cursorSize * 0.74
-        );
-        vec3 endpointColor = mix(
-            OC_GOLD,
-            OC_CYAN,
-            saturate(0.78 + linkIdentity * OC_LINK_COLOR_PHASE_STEP)
-        );
-        scene.rgb += endpointColor * endpoint * linkStrength * life
-            * OC_LINK_ENDPOINT_GLOW * contentMask;
-    }
-#endif
-
-    if (nearCursor) {
-#if OC_ENABLE_TRAIL
-        float trailDistance = segmentDistance(point, tail, head);
-        float along = segmentParameter(point, tail, head);
-        float trailWidth = cursorSize * mix(
-            OC_TRAIL_WIDTH_MIN,
-            OC_TRAIL_WIDTH_MAX,
-            movementFactor
-        );
-        float trailCore = exp(-trailDistance / max(trailWidth, 0.0002))
-            * smoothstep(0.0, OC_TRAIL_TAIL_FADE, along) * life;
-        float trailGlow = exp(
-            -trailDistance / max(trailWidth * OC_TRAIL_GLOW_MULTIPLIER, 0.0004)
-        ) * smoothstep(0.0, OC_TRAIL_TAIL_FADE * 0.84, along) * life;
-        vec3 trailColor = mix(OC_VIOLET, OC_CYAN, along);
-        trailColor = mix(trailColor, OC_GOLD, smoothstep(0.76, 1.0, along) * 0.48);
-        scene.rgb += trailColor * trailGlow * OC_TRAIL_GLOW_STRENGTH * contentMask;
-        scene.rgb += trailColor * trailCore * OC_TRAIL_CORE_STRENGTH * contentMask;
-#endif
-
-        float planetRadius = cursorSize * mix(
-            OC_PLANET_RADIUS_MIN,
-            OC_PLANET_RADIUS_MAX,
-            movementFactor
-        ) * (1.0 + OC_SIZE_PULSE * sin(age * OC_PI));
-        vec2 local = (point - head) / max(planetRadius, 0.0001);
-        float radial = length(local);
-        float sphereAa = max(fwidth(radial), 0.003);
-        float sphereCoverage = 1.0 - smoothstep(1.0 - sphereAa, 1.0 + sphereAa, radial);
-        vec3 cursorLight = vec3(0.0);
-
-        if (radial < 1.0 + sphereAa * 2.0) {
-            float z = sqrt(max(1.0 - dot(local, local), 0.0));
-            vec3 sphereNormal = normalize(vec3(local, z));
-            vec3 lightDirection = normalize(OC_LIGHT_DIRECTION);
-            float diffuse = OC_AMBIENT_LIGHT
-                + OC_DIFFUSE_LIGHT * max(dot(sphereNormal, lightDirection), 0.0);
-            float fresnel = pow(1.0 - max(sphereNormal.z, 0.0), OC_FRESNEL_POWER);
-            float specular = pow(
-                max(dot(reflect(-lightDirection, sphereNormal), vec3(0.0, 0.0, 1.0)), 0.0),
-                OC_SPECULAR_POWER
-            );
-            float longitude = atan(sphereNormal.z, sphereNormal.x)
-                + iTime * OC_SURFACE_SPIN_SPEED;
-            float latitude = asin(clamp(sphereNormal.y, -1.0, 1.0));
-            float bands = 0.5 + 0.5 * sin(
-                latitude * OC_SURFACE_BAND_COUNT + sin(longitude * 3.0) * 0.72
-            );
-            vec3 bodyColor = mix(OC_BLUE, OC_TEAL, bands * OC_SURFACE_BAND_STRENGTH + 0.24);
-            bodyColor = mix(bodyColor, OC_VIOLET, (1.0 - diffuse) * 0.42);
-            bodyColor *= mix(0.46, 1.08, diffuse);
-            scene.rgb = mix(
-                scene.rgb,
-                bodyColor,
-                sphereCoverage * OC_BODY_OPACITY * life * contentMask
-            );
-            cursorLight += mix(OC_CYAN, OC_VIOLET, 0.38)
-                * fresnel * OC_FRESNEL_STRENGTH * sphereCoverage;
-            cursorLight += OC_WHITE * specular * OC_SPECULAR_STRENGTH * sphereCoverage;
-        }
-
-        float ringRoll = OC_RING_ROLL + iTime * OC_RING_ROLL_SPEED;
-        vec2 ringLocal = rotate2d((point - head) / max(planetRadius, 0.0001), -ringRoll);
-        vec2 ellipsePoint = vec2(ringLocal.x, ringLocal.y / max(OC_RING_COMPRESSION, 0.04));
-        float ellipseRadius = length(ellipsePoint);
-        float ellipseAngle = atan(ellipsePoint.y, ellipsePoint.x);
-        float frontHalf = step(0.0, ringLocal.y);
-        for (int ringIndex = 0; ringIndex < OC_RING_COUNT; ringIndex++) {
-            float index = float(ringIndex);
-            float targetRadius = OC_RING_RADIUS_START + index * OC_RING_RADIUS_SPACING;
-            float ringDistance = abs(ellipseRadius - targetRadius);
-            float core = exp(-ringDistance / max(OC_RING_WIDTH, 0.001));
-            float glow = exp(-ringDistance / max(OC_RING_GLOW_WIDTH, 0.002));
-            float dash = mix(
-                1.0,
-                0.5 + 0.5 * sin(
-                    ellipseAngle * OC_RING_DASH_COUNT
-                    - iTime * OC_RING_DASH_SPEED * (1.0 + index * 0.17)
-                ),
-                OC_RING_DASH_STRENGTH
-            );
-            float occlusion = mix(1.0, frontHalf, sphereCoverage);
-            float ringStrength = pow(OC_RING_STRENGTH_FALLOFF, index);
-            vec3 ringColor = mix(OC_GOLD, OC_CYAN, index / max(float(OC_RING_COUNT - 1), 1.0));
-            cursorLight += ringColor * occlusion * dash * ringStrength * (
-                core * OC_RING_CORE_STRENGTH + glow * OC_RING_GLOW_STRENGTH
-            );
-        }
-
-        for (int moonIndex = 0; moonIndex < OC_MOON_COUNT; moonIndex++) {
-            float index = float(moonIndex);
-            float orbitRadius = OC_MOON_ORBIT_RADIUS + index * OC_MOON_ORBIT_SPACING;
-            float orbitAngle = iTime * (
-                OC_MOON_ORBIT_SPEED + index * OC_MOON_ORBIT_SPEED_STEP
-            ) + index * OC_TAU / max(float(OC_MOON_COUNT), 1.0);
-            float orbitDepth = sin(orbitAngle);
-            vec2 orbitPlane = vec2(
-                cos(orbitAngle) * orbitRadius,
-                orbitDepth * orbitRadius * OC_RING_COMPRESSION
-            );
-            vec2 moonCenter = head + rotate2d(orbitPlane, ringRoll) * planetRadius;
-            float moonRadius = planetRadius * OC_MOON_RADIUS * pow(OC_MOON_RADIUS_FALLOFF, index);
-            vec2 moonDelta = point - moonCenter;
-            float moonCoverage = 1.0 - smoothstep(
-                moonRadius * 0.86,
-                moonRadius * 1.10,
-                length(moonDelta)
-            );
-            float behind = 1.0 - step(0.0, orbitDepth);
-            float moonOcclusion = 1.0 - behind * sphereCoverage;
-            float moonGlow = gaussianPoint(moonDelta, moonRadius * OC_MOON_GLOW_RADIUS);
-            vec3 moonColor = mix(OC_WHITE, OC_CYAN, index * 0.28);
-            cursorLight += moonColor * moonOcclusion * (
-                moonCoverage * OC_MOON_BODY_STRENGTH
-                + moonGlow * OC_MOON_GLOW_STRENGTH
-            );
-        }
-
-        for (int pulseIndex = 0; pulseIndex < OC_PULSE_COUNT; pulseIndex++) {
-            float index = float(pulseIndex);
-            float delay = index * OC_PULSE_DELAY;
-            float progress = saturate((easedAge - delay) / max(1.0 - delay, 0.001));
-            float pulseActive = step(delay, easedAge);
-            float pulseScale = mix(OC_PULSE_START_SCALE, OC_PULSE_END_SCALE, progress);
-            float pulseDistance = abs(ellipseRadius - pulseScale);
-            float core = exp(-pulseDistance / max(OC_PULSE_WIDTH, 0.001));
-            float glow = exp(-pulseDistance / max(OC_PULSE_GLOW_WIDTH, 0.002));
-            cursorLight += mix(OC_CYAN, OC_VIOLET, index * 0.35)
-                * (core + glow * 0.32) * (1.0 - progress) * pulseActive
-                * OC_PULSE_STRENGTH * pow(OC_PULSE_FALLOFF, index);
-        }
-
-        scene.rgb += cursorLight * life * contentMask * OC_MASTER_BRIGHTNESS;
-
-#if OC_ENABLE_STARS && OC_STAR_COUNT > 0
-        vec2 eventSeed = headPixels * 0.037 + tailPixels * 0.091;
-        for (int starIndex = 0; starIndex < OC_STAR_COUNT; starIndex++) {
-            float index = float(starIndex);
-            float positionRandom = hash12(eventSeed + vec2(index * 11.7, index * 31.9));
-            float sideRandom = hash12(eventSeed + vec2(index * 43.1, index * 7.3));
-            vec2 starCenter = mix(tail, head, positionRandom)
-                + normal2d * (sideRandom - 0.5) * cursorSize * OC_STAR_SPREAD;
-            float star = gaussianPoint(point - starCenter, cursorSize * OC_STAR_RADIUS) * life;
-            scene.rgb += mix(OC_CYAN, OC_GOLD, sideRandom)
-                * star * OC_STAR_STRENGTH * contentMask;
-        }
-#endif
-    }
-
-    float cursorCoverage = ocInsideCursor(fragCoord, iCurrentCursor);
-    scene = mix(scene, terminalColor, cursorCoverage);
-    scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderOrbitalBackground(fragColor, fragCoord);
-    applyOrbitalOrreryCursor(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderOrbitalBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
 }

@@ -1,3 +1,7 @@
+// BACKGROUND-ONLY WALLPAPER VARIANT: gemstone-diamond
+// Procedural geometry is composited behind exact terminal foreground.
+// Pair this stage with any independently selected cursor shader.
+
 // Gemstone Diamond — coordinated faceted background and cursor for Ghostty
 //
 // Floating solid gemstones share their palette with a movement-scaled faceted
@@ -356,12 +360,14 @@ void renderGemstoneBackground(out vec4 fragColor, in vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = (fragCoord - 0.5 * resolution) / resolution.y;
     float narrowScale = clamp(aspect / GEM_NARROW_REFERENCE_ASPECT, GEM_NARROW_MIN_SCALE, 1.0);
 
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < GEM_OBJECT_COUNT; objectIndex++) {
@@ -411,365 +417,38 @@ void renderGemstoneBackground(out vec4 fragColor, in vec2 fragCoord) {
         }
     }
 
-    fragColor = vec4(clamp(composite, 0.0, 1.0), max(terminalColor.a, sceneAlpha));
+    fragColor = vec4(
+        clamp(composite, 0.0, 1.0),
+        sceneAlpha
+    );
 }
 
 // =============================================================================
-// MATCHED FACETED DIAMOND CURSOR — QUANTITY, SIZE, SPEED, AND RESPONSE
+
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
 // =============================================================================
 
-#if GHOSTTY_GPU_PROFILE == GEM_GPU_ECO
-#define GD_SPARK_COUNT 0
-#elif GHOSTTY_GPU_PROFILE == GEM_GPU_BALANCED
-#define GD_SPARK_COUNT 2
-#elif GHOSTTY_GPU_PROFILE == GEM_GPU_QUALITY
-#define GD_SPARK_COUNT 4
-#else
-#define GD_SPARK_COUNT 7
-#endif
-
-#define GD_ECHO_COUNT 2                  // quantity: 0..4
-#define GD_ENABLE_TRAIL 1
-#define GD_ENABLE_SPARKS 1
-#define GD_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
-#define GD_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-#define GD_ENABLE_FACET_FILL 1
-
-const float GD_EFFECT_DURATION = 0.34;
-const float GD_FADE_POWER = 1.75;
-const float GD_MIN_MOVEMENT_CELLS = 0.025;
-const float GD_GROWTH_START_CELLS = 0.08;
-const float GD_GROWTH_FULL_CELLS = 8.00;
-const float GD_MOVEMENT_RESPONSE_POWER = 1.00;
-const float GD_CONTENT_PROTECTION = 0.18;
-const float GD_CULL_RADIUS_MIN = 3.50;
-const float GD_CULL_RADIUS_MAX = 6.80;
-const float GD_MASTER_BRIGHTNESS = 1.00;
-
-const float GD_SIZE_MIN = 1.00;
-const float GD_SIZE_MAX = 2.18;
-const float GD_SIZE_PULSE = 0.12;
-const vec3 GD_AXIS_SCALE = vec3(1.00, 1.18, 0.92);
-const float GD_CAMERA_DISTANCE = 3.90;
-const vec3 GD_ROTATION_BASE = vec3(0.42, -0.58, 0.00);
-const vec3 GD_ROTATION_SPEED = vec3(0.72, 0.93, 0.20);
-const float GD_DIRECTION_TILT = 0.22;
-
-const float GD_FACE_OPACITY = 0.22;
-const float GD_FACE_AMBIENT = 0.24;
-const float GD_FACE_DIFFUSE = 0.76;
-const vec3 GD_LIGHT_DIRECTION = vec3(-0.62, 0.76, 1.20);
-const float GD_EDGE_CORE_WIDTH = 0.042;
-const float GD_EDGE_GLOW_WIDTH = 0.170;
-const float GD_EDGE_CORE_STRENGTH = 0.52;
-const float GD_EDGE_GLOW_STRENGTH = 0.080;
-const float GD_NEAR_DEPTH_CENTER = 4.80;
-const float GD_NEAR_DEPTH_RANGE = 1.90;
-const float GD_NEAR_WHITE_MIX = 0.38;
-
-const float GD_ECHO_START_SCALE = 1.04;
-const float GD_ECHO_END_SCALE = 2.28;
-const float GD_ECHO_DELAY = 0.14;
-const float GD_ECHO_WIDTH = 0.050;
-const float GD_ECHO_STRENGTH = 0.18;
-const float GD_ECHO_FALLOFF = 0.70;
-const float GD_ECHO_FADE_POWER = 1.00;
-
-const float GD_TRAIL_WIDTH_MIN = 0.11;
-const float GD_TRAIL_WIDTH_MAX = 0.24;
-const float GD_TRAIL_GLOW_MULTIPLIER = 4.00;
-const float GD_TRAIL_GLOW_STRENGTH = 0.055;
-const float GD_TRAIL_CORE_STRENGTH = 0.24;
-const float GD_TRAIL_TAIL_FADE = 0.20;
-const float GD_SPARK_RADIUS = 0.075;
-const float GD_SPARK_SPREAD = 1.60;
-const float GD_SPARK_STRENGTH = 0.25;
-
-const float GD_LINK_WIDTH = 0.060;
-const float GD_LINK_GLOW_WIDTH = 0.24;
-const float GD_LINK_CORE_STRENGTH = 0.050;
-const float GD_LINK_GLOW_STRENGTH = 0.012;
-const float GD_LINK_DASH_COUNT = 16.0;
-const float GD_LINK_DASH_SPEED = 1.65;
-const float GD_LINK_SECONDARY_FALLOFF = 0.72;
-const float GD_LINK_COLOR_PHASE_STEP = 0.23;
-const float GD_LINK_ENDPOINT_GLOW = 0.090;
-
-const vec3 GD_DEEP = vec3(0.060, 0.030, 0.220);
-const vec3 GD_BLUE = vec3(0.150, 0.340, 1.000);
-const vec3 GD_CYAN = vec3(0.150, 0.880, 1.000);
-const vec3 GD_VIOLET = vec3(0.680, 0.260, 1.000);
-const vec3 GD_ROSE = vec3(0.980, 0.220, 0.650);
-const vec3 GD_WHITE = vec3(0.980, 0.960, 1.000);
-const float GD_PI = 3.14159265359;
-
-vec2 gdCursorCenterPixels(vec4 cursorRectangle) {
-    return vec2(
-        cursorRectangle.x + cursorRectangle.z * 0.5,
-        cursorRectangle.y - cursorRectangle.w * 0.5
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
     );
-}
-
-vec2 gdScenePoint(vec2 pixelPoint) {
-    return (pixelPoint - 0.5 * iResolution.xy) / max(iResolution.y, 1.0);
-}
-
-float gdInsideCursor(vec2 point, vec4 cursorRectangle) {
-    vec2 minimumPoint = vec2(cursorRectangle.x, cursorRectangle.y - cursorRectangle.w);
-    vec2 maximumPoint = vec2(cursorRectangle.x + cursorRectangle.z, cursorRectangle.y);
-    return step(minimumPoint.x, point.x) * step(minimumPoint.y, point.y)
-        * step(point.x, maximumPoint.x) * step(point.y, maximumPoint.y);
-}
-
-void applyGemstoneDiamondCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
-    vec2 resolution = max(iResolution.xy, vec2(1.0));
-    vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
-    vec4 terminalColor = texture(iChannel0, uv);
-    vec2 headPixels = gdCursorCenterPixels(iCurrentCursor);
-    vec2 tailPixels = gdCursorCenterPixels(iPreviousCursor);
-    float cursorPixels = max(iCurrentCursor.z, iCurrentCursor.w);
-    float movedPixels = length(headPixels - tailPixels);
-    float age = saturate((iTime - iTimeCursorChange) / GD_EFFECT_DURATION);
-    if (
-        cursorPixels <= 0.0
-        || movedPixels <= cursorPixels * GD_MIN_MOVEMENT_CELLS
-        || age >= 1.0
-    ) return;
-
-    float movementFactor = pow(
-        smoothstep(
-            cursorPixels * GD_GROWTH_START_CELLS,
-            cursorPixels * GD_GROWTH_FULL_CELLS,
-            movedPixels
-        ),
-        GD_MOVEMENT_RESPONSE_POWER
-    );
-    float cullRadius = cursorPixels * mix(
-        GD_CULL_RADIUS_MIN,
-        GD_CULL_RADIUS_MAX,
-        movementFactor
-    );
-    bool nearCursor = all(greaterThanEqual(
-        fragCoord,
-        min(headPixels, tailPixels) - vec2(cullRadius)
-    )) && all(lessThanEqual(
-        fragCoord,
-        max(headPixels, tailPixels) + vec2(cullRadius)
-    ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
-    bool nearAnyLink = false;
-#if GD_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < GEM_OBJECT_COUNT; linkIndex++) {
-        if (GD_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = gemUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        nearAnyLink = nearAnyLink || linkPixelDistance <= linkCull;
-    }
-#endif
-    if (!nearCursor && !nearAnyLink) return;
-
-    vec2 point = gdScenePoint(fragCoord);
-    vec2 head = gdScenePoint(headPixels);
-    vec2 tail = gdScenePoint(tailPixels);
-    vec2 movement = head - tail;
-    vec2 direction = movement / max(length(movement), 0.000001);
-    vec2 normal2d = vec2(-direction.y, direction.x);
-    float cursorSize = cursorPixels / resolution.y;
-    float easedAge = 1.0 - pow(1.0 - age, 3.0);
-    float life = pow(1.0 - age, GD_FADE_POWER);
-    float contentMask = mix(GD_CONTENT_PROTECTION, 1.0, backgroundCellMask(terminalColor));
-
-#if GD_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < GEM_OBJECT_COUNT; linkIndex++) {
-        if (GD_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = gemUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        if (linkPixelDistance > linkCull) continue;
-
-        vec2 linkObject = gdScenePoint(linkObjectPixels);
-        float linkDistance = segmentDistance(point, head, linkObject);
-        float linkAlong = segmentParameter(point, head, linkObject);
-        float linkStrength = pow(GD_LINK_SECONDARY_FALLOFF, linkIdentity);
-        float linkColorMix = saturate(
-            linkAlong * 0.78 + linkIdentity * GD_LINK_COLOR_PHASE_STEP
-        );
-        float dash = 0.62 + 0.38 * sin(
-            linkAlong * GD_LINK_DASH_COUNT
-            - iTime * GD_LINK_DASH_SPEED
-            + linkIdentity * 2.17
-        );
-        float linkCore = exp(
-            -linkDistance / max(cursorSize * GD_LINK_WIDTH, 0.0002)
-        );
-        float linkGlow = exp(
-            -linkDistance / max(cursorSize * GD_LINK_GLOW_WIDTH, 0.0005)
-        );
-        vec3 linkColor = mix(GD_ROSE, GD_CYAN, linkColorMix);
-        scene.rgb += linkColor * dash * linkStrength * life * contentMask * (
-            linkCore * GD_LINK_CORE_STRENGTH
-            + linkGlow * GD_LINK_GLOW_STRENGTH
-        );
-        float endpoint = gaussianPoint(
-            point - linkObject,
-            cursorSize * 0.72
-        );
-        vec3 endpointColor = mix(
-            GD_ROSE,
-            GD_CYAN,
-            saturate(0.78 + linkIdentity * GD_LINK_COLOR_PHASE_STEP)
-        );
-        scene.rgb += endpointColor * endpoint * linkStrength * life
-            * GD_LINK_ENDPOINT_GLOW * contentMask;
-    }
-#endif
-
-    if (nearCursor) {
-#if GD_ENABLE_TRAIL
-        float trailDistance = segmentDistance(point, tail, head);
-        float along = segmentParameter(point, tail, head);
-        float trailWidth = cursorSize * mix(
-            GD_TRAIL_WIDTH_MIN,
-            GD_TRAIL_WIDTH_MAX,
-            movementFactor
-        );
-        float trailCore = exp(-trailDistance / max(trailWidth, 0.0002))
-            * smoothstep(0.0, GD_TRAIL_TAIL_FADE, along) * life;
-        float trailGlow = exp(
-            -trailDistance / max(trailWidth * GD_TRAIL_GLOW_MULTIPLIER, 0.0004)
-        ) * smoothstep(0.0, GD_TRAIL_TAIL_FADE * 0.84, along) * life;
-        vec3 trailColor = mix(GD_VIOLET, GD_CYAN, along);
-        trailColor = mix(trailColor, GD_ROSE, smoothstep(0.78, 1.0, along) * 0.42);
-        scene.rgb += trailColor * trailGlow * GD_TRAIL_GLOW_STRENGTH * contentMask;
-        scene.rgb += trailColor * trailCore * GD_TRAIL_CORE_STRENGTH * contentMask;
-#endif
-
-        vec3 localVertex[6];
-        localVertex[0] = vec3( 1.0, 0.0, 0.0) * GD_AXIS_SCALE;
-        localVertex[1] = vec3(-1.0, 0.0, 0.0) * GD_AXIS_SCALE;
-        localVertex[2] = vec3(0.0,  1.0, 0.0) * GD_AXIS_SCALE;
-        localVertex[3] = vec3(0.0, -1.0, 0.0) * GD_AXIS_SCALE;
-        localVertex[4] = vec3(0.0, 0.0,  1.0) * GD_AXIS_SCALE;
-        localVertex[5] = vec3(0.0, 0.0, -1.0) * GD_AXIS_SCALE;
-        vec3 transformed[6];
-        vec2 projected[6];
-        float depth[6];
-        float diamondSize = cursorSize * mix(GD_SIZE_MIN, GD_SIZE_MAX, movementFactor)
-            * (1.0 + GD_SIZE_PULSE * sin(age * GD_PI));
-        vec3 angle = GD_ROTATION_BASE + iTime * GD_ROTATION_SPEED;
-        angle.z += atan(direction.y, direction.x) * GD_DIRECTION_TILT;
-        for (int vertexIndex = 0; vertexIndex < 6; vertexIndex++) {
-            vec3 vertex = rotateZ(
-                rotateY(rotateX(localVertex[vertexIndex], angle.x), angle.y),
-                angle.z
-            );
-            transformed[vertexIndex] = vertex;
-            depth[vertexIndex] = GD_CAMERA_DISTANCE - vertex.z;
-            projected[vertexIndex] = head
-                + vertex.xy * diamondSize * GD_CAMERA_DISTANCE / depth[vertexIndex];
-        }
-
-        const int faceA[8] = int[8](0,2,1,3, 2,1,3,0);
-        const int faceB[8] = int[8](2,1,3,0, 0,2,1,3);
-        const int faceC[8] = int[8](4,4,4,4, 5,5,5,5);
-#if GD_ENABLE_FACET_FILL
-        float nearestDepth = 1000.0;
-        float selectedCoverage = 0.0;
-        vec3 selectedColor = vec3(0.0);
-        vec3 lightDirection = normalize(GD_LIGHT_DIRECTION);
-        for (int faceIndex = 0; faceIndex < 8; faceIndex++) {
-            int first = faceA[faceIndex], second = faceB[faceIndex], third = faceC[faceIndex];
-            vec3 barycentric = barycentricCoordinates(
-                point, projected[first], projected[second], projected[third]
-            );
-            float minimumWeight = min(barycentric.x, min(barycentric.y, barycentric.z));
-            float aa = clamp(fwidth(minimumWeight), 0.0014, 0.040);
-            float coverage = smoothstep(-aa, aa, minimumWeight);
-            float faceDepth = dot(barycentric, vec3(depth[first], depth[second], depth[third]));
-            if (minimumWeight > -aa * 1.6 && faceDepth < nearestDepth) {
-                nearestDepth = faceDepth;
-                vec3 faceNormal = normalize(cross(
-                    transformed[second] - transformed[first],
-                    transformed[third] - transformed[first]
-                ));
-                if (faceNormal.z < 0.0) faceNormal = -faceNormal;
-                float diffuse = GD_FACE_AMBIENT
-                    + GD_FACE_DIFFUSE * max(dot(faceNormal, lightDirection), 0.0);
-                selectedColor = mix(GD_DEEP, mix(GD_BLUE, GD_ROSE, float(faceIndex) / 7.0), diffuse);
-                selectedCoverage = coverage;
-            }
-        }
-        scene.rgb = mix(
-            scene.rgb,
-            selectedColor,
-            selectedCoverage * GD_FACE_OPACITY * life * contentMask
-        );
-#endif
-
-        const int edgeA[12] = int[12](0,0,0,0, 1,1,1,1, 2,2,3,3);
-        const int edgeB[12] = int[12](2,3,4,5, 2,3,4,5, 4,5,4,5);
-        vec3 diamondLight = vec3(0.0);
-        for (int edgeIndex = 0; edgeIndex < 12; edgeIndex++) {
-            int first = edgeA[edgeIndex], second = edgeB[edgeIndex];
-            float nearFactor = saturate(
-                (GD_NEAR_DEPTH_CENTER - 0.5 * (depth[first] + depth[second]))
-                    / GD_NEAR_DEPTH_RANGE
-            );
-            float edgeDistance = segmentDistance(point, projected[first], projected[second]);
-            float core = exp(-edgeDistance / max(cursorSize * GD_EDGE_CORE_WIDTH, 0.0001));
-            float glow = exp(-edgeDistance / max(cursorSize * GD_EDGE_GLOW_WIDTH, 0.00025));
-            vec3 edgeColor = mix(GD_VIOLET, GD_CYAN, nearFactor);
-            edgeColor = mix(edgeColor, GD_WHITE, nearFactor * GD_NEAR_WHITE_MIX);
-            diamondLight += edgeColor * (
-                core * GD_EDGE_CORE_STRENGTH + glow * GD_EDGE_GLOW_STRENGTH
-            );
-            for (int echoIndex = 0; echoIndex < GD_ECHO_COUNT; echoIndex++) {
-                float delay = float(echoIndex) * GD_ECHO_DELAY;
-                float progress = saturate((easedAge - delay) / max(1.0 - delay, 0.001));
-                float echoActive = step(delay, easedAge);
-                float scaleValue = mix(GD_ECHO_START_SCALE, GD_ECHO_END_SCALE, progress);
-                vec2 echoFirst = head + (projected[first] - head) * scaleValue;
-                vec2 echoSecond = head + (projected[second] - head) * scaleValue;
-                float echoDistance = segmentDistance(point, echoFirst, echoSecond);
-                float echo = exp(-echoDistance / max(cursorSize * GD_ECHO_WIDTH, 0.00012))
-                    * pow(1.0 - progress, GD_ECHO_FADE_POWER) * echoActive;
-                diamondLight += mix(GD_BLUE, GD_VIOLET, nearFactor) * echo
-                    * GD_ECHO_STRENGTH * pow(GD_ECHO_FALLOFF, float(echoIndex));
-            }
-        }
-        scene.rgb += diamondLight * life * contentMask * GD_MASTER_BRIGHTNESS;
-
-#if GD_ENABLE_SPARKS && GD_SPARK_COUNT > 0
-        vec2 eventSeed = headPixels * 0.037 + tailPixels * 0.091;
-        for (int sparkIndex = 0; sparkIndex < GD_SPARK_COUNT; sparkIndex++) {
-            float index = float(sparkIndex);
-            float positionRandom = hash12(eventSeed + vec2(index * 11.7, index * 31.9));
-            float sideRandom = hash12(eventSeed + vec2(index * 43.1, index * 7.3));
-            vec2 sparkCenter = mix(tail, head, positionRandom)
-                + normal2d * (sideRandom - 0.5) * cursorSize * GD_SPARK_SPREAD;
-            float spark = gaussianPoint(point - sparkCenter, cursorSize * GD_SPARK_RADIUS) * life;
-            scene.rgb += mix(GD_CYAN, GD_ROSE, sideRandom)
-                * spark * GD_SPARK_STRENGTH * contentMask;
-        }
-#endif
-    }
-
-    float cursorCoverage = gdInsideCursor(fragCoord, iCurrentCursor);
-    scene = mix(scene, terminalColor, cursorCoverage);
-    scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderGemstoneBackground(fragColor, fragCoord);
-    applyGemstoneDiamondCursor(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderGemstoneBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
 }

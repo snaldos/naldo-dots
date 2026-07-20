@@ -1,3 +1,7 @@
+// BACKGROUND-ONLY WALLPAPER VARIANT: torus-knot-covenant
+// Procedural geometry is composited behind exact terminal foreground.
+// Pair this stage with any independently selected cursor shader.
+
 #ifndef GHOSTTY_GPU_PROFILE
 #define GHOSTTY_GPU_PROFILE 1
 #endif
@@ -90,60 +94,6 @@ const vec3 KNOT_WHITE = vec3(0.980, 0.970, 1.000);
 const float KNOT_TAU = 6.28318530718;
 
 // =============================================================================
-// MATCHED CURSOR CONTROLS
-// =============================================================================
-
-#define KC_ECHO_COUNT 2                  // quantity: 0..4
-#define KC_ENABLE_TRAIL 1
-#define KC_ENABLE_SPARKS 1
-#define KC_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
-#define KC_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-
-const float KC_EFFECT_DURATION = 0.38;
-const float KC_FADE_POWER = 1.70;
-const float KC_MIN_MOVEMENT_CELLS = 0.025;
-const float KC_GROWTH_START_CELLS = 0.08;
-const float KC_GROWTH_FULL_CELLS = 8.00;
-const float KC_SIZE_MIN = 0.72;
-const float KC_SIZE_MAX = 1.62;
-const float KC_SIZE_PULSE = 0.10;
-const float KC_CAMERA_DISTANCE = 4.00;
-const float KC_CULL_RADIUS_MIN = 4.0;
-const float KC_CULL_RADIUS_MAX = 7.5;
-const float KC_CONTENT_PROTECTION = 0.18;
-const float KC_MASTER_BRIGHTNESS = 1.00;
-const float KC_ALPHA_MAX = 0.58;
-const float KC_ALPHA_GAIN = 1.35;
-const vec3 KC_ROTATION_SPEED = vec3(0.88, -1.04, 0.36);
-const float KC_DIRECTION_TILT = 0.18;
-const float KC_CORE_WIDTH = 0.038;
-const float KC_GLOW_WIDTH = 0.145;
-const float KC_CORE_STRENGTH = 0.46;
-const float KC_GLOW_STRENGTH = 0.072;
-const float KC_ECHO_START_SCALE = 1.03;
-const float KC_ECHO_END_SCALE = 2.18;
-const float KC_ECHO_DELAY = 0.14;
-const float KC_ECHO_WIDTH = 0.046;
-const float KC_ECHO_STRENGTH = 0.12;
-const float KC_ECHO_FALLOFF = 0.68;
-const float KC_TRAIL_WIDTH_MIN = 0.11;
-const float KC_TRAIL_WIDTH_MAX = 0.24;
-const float KC_TRAIL_GLOW_MULTIPLIER = 4.0;
-const float KC_TRAIL_CORE_STRENGTH = 0.22;
-const float KC_TRAIL_GLOW_STRENGTH = 0.052;
-const float KC_SPARK_RADIUS = 0.070;
-const float KC_SPARK_SPREAD = 1.70;
-const float KC_SPARK_STRENGTH = 0.23;
-const float KC_LINK_WIDTH = 0.060;
-const float KC_LINK_GLOW_WIDTH = 0.25;
-const float KC_LINK_CORE_STRENGTH = 0.045;
-const float KC_LINK_GLOW_STRENGTH = 0.011;
-const float KC_LINK_DASH_COUNT = 20.0;
-const float KC_LINK_DASH_SPEED = 1.70;
-const float KC_LINK_SECONDARY_FALLOFF = 0.72;
-const float KC_LINK_COLOR_PHASE_STEP = 0.23;
-
-
 float saturate(float value) { return clamp(value, 0.0, 1.0); }
 float luminance(vec3 color) { return dot(color, vec3(0.2126, 0.7152, 0.0722)); }
 float hash12(vec2 value) {
@@ -260,7 +210,9 @@ void renderKnotBackground(out vec4 fragColor, vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
-    float backgroundMask = backgroundCellMask(terminalColor);
+    // Wallpaper mode renders a complete procedural layer. Terminal
+    // foreground coverage is applied only after the scene is complete.
+    float backgroundMask = 1.0;
     float aspect = resolution.x / resolution.y;
     vec2 point = scenePoint(fragCoord);
     float narrowScale = clamp(
@@ -268,7 +220,7 @@ void renderKnotBackground(out vec4 fragColor, vec2 fragCoord) {
         KNOT_NARROW_MIN_SCALE,
         1.0
     );
-    vec3 composite = terminalColor.rgb;
+    vec3 composite = vec3(0.0);
     float sceneAlpha = 0.0;
 
     for (int objectIndex = 0; objectIndex < KNOT_OBJECT_COUNT; objectIndex++) {
@@ -350,206 +302,34 @@ void renderKnotBackground(out vec4 fragColor, vec2 fragCoord) {
     }
     fragColor = vec4(
         clamp(composite, 0.0, 1.0),
-        max(terminalColor.a, sceneAlpha)
+        sceneAlpha
     );
 }
 
-void applyKnotCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
-    vec2 resolution = max(iResolution.xy, vec2(1.0));
-    vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
-    vec4 terminalColor = texture(iChannel0, uv);
-    vec2 headPixels = cursorCenterPixels(iCurrentCursor);
-    vec2 tailPixels = cursorCenterPixels(iPreviousCursor);
-    float cursorPixels = max(iCurrentCursor.z, iCurrentCursor.w);
-    float movedPixels = length(headPixels - tailPixels);
-    float age = saturate((iTime - iTimeCursorChange) / KC_EFFECT_DURATION);
-    if (
-        cursorPixels <= 0.0
-        || movedPixels <= cursorPixels * KC_MIN_MOVEMENT_CELLS
-        || age >= 1.0
-    ) return;
+// =============================================================================
+// WALLPAPER COMPOSITION — TERMINAL FOREGROUND OVER PROCEDURAL GEOMETRY
+// =============================================================================
 
-    float movementFactor = smoothstep(
-        cursorPixels * KC_GROWTH_START_CELLS,
-        cursorPixels * KC_GROWTH_FULL_CELLS,
-        movedPixels
+vec4 compositeGeometryBehindTerminal(
+    vec4 wallpaperColor,
+    vec4 terminalColor
+) {
+    // Terminal alpha is the layer boundary. Opaque glyph and cursor pixels stay
+    // exact; transparent cells reveal the procedural layer. Preserve Ghostty's
+    // original terminal alpha so the desktop compositor remains authoritative.
+    float terminalCoverage = saturate(terminalColor.a);
+    return vec4(
+        mix(wallpaperColor.rgb, terminalColor.rgb, terminalCoverage),
+        terminalColor.a
     );
-    float cullRadius = cursorPixels * mix(
-        KC_CULL_RADIUS_MIN,
-        KC_CULL_RADIUS_MAX,
-        movementFactor
-    );
-    bool nearCursor = all(greaterThanEqual(
-        fragCoord,
-        min(headPixels, tailPixels) - vec2(cullRadius)
-    )) && all(lessThanEqual(
-        fragCoord,
-        max(headPixels, tailPixels) + vec2(cullRadius)
-    ));
-    float linkCull = max(cursorPixels * 1.5, 8.0);
-    bool nearAnyLink = false;
-#if KC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < KNOT_OBJECT_COUNT; linkIndex++) {
-        if (KC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = knotUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        nearAnyLink = nearAnyLink || linkPixelDistance <= linkCull;
-    }
-#endif
-    if (!nearCursor && !nearAnyLink) return;
-
-    vec2 point = scenePoint(fragCoord);
-    vec2 head = scenePoint(headPixels);
-    vec2 tail = scenePoint(tailPixels);
-    vec2 movement = head - tail;
-    vec2 direction = movement / max(length(movement), 0.000001);
-    vec2 normal2d = vec2(-direction.y, direction.x);
-    float cursorSize = cursorPixels / resolution.y;
-    float life = pow(1.0 - age, KC_FADE_POWER);
-    float easedAge = 1.0 - pow(1.0 - age, 3.0);
-    float contentMask = mix(KC_CONTENT_PROTECTION, 1.0, backgroundCellMask(terminalColor));
-    vec3 effectLight = vec3(0.0);
-    float effectOpacity = 0.0;
-
-#if KC_ENABLE_RESONANCE_LINK
-    for (int linkIndex = 0; linkIndex < KNOT_OBJECT_COUNT; linkIndex++) {
-        if (KC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
-        float linkIdentity = float(linkIndex);
-        vec2 linkObjectPixels = knotUv(iTime, linkIdentity) * resolution;
-        float linkPixelDistance = segmentDistance(
-            fragCoord,
-            headPixels,
-            linkObjectPixels
-        );
-        if (linkPixelDistance > linkCull) continue;
-
-        vec2 linkObject = scenePoint(linkObjectPixels);
-        float linkDistance = segmentDistance(point, head, linkObject);
-        float linkAlong = segmentParameter(point, head, linkObject);
-        float linkStrength = pow(KC_LINK_SECONDARY_FALLOFF, linkIdentity);
-        float linkColorMix = saturate(
-            linkAlong * 0.78 + linkIdentity * KC_LINK_COLOR_PHASE_STEP
-        );
-        float dash = 0.64 + 0.36 * sin(
-            linkAlong * KC_LINK_DASH_COUNT
-            - iTime * KC_LINK_DASH_SPEED
-            + linkIdentity * 2.17
-        );
-        float linkCore = exp(
-            -linkDistance / max(cursorSize * KC_LINK_WIDTH, 0.0002)
-        );
-        float linkGlow = exp(
-            -linkDistance / max(cursorSize * KC_LINK_GLOW_WIDTH, 0.0005)
-        );
-        vec3 linkColor = mix(KNOT_ROSE, KNOT_CYAN, linkColorMix);
-        effectLight += linkColor * dash * linkStrength * (
-            linkCore * KC_LINK_CORE_STRENGTH
-            + linkGlow * KC_LINK_GLOW_STRENGTH
-        );
-        effectOpacity = max(
-            effectOpacity,
-            linkStrength * (linkCore * 0.16 + linkGlow * 0.04)
-        );
-    }
-#endif
-
-    if (nearCursor) {
-#if KC_ENABLE_TRAIL
-        float trailDistance = segmentDistance(point, tail, head);
-        float along = segmentParameter(point, tail, head);
-        float trailWidth = cursorSize * mix(
-            KC_TRAIL_WIDTH_MIN,
-            KC_TRAIL_WIDTH_MAX,
-            movementFactor
-        );
-        float trailCore = exp(-trailDistance / max(trailWidth, 0.0002))
-            * smoothstep(0.0, 0.20, along);
-        float trailGlow = exp(-trailDistance / max(
-            trailWidth * KC_TRAIL_GLOW_MULTIPLIER,
-            0.0004
-        )) * smoothstep(0.0, 0.16, along);
-        vec3 trailColor = mix(KNOT_VIOLET, KNOT_CYAN, along);
-        effectLight += trailColor * (
-            trailCore * KC_TRAIL_CORE_STRENGTH
-            + trailGlow * KC_TRAIL_GLOW_STRENGTH
-        );
-        effectOpacity = max(effectOpacity, trailCore * 0.28 + trailGlow * 0.07);
-#endif
-
-        float knotScale = cursorSize * mix(KC_SIZE_MIN, KC_SIZE_MAX, movementFactor)
-            * (1.0 + KC_SIZE_PULSE * sin(age * 3.14159265359));
-        vec3 angle = iTime * KC_ROTATION_SPEED;
-        angle.z += atan(direction.y, direction.x) * KC_DIRECTION_TILT;
-        for (int segmentIndex = 0; segmentIndex < KC_SEGMENT_COUNT; segmentIndex++) {
-            float phase0 = float(segmentIndex) / float(KC_SEGMENT_COUNT);
-            float phase1 = float(segmentIndex + 1) / float(KC_SEGMENT_COUNT);
-            vec3 vertex0 = rotateXYZ(knotPoint(phase0 * KNOT_TAU, 2.0, 3.0), angle);
-            vec3 vertex1 = rotateXYZ(knotPoint(phase1 * KNOT_TAU, 2.0, 3.0), angle);
-            float depth0, depth1;
-            vec2 projected0 = projectPoint(vertex0, head, knotScale, KC_CAMERA_DISTANCE, depth0);
-            vec2 projected1 = projectPoint(vertex1, head, knotScale, KC_CAMERA_DISTANCE, depth1);
-            float curveDistance = segmentDistance(point, projected0, projected1);
-            float core = exp(-curveDistance / max(cursorSize * KC_CORE_WIDTH, 0.0001));
-            float glow = exp(-curveDistance / max(cursorSize * KC_GLOW_WIDTH, 0.00025));
-            float nearFactor = saturate((KC_CAMERA_DISTANCE + 0.8 - 0.5 * (depth0 + depth1)) / 1.8);
-            vec3 color = mix(KNOT_VIOLET, KNOT_CYAN, nearFactor);
-            color = mix(color, KNOT_WHITE, nearFactor * 0.30);
-            effectLight += color * (
-                core * KC_CORE_STRENGTH + glow * KC_GLOW_STRENGTH
-            );
-            effectOpacity = max(effectOpacity, core * 0.64 + glow * 0.12);
-
-            for (int echoIndex = 0; echoIndex < KC_ECHO_COUNT; echoIndex++) {
-                float delay = float(echoIndex) * KC_ECHO_DELAY;
-                float progress = saturate((easedAge - delay) / max(1.0 - delay, 0.001));
-                float echoActive = step(delay, easedAge);
-                float scaleValue = mix(KC_ECHO_START_SCALE, KC_ECHO_END_SCALE, progress);
-                vec2 echo0 = head + (projected0 - head) * scaleValue;
-                vec2 echo1 = head + (projected1 - head) * scaleValue;
-                float echoDistance = segmentDistance(point, echo0, echo1);
-                float echo = exp(-echoDistance / max(cursorSize * KC_ECHO_WIDTH, 0.00011))
-                    * (1.0 - progress) * echoActive;
-                effectLight += mix(KNOT_BLUE, KNOT_ROSE, nearFactor) * echo
-                    * KC_ECHO_STRENGTH * pow(KC_ECHO_FALLOFF, float(echoIndex));
-                effectOpacity = max(effectOpacity, echo * 0.16);
-            }
-        }
-
-#if KC_ENABLE_SPARKS && KC_SPARK_COUNT > 0
-        vec2 eventSeed = headPixels * 0.037 + tailPixels * 0.091;
-        for (int sparkIndex = 0; sparkIndex < KC_SPARK_COUNT; sparkIndex++) {
-            float index = float(sparkIndex);
-            float positionRandom = hash12(eventSeed + vec2(index * 11.7, index * 31.9));
-            float sideRandom = hash12(eventSeed + vec2(index * 43.1, index * 7.3));
-            vec2 sparkCenter = mix(tail, head, positionRandom)
-                + normal2d * (sideRandom - 0.5) * cursorSize * KC_SPARK_SPREAD;
-            float spark = gaussianPoint(point - sparkCenter, cursorSize * KC_SPARK_RADIUS);
-            effectLight += mix(KNOT_CYAN, KNOT_GOLD, sideRandom)
-                * spark * KC_SPARK_STRENGTH;
-            effectOpacity = max(effectOpacity, spark * 0.18);
-        }
-#endif
-    }
-
-    effectLight *= life * contentMask * KC_MASTER_BRIGHTNESS;
-    scene.rgb += effectLight;
-    scene.a = max(
-        scene.a,
-        life * contentMask * KC_ALPHA_MAX
-            * saturate(effectOpacity + luminance(effectLight) * KC_ALPHA_GAIN)
-    );
-    float cursorCoverage = insideCursor(fragCoord, iCurrentCursor);
-    scene = mix(scene, terminalColor, cursorCoverage);
-    scene.rgb = clamp(scene.rgb, 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-    renderKnotBackground(fragColor, fragCoord);
-    applyKnotCursor(fragColor, fragCoord);
+    vec2 resolution = max(iResolution.xy, vec2(1.0));
+    vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
+    vec4 terminalColor = texture(iChannel0, terminalUv);
+
+    vec4 wallpaperColor;
+    renderKnotBackground(wallpaperColor, fragCoord);
+    fragColor = compositeGeometryBehindTerminal(wallpaperColor, terminalColor);
 }
