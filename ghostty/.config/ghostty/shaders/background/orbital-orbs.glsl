@@ -160,7 +160,7 @@ const vec3 ORB_CYAN       = vec3(0.140, 0.830, 1.000);
 const vec3 ORB_TEAL       = vec3(0.100, 0.720, 0.650);
 const vec3 ORB_VIOLET     = vec3(0.570, 0.220, 0.980);
 const vec3 ORB_ROSE       = vec3(0.940, 0.220, 0.620);
-const vec3 ORB_GOLD       = vec3(1.000, 0.700, 0.260);
+const vec3 ORB_PINK       = vec3(0.980, 0.240, 0.690);
 const vec3 ORB_WHITE      = vec3(0.950, 0.970, 1.000);
 
 const float PI = 3.14159265359;
@@ -437,7 +437,7 @@ OrbSample renderOrb(vec2 point, vec2 center, float radius, float identity) {
         float occlusion = mix(1.0, insideSphereVisibility, sphereCoverage);
         float ringStrength = pow(ORB_RING_STRENGTH_FALLOFF, index);
         vec3 ringColor = mix(
-            mix(ORB_GOLD, ORB_ROSE, fract(identity * 0.31)),
+            mix(ORB_PINK, ORB_ROSE, fract(identity * 0.31)),
             ORB_CYAN,
             index / max(float(ORB_RING_COUNT - 1), 1.0)
         );

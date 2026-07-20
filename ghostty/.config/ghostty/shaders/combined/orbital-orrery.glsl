@@ -167,7 +167,7 @@ const vec3 ORB_CYAN       = vec3(0.140, 0.830, 1.000);
 const vec3 ORB_TEAL       = vec3(0.100, 0.720, 0.650);
 const vec3 ORB_VIOLET     = vec3(0.570, 0.220, 0.980);
 const vec3 ORB_ROSE       = vec3(0.940, 0.220, 0.620);
-const vec3 ORB_GOLD       = vec3(1.000, 0.700, 0.260);
+const vec3 ORB_PINK       = vec3(0.980, 0.240, 0.690);
 const vec3 ORB_WHITE      = vec3(0.950, 0.970, 1.000);
 
 const float PI = 3.14159265359;
@@ -444,7 +444,7 @@ OrbSample renderOrb(vec2 point, vec2 center, float radius, float identity) {
         float occlusion = mix(1.0, insideSphereVisibility, sphereCoverage);
         float ringStrength = pow(ORB_RING_STRENGTH_FALLOFF, index);
         vec3 ringColor = mix(
-            mix(ORB_GOLD, ORB_ROSE, fract(identity * 0.31)),
+            mix(ORB_PINK, ORB_ROSE, fract(identity * 0.31)),
             ORB_CYAN,
             index / max(float(ORB_RING_COUNT - 1), 1.0)
         );
@@ -683,7 +683,7 @@ const vec3 OC_CYAN = vec3(0.140, 0.860, 1.000);
 const vec3 OC_TEAL = vec3(0.100, 0.740, 0.650);
 const vec3 OC_VIOLET = vec3(0.600, 0.240, 1.000);
 const vec3 OC_ROSE = vec3(0.950, 0.220, 0.620);
-const vec3 OC_GOLD = vec3(1.000, 0.710, 0.270);
+const vec3 OC_PINK = vec3(0.980, 0.240, 0.690);
 const vec3 OC_WHITE = vec3(0.970, 0.980, 1.000);
 const float OC_PI = 3.14159265359;
 const float OC_TAU = 6.28318530718;
@@ -834,7 +834,7 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
         float linkGlow = exp(
             -linkDistance / max(cursorSize * OC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005)
         );
-        vec3 linkColor = mix(OC_GOLD, OC_CYAN, linkColorMix);
+        vec3 linkColor = mix(OC_PINK, OC_CYAN, linkColorMix);
         scene.rgb += linkColor * dash * linkStrength * linkIntensityScale
             * life * contentMask * (
             linkCore * OC_LINK_CORE_STRENGTH
@@ -845,7 +845,7 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
             cursorSize * 0.74
         );
         vec3 endpointColor = mix(
-            OC_GOLD,
+            OC_PINK,
             OC_CYAN,
             saturate(0.78 + linkIdentity * OC_LINK_COLOR_PHASE_STEP)
         );
@@ -869,7 +869,7 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
             -trailDistance / max(trailWidth * OC_TRAIL_GLOW_MULTIPLIER, 0.0004)
         ) * smoothstep(0.0, OC_TRAIL_TAIL_FADE * 0.84, along) * life;
         vec3 trailColor = mix(OC_VIOLET, OC_CYAN, along);
-        trailColor = mix(trailColor, OC_GOLD, smoothstep(0.76, 1.0, along) * 0.48);
+        trailColor = mix(trailColor, OC_PINK, smoothstep(0.76, 1.0, along) * 0.48);
         scene.rgb += trailColor * trailGlow * OC_TRAIL_GLOW_STRENGTH * contentMask;
         scene.rgb += trailColor * trailCore * OC_TRAIL_CORE_STRENGTH * contentMask;
 #endif
@@ -975,7 +975,7 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
             );
             float occlusion = mix(1.0, insideVisibility, sphereCoverage);
             float ringStrength = pow(OC_RING_STRENGTH_FALLOFF, index);
-            vec3 ringColor = mix(OC_GOLD, OC_CYAN, index / max(float(OC_RING_COUNT - 1), 1.0));
+            vec3 ringColor = mix(OC_PINK, OC_CYAN, index / max(float(OC_RING_COUNT - 1), 1.0));
             cursorLight += ringColor * occlusion * dash * ringStrength * (
                 core * OC_RING_CORE_STRENGTH + glow * OC_RING_GLOW_STRENGTH
             );
@@ -1036,7 +1036,7 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
             vec2 starCenter = mix(tail, head, positionRandom)
                 + normal2d * (sideRandom - 0.5) * cursorSize * OC_STAR_SPREAD;
             float star = gaussianPoint(point - starCenter, cursorSize * OC_STAR_RADIUS) * life;
-            scene.rgb += mix(OC_CYAN, OC_GOLD, sideRandom)
+            scene.rgb += mix(OC_CYAN, OC_PINK, sideRandom)
                 * star * OC_STAR_STRENGTH * contentMask;
         }
 #endif
