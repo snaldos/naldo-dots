@@ -68,7 +68,11 @@
 // =============================================================================
 
 #define GC_GEOMETRY_TYPE_COUNT 9
-#define GC_OBJECT_COUNT 9                // 9 shows every family once; 1..18 supported
+#define GC_OBJECT_LIMIT 18               // total configured instances must be <= 18
+
+// FAMILY SELECTION: set ENABLE to 0 or INSTANCES to 0 to remove a family.
+// Cursor scheduling and style-1 constellations automatically skip removed types.
+// Example: three enabled families with counts 2, 1, and 3 produce six objects.
 #define GC_ENABLE_TESSERACT 1
 #define GC_ENABLE_GEM 1
 #define GC_ENABLE_ORBITAL 1
@@ -78,6 +82,16 @@
 #define GC_ENABLE_FRACTAL_TETRA 1
 #define GC_ENABLE_ICOSAHEDRON 1
 #define GC_ENABLE_LORENZ 1
+
+#define GC_TESSERACT_INSTANCES 1
+#define GC_GEM_INSTANCES 1
+#define GC_ORBITAL_INSTANCES 1
+#define GC_CRYSTAL_INSTANCES 1
+#define GC_TORUS_KNOT_INSTANCES 1
+#define GC_MOBIUS_INSTANCES 1
+#define GC_FRACTAL_TETRA_INSTANCES 1
+#define GC_ICOSAHEDRON_INSTANCES 1
+#define GC_LORENZ_INSTANCES 1
 
 const float GC_MASTER_BRIGHTNESS = 1.00;
 const float GC_BASE_SIZE = 0.048;
@@ -180,7 +194,7 @@ const float GC_LORENZ_SCALE = 1.10;
 #define GCC_ENABLE_OBJECT_LINKS 1        // 0 removes every cursor-object connection
 #define GCC_LINK_TARGET_MODE 2           // 0 all equal; 1 cursor family only; 2 soft all + strong match
 #define GCC_LINK_ALL_OBJECTS 1           // all qualifying instances; 0 first one only
-#define GCC_LINK_LIMIT 9                 // maximum number of connected objects
+#define GCC_LINK_LIMIT GC_OBJECT_LIMIT   // maximum number of connected instances
 
 const float GCC_RANDOM_SEED = 37.17;
 const float GCC_SHAPE_HOLD_SECONDS = 3.40;
@@ -393,16 +407,91 @@ float typeScale(int typeIndex) {
     return GC_LORENZ_SCALE;
 }
 
+int configuredInstancesForType(int typeIndex) {
+    if (typeIndex == 0) return GC_ENABLE_TESSERACT != 0
+        ? max(GC_TESSERACT_INSTANCES, 0) : 0;
+    if (typeIndex == 1) return GC_ENABLE_GEM != 0
+        ? max(GC_GEM_INSTANCES, 0) : 0;
+    if (typeIndex == 2) return GC_ENABLE_ORBITAL != 0
+        ? max(GC_ORBITAL_INSTANCES, 0) : 0;
+    if (typeIndex == 3) return GC_ENABLE_CRYSTAL != 0
+        ? max(GC_CRYSTAL_INSTANCES, 0) : 0;
+    if (typeIndex == 4) return GC_ENABLE_TORUS_KNOT != 0
+        ? max(GC_TORUS_KNOT_INSTANCES, 0) : 0;
+    if (typeIndex == 5) return GC_ENABLE_MOBIUS != 0
+        ? max(GC_MOBIUS_INSTANCES, 0) : 0;
+    if (typeIndex == 6) return GC_ENABLE_FRACTAL_TETRA != 0
+        ? max(GC_FRACTAL_TETRA_INSTANCES, 0) : 0;
+    if (typeIndex == 7) return GC_ENABLE_ICOSAHEDRON != 0
+        ? max(GC_ICOSAHEDRON_INSTANCES, 0) : 0;
+    if (typeIndex == 8) return GC_ENABLE_LORENZ != 0
+        ? max(GC_LORENZ_INSTANCES, 0) : 0;
+    return 0;
+}
+
 bool typeEnabled(int typeIndex) {
-    if (typeIndex == 0) return GC_ENABLE_TESSERACT != 0;
-    if (typeIndex == 1) return GC_ENABLE_GEM != 0;
-    if (typeIndex == 2) return GC_ENABLE_ORBITAL != 0;
-    if (typeIndex == 3) return GC_ENABLE_CRYSTAL != 0;
-    if (typeIndex == 4) return GC_ENABLE_TORUS_KNOT != 0;
-    if (typeIndex == 5) return GC_ENABLE_MOBIUS != 0;
-    if (typeIndex == 6) return GC_ENABLE_FRACTAL_TETRA != 0;
-    if (typeIndex == 7) return GC_ENABLE_ICOSAHEDRON != 0;
-    return GC_ENABLE_LORENZ != 0;
+    return configuredInstancesForType(typeIndex) > 0;
+}
+
+int enabledTypeCount() {
+    int count = 0;
+    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
+        if (typeEnabled(typeIndex)) count++;
+    }
+    return count;
+}
+
+int enabledTypeForOrdinal(int ordinal) {
+    int count = enabledTypeCount();
+    if (count <= 0) return -1;
+    int wrappedOrdinal = ordinal % count;
+    if (wrappedOrdinal < 0) wrappedOrdinal += count;
+    int enabledOrdinal = 0;
+    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
+        if (!typeEnabled(typeIndex)) continue;
+        if (enabledOrdinal == wrappedOrdinal) return typeIndex;
+        enabledOrdinal++;
+    }
+    return -1;
+}
+
+int configuredGeometryObjectCount() {
+    int count = 0;
+    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
+        count += configuredInstancesForType(typeIndex);
+    }
+    return min(count, GC_OBJECT_LIMIT);
+}
+
+int geometryObjectType(int objectIndex) {
+    if (objectIndex < 0 || objectIndex >= configuredGeometryObjectCount()) return -1;
+    int remainingIndex = objectIndex;
+    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
+        int familyCount = configuredInstancesForType(typeIndex);
+        if (remainingIndex < familyCount) return typeIndex;
+        remainingIndex -= familyCount;
+    }
+    return -1;
+}
+
+int geometryObjectInstanceIndex(int objectIndex) {
+    if (objectIndex < 0 || objectIndex >= configuredGeometryObjectCount()) return -1;
+    int remainingIndex = objectIndex;
+    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
+        int familyCount = configuredInstancesForType(typeIndex);
+        if (remainingIndex < familyCount) return remainingIndex;
+        remainingIndex -= familyCount;
+    }
+    return -1;
+}
+
+int firstGeometryObjectIndexForType(int requestedType) {
+    if (!typeEnabled(requestedType)) return -1;
+    int firstIndex = 0;
+    for (int typeIndex = 0; typeIndex < requestedType; typeIndex++) {
+        firstIndex += configuredInstancesForType(typeIndex);
+    }
+    return firstIndex < configuredGeometryObjectCount() ? firstIndex : -1;
 }
 
 vec3 geometryAngle(float identity, int typeIndex) {
@@ -1098,6 +1187,7 @@ GeometrySample renderGeometryType(
     float sizeValue,
     float identity
 ) {
+    if (!typeEnabled(typeIndex)) return emptyGeometrySample();
     if (typeIndex == 0) return renderTesseract(point, center, sizeValue, identity);
     if (typeIndex == 1) return renderGem(point, center, sizeValue, identity);
     if (typeIndex == 2) return renderOrbital(point, center, sizeValue, identity);
@@ -1106,11 +1196,12 @@ GeometrySample renderGeometryType(
     if (typeIndex == 5) return renderMobius(point, center, sizeValue, identity);
     if (typeIndex == 6) return renderFractalTetra(point, center, sizeValue, identity);
     if (typeIndex == 7) return renderIcosahedralCage(point, center, sizeValue, identity);
-    return renderLorenz(point, center, sizeValue, identity);
+    if (typeIndex == 8) return renderLorenz(point, center, sizeValue, identity);
+    return emptyGeometrySample();
 }
 
 // =============================================================================
-// BACKGROUND SCENE — ALL NINE FAMILIES
+// BACKGROUND SCENE — CONFIGURED FAMILY INSTANCES
 // =============================================================================
 
 void renderGeometricCosmosBackground(out vec4 fragColor, vec2 fragCoord) {
@@ -1132,10 +1223,12 @@ void renderGeometricCosmosBackground(out vec4 fragColor, vec2 fragCoord) {
     vec3 composite = terminalColor.rgb;
 #endif
     float sceneAlpha = 0.0;
+    int objectCount = configuredGeometryObjectCount();
 
-    for (int objectIndex = 0; objectIndex < GC_OBJECT_COUNT; objectIndex++) {
-        int typeIndex = objectIndex % GC_GEOMETRY_TYPE_COUNT;
-        if (!typeEnabled(typeIndex)) continue;
+    for (int objectIndex = 0; objectIndex < GC_OBJECT_LIMIT; objectIndex++) {
+        if (objectIndex >= objectCount) break;
+        int typeIndex = geometryObjectType(objectIndex);
+        if (typeIndex < 0) continue;
         float identity = float(objectIndex);
         vec2 centerUv = geometryUv(iTime, identity);
         vec2 center = (centerUv - 0.5) * vec2(aspect, 1.0);
@@ -1207,37 +1300,57 @@ vec4 compositeGeometricCosmosBehindTerminal(
 // TIME-VARYING CURSOR TYPE SELECTION
 // =============================================================================
 
-int randomCursorPermutationStep(float blockIndex) {
-    int selector = int(floor(hash11(
+int greatestCommonDivisor(int firstValue, int secondValue) {
+    int first = max(firstValue, 1);
+    int second = max(secondValue, 0);
+    for (int iteration = 0; iteration < GC_GEOMETRY_TYPE_COUNT; iteration++) {
+        if (second == 0) break;
+        int remainder = first % second;
+        first = second;
+        second = remainder;
+    }
+    return first;
+}
+
+int randomCursorPermutationStep(float blockIndex, int enabledCount) {
+    if (enabledCount <= 1) return 1;
+    int firstCandidate = 1 + int(floor(hash11(
         blockIndex + GCC_RANDOM_SEED + 17.31
-    ) * 6.0));
-    if (selector == 0) return 1;
-    if (selector == 1) return 2;
-    if (selector == 2) return 4;
-    if (selector == 3) return 5;
-    if (selector == 4) return 7;
-    return 8;
+    ) * float(enabledCount)));
+    for (int offset = 0; offset < GC_GEOMETRY_TYPE_COUNT; offset++) {
+        int candidate = 1 + (firstCandidate - 1 + offset) % enabledCount;
+        if (greatestCommonDivisor(candidate, enabledCount) == 1) return candidate;
+    }
+    return 1;
 }
 
 int randomCursorType(float epoch) {
-    // Each nine-epoch block is an affine permutation modulo 9. The order is
-    // pseudo-random, but every geometry appears exactly once before reshuffling.
+    int enabledCount = enabledTypeCount();
+    if (enabledCount <= 0) return -1;
+    // Each block is an affine permutation of only the enabled family ordinals.
+    // Every selected family appears once before the order reshuffles.
     int epochIndex = max(int(epoch), 0);
-    int position = epochIndex % GC_GEOMETRY_TYPE_COUNT;
-    float blockIndex = floor(epoch / float(GC_GEOMETRY_TYPE_COUNT));
+    int position = epochIndex % enabledCount;
+    float blockIndex = floor(epoch / float(enabledCount));
     int offset = int(floor(hash11(
         blockIndex + GCC_RANDOM_SEED
-    ) * float(GC_GEOMETRY_TYPE_COUNT)));
-    int stepValue = randomCursorPermutationStep(blockIndex);
-    return (offset + stepValue * position) % GC_GEOMETRY_TYPE_COUNT;
+    ) * float(enabledCount)));
+    int stepValue = randomCursorPermutationStep(blockIndex, enabledCount);
+    int enabledOrdinal = (offset + stepValue * position) % enabledCount;
+    return enabledTypeForOrdinal(enabledOrdinal);
 }
 
 int cursorTypeForEpoch(float epoch) {
+    int enabledCount = enabledTypeCount();
+    if (enabledCount <= 0) return -1;
 #if GCC_CURSOR_MODE == 0
-    return GCC_FIXED_TYPE % GC_GEOMETRY_TYPE_COUNT;
+    int requestedType = GCC_FIXED_TYPE % GC_GEOMETRY_TYPE_COUNT;
+    if (requestedType < 0) requestedType += GC_GEOMETRY_TYPE_COUNT;
+    return typeEnabled(requestedType) ? requestedType : enabledTypeForOrdinal(0);
 #elif GCC_CURSOR_MODE == 2
-    int sequenceIndex = int(epoch) % GC_GEOMETRY_TYPE_COUNT;
-    return sequenceIndex < 0 ? sequenceIndex + GC_GEOMETRY_TYPE_COUNT : sequenceIndex;
+    int sequenceIndex = int(epoch) % enabledCount;
+    if (sequenceIndex < 0) sequenceIndex += enabledCount;
+    return enabledTypeForOrdinal(sequenceIndex);
 #else
     return randomCursorType(epoch);
 #endif
@@ -1263,26 +1376,33 @@ void cursorTypePair(
 
 bool geometryObjectMatchesCursor(int objectIndex, int cursorType) {
     if (cursorType < 0) return true;
-    return objectIndex % GC_GEOMETRY_TYPE_COUNT == cursorType;
+    return geometryObjectType(objectIndex) == cursorType;
 }
 
 bool shouldLinkGeometryObject(int objectIndex, int cursorType) {
-    if (objectIndex >= GCC_LINK_LIMIT) return false;
+    if (
+        objectIndex < 0
+        || objectIndex >= configuredGeometryObjectCount()
+        || objectIndex >= GCC_LINK_LIMIT
+        || geometryObjectType(objectIndex) < 0
+    ) return false;
 #if GCC_LINK_TARGET_MODE == 1
     if (!geometryObjectMatchesCursor(objectIndex, cursorType)) return false;
 #endif
 #if GCC_LINK_ALL_OBJECTS == 0
     int firstLinkedIndex = 0;
 #if GCC_LINK_TARGET_MODE == 1
-    if (cursorType >= 0) firstLinkedIndex = cursorType;
+    if (cursorType >= 0) {
+        firstLinkedIndex = firstGeometryObjectIndexForType(cursorType);
+    }
 #endif
-    if (objectIndex != firstLinkedIndex) return false;
+    if (firstLinkedIndex < 0 || objectIndex != firstLinkedIndex) return false;
 #endif
     return true;
 }
 
 // =============================================================================
-// ALL-FAMILY CURSOR STYLE — NINE MINIATURES IN ONE ROTATING CONSTELLATION
+// ALL-FAMILY CURSOR STYLE — ENABLED MINIATURES IN A ROTATING CONSTELLATION
 // =============================================================================
 
 void renderAllFamilyCursor(
@@ -1292,20 +1412,25 @@ void renderAllFamilyCursor(
     vec2 head,
     float cursorScale
 ) {
+    int enabledCount = enabledTypeCount();
+    if (enabledCount <= 0) return;
     vec2 familyCenter[GC_GEOMETRY_TYPE_COUNT];
+    int familyType[GC_GEOMETRY_TYPE_COUNT];
     float orbitRotation = iTime * GCC_CONSTELLATION_ROTATION_SPEED;
-    for (int familyIndex = 0; familyIndex < GC_GEOMETRY_TYPE_COUNT; familyIndex++) {
-        int typeIndex = familyIndex;
-        float familyPhase = float(familyIndex) / float(GC_GEOMETRY_TYPE_COUNT);
+    for (int familyOrdinal = 0; familyOrdinal < GC_GEOMETRY_TYPE_COUNT; familyOrdinal++) {
+        if (familyOrdinal >= enabledCount) break;
+        int typeIndex = enabledTypeForOrdinal(familyOrdinal);
+        familyType[familyOrdinal] = typeIndex;
+        float familyPhase = float(familyOrdinal) / float(enabledCount);
         float angle = orbitRotation + familyPhase * GC_TAU;
-        familyCenter[familyIndex] = head + vec2(cos(angle), sin(angle))
+        familyCenter[familyOrdinal] = head + vec2(cos(angle), sin(angle))
             * cursorScale * GCC_CONSTELLATION_ORBIT_RADIUS;
         GeometrySample familyShape = renderGeometryType(
             typeIndex,
             point,
-            familyCenter[familyIndex],
+            familyCenter[familyOrdinal],
             cursorScale * GCC_CONSTELLATION_MINI_SCALE * typeScale(typeIndex),
-            91.0 + float(familyIndex)
+            91.0 + float(typeIndex)
         );
         effectLight += familyShape.radiance * GCC_CONSTELLATION_FAMILY_STRENGTH;
         effectOpacity = max(
@@ -1313,30 +1438,36 @@ void renderAllFamilyCursor(
             familyShape.opacity * GCC_CONSTELLATION_FAMILY_STRENGTH
         );
     }
-    for (int familyIndex = 0; familyIndex < GC_GEOMETRY_TYPE_COUNT; familyIndex++) {
-        int nextIndex = (familyIndex + 1) % GC_GEOMETRY_TYPE_COUNT;
-        float ringDistance = segmentDistance(
-            point,
-            familyCenter[familyIndex],
-            familyCenter[nextIndex]
-        );
-        float ringCore = exp(-ringDistance / max(
-            cursorScale * GCC_CONSTELLATION_RING_WIDTH,
-            0.00012
-        ));
-        float ringGlow = exp(-ringDistance / max(
-            cursorScale * GCC_CONSTELLATION_RING_GLOW_WIDTH,
-            0.00032
-        ));
-        vec3 ringColor = mix(
-            typeColorA(familyIndex),
-            typeColorB(nextIndex),
-            0.55
-        );
-        effectLight += ringColor * GCC_CONSTELLATION_RING_STRENGTH * (
-            ringCore + ringGlow * 0.20
-        );
-        effectOpacity = max(effectOpacity, ringCore * 0.28 + ringGlow * 0.06);
+    if (enabledCount > 1) {
+        for (int familyOrdinal = 0; familyOrdinal < GC_GEOMETRY_TYPE_COUNT; familyOrdinal++) {
+            if (familyOrdinal >= enabledCount) break;
+            int nextOrdinal = (familyOrdinal + 1) % enabledCount;
+            float ringDistance = segmentDistance(
+                point,
+                familyCenter[familyOrdinal],
+                familyCenter[nextOrdinal]
+            );
+            float ringCore = exp(-ringDistance / max(
+                cursorScale * GCC_CONSTELLATION_RING_WIDTH,
+                0.00012
+            ));
+            float ringGlow = exp(-ringDistance / max(
+                cursorScale * GCC_CONSTELLATION_RING_GLOW_WIDTH,
+                0.00032
+            ));
+            vec3 ringColor = mix(
+                typeColorA(familyType[familyOrdinal]),
+                typeColorB(familyType[nextOrdinal]),
+                0.55
+            );
+            effectLight += ringColor * GCC_CONSTELLATION_RING_STRENGTH * (
+                ringCore + ringGlow * 0.20
+            );
+            effectOpacity = max(
+                effectOpacity,
+                ringCore * 0.28 + ringGlow * 0.06
+            );
+        }
     }
     float centralCore = gaussianPoint(point - head, cursorScale * 0.24);
     effectLight += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.52)
@@ -1349,7 +1480,7 @@ void renderAllFamilyCursor(
 // =============================================================================
 
 void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
-    if (iCursorVisible == 0) return;
+    if (iCursorVisible == 0 || enabledTypeCount() <= 0) return;
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 uv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, uv);
@@ -1434,9 +1565,11 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
         GCC_LINK_CULL_MIN_PIXELS
     );
     bool nearAnyLink = false;
-    vec2 linkObjectPixels[GC_OBJECT_COUNT];
+    vec2 linkObjectPixels[GC_OBJECT_LIMIT];
 #if GCC_ENABLE_OBJECT_LINKS
-    for (int linkIndex = 0; linkIndex < GC_OBJECT_COUNT; linkIndex++) {
+    int linkObjectCount = configuredGeometryObjectCount();
+    for (int linkIndex = 0; linkIndex < GC_OBJECT_LIMIT; linkIndex++) {
+        if (linkIndex >= linkObjectCount) break;
         linkObjectPixels[linkIndex] = geometryUv(
             iTime,
             float(linkIndex)
@@ -1473,10 +1606,11 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
     float effectOpacity = 0.0;
 
 #if GCC_ENABLE_OBJECT_LINKS
-    for (int linkIndex = 0; linkIndex < GC_OBJECT_COUNT; linkIndex++) {
+    for (int linkIndex = 0; linkIndex < GC_OBJECT_LIMIT; linkIndex++) {
+        if (linkIndex >= linkObjectCount) break;
         if (!shouldLinkGeometryObject(linkIndex, linkCursorType)) continue;
         float identity = float(linkIndex);
-        int objectType = linkIndex % GC_GEOMETRY_TYPE_COUNT;
+        int objectType = geometryObjectType(linkIndex);
         bool matchesCursorType = geometryObjectMatchesCursor(
             linkIndex,
             linkCursorType
@@ -1487,9 +1621,9 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
         float distanceToLink = segmentDistance(point, head, objectPoint);
         float alongLink = segmentParameter(point, head, objectPoint);
 #if GCC_LINK_TARGET_MODE == 1
-        float linkOrder = float(linkIndex / GC_GEOMETRY_TYPE_COUNT);
+        float linkOrder = float(geometryObjectInstanceIndex(linkIndex));
 #elif GCC_LINK_TARGET_MODE == 2
-        float matchingOrder = float(linkIndex / GC_GEOMETRY_TYPE_COUNT);
+        float matchingOrder = float(geometryObjectInstanceIndex(linkIndex));
         float linkOrder = matchesCursorType ? matchingOrder : identity;
 #else
         float linkOrder = identity;
@@ -1579,12 +1713,14 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
             cursorScale
         );
 #else
+        float currentIdentity = 31.0 + float(currentType) * 1.73;
+        float nextIdentity = 31.0 + float(nextType) * 1.73;
         GeometrySample currentShape = renderGeometryType(
             currentType,
             point,
             head,
             cursorScale * typeScale(currentType),
-            shapeEpoch + 31.0
+            currentIdentity
         );
         GeometrySample nextShape = emptyGeometrySample();
         if (shapeTransition > 0.001) {
@@ -1593,7 +1729,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
                 point,
                 head,
                 cursorScale * typeScale(nextType),
-                shapeEpoch + 47.0
+                nextIdentity
             );
         }
         vec3 shapeLight = mix(
@@ -1624,7 +1760,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
                 point,
                 head,
                 cursorScale * typeScale(currentType) * echoScale,
-                shapeEpoch + 63.0 + float(echoIndex)
+                currentIdentity + 32.0 + float(echoIndex)
             );
             float echoLife = (1.0 - echoProgress) * GCC_ECHO_STRENGTH;
             effectLight += echoShape.radiance * echoLife;

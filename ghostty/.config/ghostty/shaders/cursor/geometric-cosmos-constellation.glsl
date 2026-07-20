@@ -1,4 +1,8 @@
-// BUILD: wallpaper geometry, exact terminal foreground, configurable cursor
+// BUILD: standalone Geometric Cosmos all-family constellation cursor (style 1)
+// Derived from combined/geometric-cosmos.glsl; mainImage never renders its background.
+// Cursor movement effects vanish while stationary and preserve terminal alpha.
+
+// Shared Geometric Cosmos renderer configured below for cursor-only use.
 // Geometric Cosmos — nine mathematical worlds with a shape-shifting cursor
 //
 // Background families (type IDs):
@@ -20,13 +24,13 @@
 #define GC_GPU_ULTRA 3
 
 #ifndef GC_WALLPAPER_MODE
-#define GC_WALLPAPER_MODE 1              // 1: exact terminal foreground over scene
+#define GC_WALLPAPER_MODE 0              // 1: exact terminal foreground over scene
 #endif
 #ifndef GC_ENABLE_CURSOR_STAGE
 #define GC_ENABLE_CURSOR_STAGE 1         // 0: background-only build
 #endif
 #ifndef GC_ENABLE_BACKGROUND_STAGE
-#define GC_ENABLE_BACKGROUND_STAGE 1     // 0: standalone cursor build
+#define GC_ENABLE_BACKGROUND_STAGE 0     // standalone cursor: no procedural background
 #endif
 
 #if GHOSTTY_GPU_PROFILE == GC_GPU_ECO
@@ -186,12 +190,12 @@ const float GC_LORENZ_SCALE = 1.10;
 // SHAPE-SHIFTING CURSOR, TRAIL, CONNECTION, AND RANDOMNESS
 // =============================================================================
 
-#define GCC_CURSOR_STYLE 0               // 0 time-varying shape, 1 all-family constellation
+#define GCC_CURSOR_STYLE 1               // fixed standalone variant
 #define GCC_CURSOR_MODE 1                // style 0: 0 fixed, 1 shuffled, 2 sequential
 #define GCC_FIXED_TYPE 0                 // type ID used when mode == 0
 #define GCC_ENABLE_TRAIL 1
 #define GCC_ENABLE_SPARKS 1
-#define GCC_ENABLE_OBJECT_LINKS 1        // 0 removes every cursor-object connection
+#define GCC_ENABLE_OBJECT_LINKS 0    // standalone cursor: no links to invisible objects
 #define GCC_LINK_TARGET_MODE 2           // 0 all equal; 1 cursor family only; 2 soft all + strong match
 #define GCC_LINK_ALL_OBJECTS 1           // all qualifying instances; 0 first one only
 #define GCC_LINK_LIMIT GC_OBJECT_LIMIT   // maximum number of connected instances
@@ -1809,24 +1813,8 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 resolution = max(iResolution.xy, vec2(1.0));
     vec2 terminalUv = clamp(fragCoord / resolution, vec2(0.0), vec2(1.0));
     vec4 terminalColor = texture(iChannel0, terminalUv);
-#if GC_ENABLE_BACKGROUND_STAGE
-    vec4 geometryColor;
-    renderGeometricCosmosBackground(geometryColor, fragCoord);
-#if GC_WALLPAPER_MODE
-    fragColor = compositeGeometricCosmosBehindTerminal(
-        geometryColor,
-        terminalColor
-    );
-#else
-    fragColor = geometryColor;
-#endif
-#else
     fragColor = terminalColor;
-#endif
-#if GC_ENABLE_CURSOR_STAGE
     applyGeometricCosmosCursor(fragColor, fragCoord);
-#endif
-#if GC_WALLPAPER_MODE
+    // The desktop compositor remains authoritative outside the terminal layer.
     fragColor.a = terminalColor.a;
-#endif
 }

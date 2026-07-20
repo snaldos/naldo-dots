@@ -331,10 +331,7 @@ for _, spec in ipairs(directional_binds) do
       layouts = {
         {
           layout = "dwindle",
-          dispatcher = focus_window_or_workspace(
-            hl.dsp.focus({ direction = spec.direction }),
-            spec.workspace_fallback
-          ),
+          dispatcher = focus_window_or_workspace(hl.dsp.focus({ direction = spec.direction }), spec.workspace_fallback),
         },
         {
           layout = "scrolling",
@@ -363,10 +360,7 @@ for _, spec in ipairs(directional_binds) do
   local move_description = "Layout-Position: Move window " .. spec.direction
   local move_dispatcher = hl.dsp.window.move({ direction = spec.direction })
   if spec.workspace_fallback ~= nil then
-    move_description = move_description
-      .. " / Workspace: Move with window to "
-      .. spec.workspace_fallback
-      .. " at edge"
+    move_description = move_description .. " / Workspace: Move with window to " .. spec.workspace_fallback .. " at edge"
     move_dispatcher = move_window_or_workspace(move_dispatcher, spec.workspace_fallback)
   else
     move_description = move_description .. " inside monitor"
@@ -412,9 +406,7 @@ bind(
 -- Layout switching and layout-specific actions.
 bind(
   main_mod .. " + Slash",
-  hl.dsp.exec_cmd(
-    shell.command(vars.scripts.layout_selector, vars.noctalia.executable, vars.noctalia.ipc_subcommand)
-  ),
+  hl.dsp.exec_cmd(shell.command(vars.scripts.layout_selector, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Layout-Management: Select layout" }
 )
 
@@ -498,13 +490,23 @@ bind(
 -- Utilities.
 bind(
   "CTRL + Print",
-  hl.dsp.exec_cmd(
-    shell.command(vars.scripts.annotated_snip, vars.noctalia.executable, vars.noctalia.ipc_subcommand)
-  ),
+  hl.dsp.exec_cmd(shell.command(vars.scripts.annotated_snip, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Utilities: Annotated screen snip" }
 )
 bind(
   "ALT + Print",
   hl.dsp.exec_cmd(shell.command(vars.scripts.snip_to_search, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Utilities: Google Lens" }
+)
+
+bind(
+  "SUPER + ALT + Minus",
+  hl.dsp.exec_cmd("wlrctl pointer scroll 10 0"),
+  { repeating = true, description = "Mouse wheel down" }
+)
+
+bind(
+  "SUPER + ALT + Equal",
+  hl.dsp.exec_cmd("wlrctl pointer scroll -10 0"),
+  { repeating = true, description = "Mouse wheel up" }
 )
