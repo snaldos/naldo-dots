@@ -166,13 +166,14 @@ const float GC_LORENZ_SCALE = 1.10;
 // SHAPE-SHIFTING CURSOR, TRAIL, CONNECTION, AND RANDOMNESS
 // =============================================================================
 
-#define GCC_CURSOR_STYLE 1               // 0 time-varying shape, 1 all-family constellation
+#define GCC_CURSOR_STYLE 0               // 0 time-varying shape, 1 all-family constellation
 #define GCC_CURSOR_MODE 1                // style 0: 0 fixed, 1 shuffled, 2 sequential
 #define GCC_FIXED_TYPE 0                 // type ID used when mode == 0
 #define GCC_ENABLE_TRAIL 1
 #define GCC_ENABLE_SPARKS 1
 #define GCC_ENABLE_OBJECT_LINKS 1        // 0 removes every cursor-object connection
-#define GCC_LINK_ALL_OBJECTS 1           // 1 all objects, 0 primary object only
+#define GCC_LINK_TARGET_MODE 2           // 0 all equal; 1 cursor family only; 2 soft all + strong match
+#define GCC_LINK_ALL_OBJECTS 1           // all qualifying instances; 0 first one only
 #define GCC_LINK_LIMIT 9                 // maximum number of connected objects
 
 const float GCC_RANDOM_SEED = 37.17;
@@ -183,8 +184,8 @@ const float GCC_FADE_POWER = 1.65;
 const float GCC_MIN_MOVEMENT_CELLS = 0.025;
 const float GCC_GROWTH_START_CELLS = 0.08;
 const float GCC_GROWTH_FULL_CELLS = 8.00;
-const float GCC_SIZE_MIN = 0.30;
-const float GCC_SIZE_MAX = 1.00;
+const float GCC_SIZE_MIN = 1.05;
+const float GCC_SIZE_MAX = 2.35;
 const float GCC_SIZE_PULSE = 0.11;
 const float GCC_CULL_RADIUS_MIN = 4.5;
 const float GCC_CULL_RADIUS_MAX = 9.0;
@@ -223,6 +224,14 @@ const float GCC_LINK_DASH_COUNT = 19.0;
 const float GCC_LINK_DASH_SPEED = 1.62;
 const float GCC_LINK_SECONDARY_FALLOFF = 0.88;
 const float GCC_LINK_COLOR_PHASE_STEP = 0.12;
+const float GCC_LINK_TYPE_SWITCH_MIN_GAIN = 0.28;
+// Mode 2 context rays remain visible but subordinate to the matching family.
+const float GCC_LINK_CONTEXT_WIDTH_SCALE = 0.55;
+const float GCC_LINK_CONTEXT_GLOW_WIDTH_SCALE = 0.65;
+const float GCC_LINK_CONTEXT_INTENSITY_SCALE = 0.16;
+const float GCC_LINK_CONTEXT_OPACITY_SCALE = 0.12;
+const float GCC_LINK_CONTEXT_DASH_DENSITY_SCALE = 0.72;
+const float GCC_LINK_CONTEXT_DASH_SPEED_SCALE = 0.75;
 // Movement factor 0..1 also drives link thickness, glow, energy, and dash density.
 // MIN values apply to tiny cursor moves; MAX values apply at GROWTH_FULL_CELLS.
 const float GCC_LINK_MOVEMENT_POWER = 1.15;
@@ -1235,6 +1244,26 @@ void cursorTypePair(
     transition = smoothstep(transitionStart, holdSeconds, phaseSeconds);
 }
 
+bool geometryObjectMatchesCursor(int objectIndex, int cursorType) {
+    if (cursorType < 0) return true;
+    return objectIndex % GC_GEOMETRY_TYPE_COUNT == cursorType;
+}
+
+bool shouldLinkGeometryObject(int objectIndex, int cursorType) {
+    if (objectIndex >= GCC_LINK_LIMIT) return false;
+#if GCC_LINK_TARGET_MODE == 1
+    if (!geometryObjectMatchesCursor(objectIndex, cursorType)) return false;
+#endif
+#if GCC_LINK_ALL_OBJECTS == 0
+    int firstLinkedIndex = 0;
+#if GCC_LINK_TARGET_MODE == 1
+    if (cursorType >= 0) firstLinkedIndex = cursorType;
+#endif
+    if (objectIndex != firstLinkedIndex) return false;
+#endif
+    return true;
+}
+
 // =============================================================================
 // ALL-FAMILY CURSOR STYLE — NINE MINIATURES IN ONE ROTATING CONSTELLATION
 // =============================================================================
@@ -1323,6 +1352,24 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
         cursorPixels * GCC_GROWTH_FULL_CELLS,
         movedPixels
     );
+#if GCC_CURSOR_STYLE == 1
+    // Style 1 depicts every family, so type matching deliberately becomes a no-op.
+    int linkCursorType = -1;
+    float linkTypeTransitionGain = 1.0;
+#else
+    int currentType, nextType;
+    float shapeTransition, shapeEpoch;
+    cursorTypePair(currentType, nextType, shapeTransition, shapeEpoch);
+    // During a crossfade, follow the visually dominant geometry. Briefly dim the
+    // ray around the midpoint so it does not appear to teleport between objects.
+    int linkCursorType = shapeTransition < 0.5 ? currentType : nextType;
+    float transitionMidpoint = 1.0 - abs(2.0 * shapeTransition - 1.0);
+    float linkTypeTransitionGain = mix(
+        1.0,
+        GCC_LINK_TYPE_SWITCH_MIN_GAIN,
+        transitionMidpoint
+    );
+#endif
     float linkMovementFactor = pow(movementFactor, GCC_LINK_MOVEMENT_POWER);
     float linkWidthScale = mix(
         GCC_LINK_WIDTH_MIN_SCALE,
@@ -1377,8 +1424,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
             iTime,
             float(linkIndex)
         ) * resolution;
-        if (linkIndex >= GCC_LINK_LIMIT) continue;
-        if (GCC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
+        if (!shouldLinkGeometryObject(linkIndex, linkCursorType)) continue;
         nearAnyLink = nearAnyLink || segmentDistance(
             fragCoord,
             headPixels,
@@ -1411,16 +1457,47 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
 
 #if GCC_ENABLE_OBJECT_LINKS
     for (int linkIndex = 0; linkIndex < GC_OBJECT_COUNT; linkIndex++) {
-        if (linkIndex >= GCC_LINK_LIMIT) continue;
-        if (GCC_LINK_ALL_OBJECTS == 0 && linkIndex > 0) continue;
+        if (!shouldLinkGeometryObject(linkIndex, linkCursorType)) continue;
         float identity = float(linkIndex);
+        int objectType = linkIndex % GC_GEOMETRY_TYPE_COUNT;
+        bool matchesCursorType = geometryObjectMatchesCursor(
+            linkIndex,
+            linkCursorType
+        );
         vec2 objectPixels = linkObjectPixels[linkIndex];
         if (segmentDistance(fragCoord, headPixels, objectPixels) > linkCull) continue;
         vec2 objectPoint = scenePoint(objectPixels);
         float distanceToLink = segmentDistance(point, head, objectPoint);
         float alongLink = segmentParameter(point, head, objectPoint);
-        float linkStrength = pow(GCC_LINK_SECONDARY_FALLOFF, identity);
-        int objectType = linkIndex % GC_GEOMETRY_TYPE_COUNT;
+#if GCC_LINK_TARGET_MODE == 1
+        float linkOrder = float(linkIndex / GC_GEOMETRY_TYPE_COUNT);
+#elif GCC_LINK_TARGET_MODE == 2
+        float matchingOrder = float(linkIndex / GC_GEOMETRY_TYPE_COUNT);
+        float linkOrder = matchesCursorType ? matchingOrder : identity;
+#else
+        float linkOrder = identity;
+#endif
+        float linkStrength = pow(GCC_LINK_SECONDARY_FALLOFF, linkOrder);
+        float contextWidthScale = 1.0;
+        float contextGlowWidthScale = 1.0;
+        float contextIntensityScale = 1.0;
+        float contextOpacityScale = 1.0;
+        float contextDashDensityScale = 1.0;
+        float contextDashSpeedScale = 1.0;
+#if GCC_LINK_TARGET_MODE == 2
+        if (!matchesCursorType) {
+            contextWidthScale = GCC_LINK_CONTEXT_WIDTH_SCALE;
+            contextGlowWidthScale = GCC_LINK_CONTEXT_GLOW_WIDTH_SCALE;
+            contextIntensityScale = GCC_LINK_CONTEXT_INTENSITY_SCALE;
+            contextOpacityScale = GCC_LINK_CONTEXT_OPACITY_SCALE;
+            contextDashDensityScale = GCC_LINK_CONTEXT_DASH_DENSITY_SCALE;
+            contextDashSpeedScale = GCC_LINK_CONTEXT_DASH_SPEED_SCALE;
+        }
+#endif
+        float typeSwitchGain = 1.0;
+#if GCC_LINK_TARGET_MODE == 1 || GCC_LINK_TARGET_MODE == 2
+        if (matchesCursorType) typeSwitchGain = linkTypeTransitionGain;
+#endif
         vec3 linkColor = mix(
             typeColorA(objectType),
             typeColorB(objectType),
@@ -1428,18 +1505,22 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
         );
         float dash = 0.64 + 0.36 * sin(
             alongLink * GCC_LINK_DASH_COUNT * linkDashDensityScale
+                * contextDashDensityScale
             - iTime * GCC_LINK_DASH_SPEED * linkDashSpeedScale
+                * contextDashSpeedScale
             + identity * 1.73
         );
-        float core = exp(-distanceToLink / max(cursorSize * GCC_LINK_WIDTH * linkWidthScale, 0.0002));
-        float glow = exp(-distanceToLink / max(cursorSize * GCC_LINK_GLOW_WIDTH * linkGlowWidthScale, 0.0005));
-        effectLight += linkColor * dash * linkStrength * linkIntensityScale * (
+        float core = exp(-distanceToLink / max(cursorSize * GCC_LINK_WIDTH * linkWidthScale * contextWidthScale, 0.0002));
+        float glow = exp(-distanceToLink / max(cursorSize * GCC_LINK_GLOW_WIDTH * linkGlowWidthScale
+            * contextGlowWidthScale, 0.0005));
+        effectLight += linkColor * dash * linkStrength * linkIntensityScale
+            * contextIntensityScale * typeSwitchGain * (
             core * GCC_LINK_CORE_STRENGTH + glow * GCC_LINK_GLOW_STRENGTH
         );
         effectOpacity = max(
             effectOpacity,
-            linkStrength * linkOpacityScale
-                * (core * 0.14 + glow * 0.035)
+            linkStrength * linkOpacityScale * contextOpacityScale
+                * typeSwitchGain * (core * 0.14 + glow * 0.035)
         );
     }
 #endif
@@ -1481,9 +1562,6 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
             cursorScale
         );
 #else
-        int currentType, nextType;
-        float shapeTransition, shapeEpoch;
-        cursorTypePair(currentType, nextType, shapeTransition, shapeEpoch);
         GeometrySample currentShape = renderGeometryType(
             currentType,
             point,
