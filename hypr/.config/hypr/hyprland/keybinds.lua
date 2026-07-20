@@ -263,7 +263,7 @@ bind(
     layouts = {
       {
         layout = "scrolling",
-        dispatcher = hl.dsp.exec_cmd(shell.command(vars.scripts.center_scrolling_active)),
+        dispatcher = hl.dsp.layout("center"),
       },
     },
   }),
