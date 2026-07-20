@@ -498,3 +498,14 @@ bind(
   hl.dsp.exec_cmd(shell.command(vars.scripts.snip_to_search, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Utilities: Google Lens" }
 )
+
+-- Pointer controls.
+bind(main_mod .. " + Equal", hl.dsp.exec_cmd([[/usr/bin/printf 'wheel 1\n' | /usr/bin/dotoolc]]), {
+  repeating = true,
+  description = "Pointer: Scroll up",
+})
+
+bind(main_mod .. " + Minus", hl.dsp.exec_cmd([[/usr/bin/printf 'wheel -1\n' | /usr/bin/dotoolc]]), {
+  repeating = true,
+  description = "Pointer: Scroll down",
+})
