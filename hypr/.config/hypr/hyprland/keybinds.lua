@@ -42,26 +42,6 @@ local function resize_window_by_percent(x_percent, y_percent)
   end
 end
 
-local function scrolling_toggle_maximized_or_promote()
-  local window = hl.get_active_window()
-  local monitor = hl.get_active_monitor()
-  if window == nil or monitor == nil or type(window.size) ~= "table" then
-    return
-  end
-
-  local window_width = window.size.x
-  if type(window_width) ~= "number" or monitor.width <= 0 then
-    return
-  end
-
-  if window_width >= monitor.width * 0.9 then
-    hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset" }))
-    hl.dispatch(hl.dsp.layout("promote"))
-  else
-    hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "set" }))
-  end
-end
-
 local function focus_window_or_workspace(dispatcher, workspace_fallback)
   if workspace_fallback == nil then
     return dispatcher
@@ -216,10 +196,10 @@ else
   end
 end
 
-bind(main_mod .. " + SHIFT + mouse_up", hl.dsp.focus({ workspace = "r+1" }), {
+bind(main_mod .. " + SHIFT + mouse_down", hl.dsp.focus({ workspace = "r+1" }), {
   description = "Workspace: Focus next",
 })
-bind(main_mod .. " + SHIFT + mouse_down", hl.dsp.focus({ workspace = "r-1" }), {
+bind(main_mod .. " + SHIFT + mouse_up", hl.dsp.focus({ workspace = "r-1" }), {
   description = "Workspace: Focus previous",
 })
 
@@ -264,7 +244,7 @@ bind(
     },
     {
       layout = "scrolling",
-      dispatcher = scrolling_toggle_maximized_or_promote,
+      dispatcher = hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }),
     },
   }),
   { description = "Window: Fullscreen" }
@@ -436,10 +416,10 @@ bind(main_mod .. " + Period", scrolling_dispatch("move " .. vars.scrolling.move_
 bind(main_mod .. " + Comma", scrolling_dispatch("move " .. vars.scrolling.move_col.next), {
   description = "Scrolling: Move down",
 })
-bind(main_mod .. " + CTRL + mouse_up", scrolling_dispatch("move " .. vars.scrolling.move_col.prev), {
+bind(main_mod .. " + CTRL + mouse_down", scrolling_dispatch("move " .. vars.scrolling.move_col.prev), {
   description = "Scrolling: Move up",
 })
-bind(main_mod .. " + CTRL + mouse_down", scrolling_dispatch("move " .. vars.scrolling.move_col.next), {
+bind(main_mod .. " + CTRL + mouse_up", scrolling_dispatch("move " .. vars.scrolling.move_col.next), {
   description = "Scrolling: Move down",
 })
 
@@ -499,13 +479,24 @@ bind(
   { description = "Utilities: Google Lens" }
 )
 
--- Pointer controls.
-bind(main_mod .. " + Equal", hl.dsp.exec_cmd([[/usr/bin/printf 'wheel 1\n' | /usr/bin/dotoolc]]), {
-  repeating = true,
-  description = "Pointer: Scroll up",
+local dotool_scroll = "/home/naldo/.local/bin/dotool-scroll"
+
+-- Start scrolling when pressed.
+bind(main_mod .. " + Equal", hl.dsp.exec_cmd(dotool_scroll .. " up start"), {
+  description = "Pointer: Start scrolling up",
 })
 
-bind(main_mod .. " + Minus", hl.dsp.exec_cmd([[/usr/bin/printf 'wheel -1\n' | /usr/bin/dotoolc]]), {
-  repeating = true,
-  description = "Pointer: Scroll down",
+bind(main_mod .. " + Minus", hl.dsp.exec_cmd(dotool_scroll .. " down start"), {
+  description = "Pointer: Start scrolling down",
+})
+
+-- Stop scrolling when released.
+bind(main_mod .. " + Equal", hl.dsp.exec_cmd(dotool_scroll .. " up stop"), {
+  release = true,
+  description = "Pointer: Stop scrolling up",
+})
+
+bind(main_mod .. " + Minus", hl.dsp.exec_cmd(dotool_scroll .. " down stop"), {
+  release = true,
+  description = "Pointer: Stop scrolling down",
 })
