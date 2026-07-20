@@ -124,8 +124,14 @@ const vec3 GC_CYAN = vec3(0.090, 0.880, 1.000);
 const vec3 GC_TEAL = vec3(0.080, 0.740, 0.650);
 const vec3 GC_VIOLET = vec3(0.650, 0.220, 1.000);
 const vec3 GC_ROSE = vec3(0.980, 0.180, 0.610);
-const vec3 GC_GOLD = vec3(1.000, 0.710, 0.250);
 const vec3 GC_WHITE = vec3(0.990, 0.970, 1.000);
+// Unified animated geometry palette: every family uses both gradients.
+const vec3 GC_GEOMETRY_BLUE_DEEP = vec3(0.025, 0.110, 0.500);
+const vec3 GC_GEOMETRY_BLUE_BRIGHT = vec3(0.120, 0.590, 1.000);
+const vec3 GC_GEOMETRY_PINK_DEEP = vec3(0.500, 0.025, 0.300);
+const vec3 GC_GEOMETRY_PINK_BRIGHT = vec3(1.000, 0.290, 0.780);
+const float GC_GEOMETRY_PALETTE_FLOW_SPEED = 0.16;
+const float GC_GEOMETRY_PALETTE_PHASE_STEP = 0.73;
 const float GC_PI = 3.14159265359;
 const float GC_TAU = 6.28318530718;
 
@@ -257,6 +263,20 @@ const float GCC_LINK_CULL_MIN_PIXELS = 4.0;
 
 float saturate(float value) { return clamp(value, 0.0, 1.0); }
 float luminance(vec3 color) { return dot(color, vec3(0.2126, 0.7152, 0.0722)); }
+vec3 geometryBlueTone(float phase) {
+    float flow = 0.5 + 0.5 * sin(
+        iTime * GC_GEOMETRY_PALETTE_FLOW_SPEED + phase
+    );
+    return mix(GC_GEOMETRY_BLUE_DEEP, GC_GEOMETRY_BLUE_BRIGHT, flow);
+}
+vec3 geometryPinkTone(float phase) {
+    float flow = 0.5 + 0.5 * sin(
+        iTime * GC_GEOMETRY_PALETTE_FLOW_SPEED + phase + 2.1
+    );
+    return mix(GC_GEOMETRY_PINK_DEEP, GC_GEOMETRY_PINK_BRIGHT, flow);
+}
+#define GC_GEOMETRY_BLUE geometryBlueTone(0.0)
+#define GC_GEOMETRY_PINK geometryPinkTone(1.7)
 float hash11(float value) {
     return fract(sin(value * 127.1 + 311.7) * 43758.5453123);
 }
@@ -354,27 +374,11 @@ GeometrySample emptyGeometrySample() {
 }
 
 vec3 typeColorA(int typeIndex) {
-    if (typeIndex == 0) return GC_VIOLET;
-    if (typeIndex == 1) return GC_ROSE;
-    if (typeIndex == 2) return GC_GOLD;
-    if (typeIndex == 3) return GC_BLUE;
-    if (typeIndex == 4) return GC_VIOLET;
-    if (typeIndex == 5) return GC_ROSE;
-    if (typeIndex == 6) return GC_VIOLET;
-    if (typeIndex == 7) return GC_BLUE;
-    return GC_ROSE;
+    return geometryBlueTone(float(typeIndex) * GC_GEOMETRY_PALETTE_PHASE_STEP);
 }
 
 vec3 typeColorB(int typeIndex) {
-    if (typeIndex == 0) return GC_CYAN;
-    if (typeIndex == 1) return GC_CYAN;
-    if (typeIndex == 2) return GC_CYAN;
-    if (typeIndex == 3) return GC_CYAN;
-    if (typeIndex == 4) return GC_CYAN;
-    if (typeIndex == 5) return GC_GOLD;
-    if (typeIndex == 6) return GC_CYAN;
-    if (typeIndex == 7) return GC_ROSE;
-    return GC_CYAN;
+    return geometryPinkTone(float(typeIndex) * GC_GEOMETRY_PALETTE_PHASE_STEP + 1.7);
 }
 
 float typeScale(int typeIndex) {
@@ -511,12 +515,12 @@ GeometrySample renderTesseract(
             sampleValue, point,
             projected[first], projected[second],
             depth[first], depth[second], sizeValue,
-            GC_VIOLET, GC_CYAN,
+            GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK,
             edgeIndex >= 24 ? 0.78 : 1.0
         );
     }
     float core = gaussianPoint(point - center, sizeValue * 0.68);
-    sampleValue.radiance += mix(GC_BLUE, GC_VIOLET, 0.55)
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.55)
         * core * GC_CORE_GLOW_STRENGTH;
     sampleValue.opacity = max(sampleValue.opacity, core * 0.16);
     return sampleValue;
@@ -555,11 +559,11 @@ GeometrySample renderGem(
             sampleValue, point,
             projected[first], projected[second],
             depth[first], depth[second], sizeValue,
-            GC_ROSE, GC_CYAN, 1.0
+            GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 1.0
         );
     }
     float body = gaussianPoint(point - center, sizeValue * 0.62);
-    sampleValue.radiance += mix(GC_BLUE, GC_TEAL, 0.46) * body * 0.095;
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.46) * body * 0.095;
     sampleValue.darken = max(sampleValue.darken, body * 0.10);
     sampleValue.opacity = max(sampleValue.opacity, body * 0.20);
     return sampleValue;
@@ -650,9 +654,13 @@ GeometrySample renderOrbital(
         gcSphericalGridMask(backGridNormal, pixelRadius, backCore, backGlow);
         vec3 lightDirection = normalize(vec3(-0.62, 0.74, 1.15));
         float diffuse = 0.44 + 0.56 * max(dot(frontNormal, lightDirection), 0.0);
-        vec3 frontColor = mix(GC_BLUE, GC_CYAN, 0.58 + 0.22 * frontGridNormal.y)
+        vec3 frontColor = mix(
+            GC_GEOMETRY_BLUE,
+            GC_GEOMETRY_PINK,
+            0.50 + 0.34 * frontGridNormal.y
+        )
             * diffuse;
-        vec3 backColor = mix(GC_VIOLET, GC_BLUE, 0.48);
+        vec3 backColor = mix(GC_GEOMETRY_PINK, GC_GEOMETRY_BLUE, 0.48);
         sampleValue.radiance += frontColor * (
             frontCore * GC_ORBITAL_GRID_CORE_STRENGTH
             + frontGlow * GC_ORBITAL_GRID_GLOW_STRENGTH
@@ -668,7 +676,7 @@ GeometrySample renderOrbital(
         float silhouetteGlow = exp(
             -silhouetteDistance / GC_ORBITAL_SILHOUETTE_GLOW_WIDTH
         );
-        sampleValue.radiance += mix(GC_CYAN, GC_VIOLET, 0.40) * (
+        sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.40) * (
             silhouetteCore * GC_ORBITAL_SILHOUETTE_CORE_STRENGTH
             + silhouetteGlow * GC_ORBITAL_SILHOUETTE_GLOW_STRENGTH
         );
@@ -683,7 +691,7 @@ GeometrySample renderOrbital(
     }
     float atmosphere = exp(-abs(radial - sphereRadius * 1.05) / 0.16)
         * smoothstep(sphereRadius * 0.72, sphereRadius * 0.96, radial);
-    sampleValue.radiance += mix(GC_CYAN, GC_VIOLET, 0.46)
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.46)
         * atmosphere * 0.040;
     sampleValue.opacity = max(sampleValue.opacity, atmosphere * 0.035);
 
@@ -703,7 +711,11 @@ GeometrySample renderOrbital(
             front
         );
         float occlusion = mix(1.0, insideVisibility, sphereCoverage);
-        vec3 ringColor = mix(GC_GOLD, GC_CYAN, float(ringIndex));
+        vec3 ringColor = mix(
+            GC_GEOMETRY_PINK,
+            GC_GEOMETRY_BLUE,
+            float(ringIndex)
+        );
         sampleValue.radiance += ringColor * occlusion * (
             core * 0.38 + glow * 0.075
         );
@@ -725,7 +737,7 @@ GeometrySample renderOrbital(
         float behind = 1.0 - step(0.0, orbitDepth);
         float moonVisibility = 1.0 - behind * sphereCoverage
             * (1.0 - GC_ORBITAL_BACK_MOON_VISIBILITY);
-        sampleValue.radiance += mix(GC_WHITE, GC_CYAN, index * 0.35)
+        sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, index)
             * moon * moonVisibility * 0.62;
         sampleValue.opacity = max(sampleValue.opacity, moon * moonVisibility * 0.48);
     }
@@ -781,12 +793,13 @@ GeometrySample renderCrystal(
             sampleValue, point,
             projected[first], projected[second],
             depth[first], depth[second], sizeValue,
-            GC_BLUE, GC_CYAN,
+            GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK,
             edgeIndex < 12 ? 0.86 : 1.0
         );
     }
     float core = gaussianPoint(point - center, sizeValue * 0.72);
-    sampleValue.radiance += GC_VIOLET * core * 0.072;
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.58)
+        * core * 0.072;
     sampleValue.opacity = max(sampleValue.opacity, core * 0.18);
     return sampleValue;
 }
@@ -824,19 +837,20 @@ GeometrySample renderTorusKnot(
         addProjectedEdge(
             sampleValue, point, projected0, projected1,
             depth0, depth1, sizeValue,
-            mix(GC_VIOLET, GC_ROSE, phaseColor * 0.42),
-            GC_CYAN,
+            mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, phaseColor),
+            GC_GEOMETRY_PINK,
             1.0
         );
         if ((segmentIndex % 8) == 0) {
             addProjectedNode(
                 sampleValue, point, projected0, sizeValue,
-                mix(GC_GOLD, GC_CYAN, phaseColor), 0.72
+                mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, phaseColor), 0.72
             );
         }
     }
     float aura = gaussianPoint(point - center, sizeValue * 1.12);
-    sampleValue.radiance += GC_VIOLET * aura * 0.045;
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.50)
+        * aura * 0.045;
     sampleValue.opacity = max(sampleValue.opacity, aura * 0.12);
     return sampleValue;
 }
@@ -875,8 +889,8 @@ GeometrySample renderMobius(
             addProjectedEdge(
                 sampleValue, point, projected0, projected1,
                 depth0, depth1, sizeValue,
-                mix(GC_ROSE, GC_VIOLET, railPhase),
-                GC_CYAN,
+                mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, railPhase),
+                GC_GEOMETRY_PINK,
                 0.88
             );
         }
@@ -891,11 +905,12 @@ GeometrySample renderMobius(
         addProjectedEdge(
             sampleValue, point, projected0, projected1,
             depth0, depth1, sizeValue,
-            GC_GOLD, GC_CYAN, 0.72
+            GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.72
         );
     }
     float core = gaussianPoint(point - center, sizeValue * 0.72);
-    sampleValue.radiance += mix(GC_GOLD, GC_VIOLET, 0.68) * core * 0.070;
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.68)
+        * core * 0.070;
     sampleValue.darken = max(sampleValue.darken, core * 0.08);
     sampleValue.opacity = max(sampleValue.opacity, core * 0.18);
     return sampleValue;
@@ -952,14 +967,15 @@ GeometrySample renderFractalTetra(
                 sampleValue, point,
                 projected[first], projected[second],
                 depth[first], depth[second], sizeValue,
-                mix(GC_VIOLET, GC_ROSE, childPhase),
-                GC_CYAN,
+                mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, childPhase),
+                GC_GEOMETRY_PINK,
                 0.88
             );
         }
     }
     float core = gaussianPoint(point - center, sizeValue * 0.68);
-    sampleValue.radiance += GC_BLUE * core * 0.050;
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.42)
+        * core * 0.050;
     sampleValue.opacity = max(sampleValue.opacity, core * 0.14);
     return sampleValue;
 }
@@ -1004,7 +1020,7 @@ GeometrySample renderIcosahedralCage(
                 sampleValue, point,
                 projected[first], projected[second],
                 depth[first], depth[second], sizeValue,
-                GC_BLUE, GC_CYAN, 1.0
+                GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 1.0
             );
         }
     }
@@ -1013,7 +1029,7 @@ GeometrySample renderIcosahedralCage(
         -abs(cageRadius - GC_ICOSA_CAGE_AURA_RADIUS)
             / max(GC_ICOSA_CAGE_AURA_WIDTH, 0.001)
     ) * smoothstep(0.48, 0.86, cageRadius);
-    sampleValue.radiance += mix(GC_VIOLET, GC_CYAN, 0.52)
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.52)
         * cageAura * GC_ICOSA_CAGE_AURA_STRENGTH;
     sampleValue.opacity = max(
         sampleValue.opacity,
@@ -1063,13 +1079,14 @@ GeometrySample renderLorenz(
         addProjectedEdge(
             sampleValue, point, projected0, projected1,
             depth0, depth1, sizeValue,
-            mix(GC_ROSE, GC_VIOLET, lobe),
-            mix(GC_VIOLET, GC_CYAN, lobe),
+            mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, lobe),
+            mix(GC_GEOMETRY_PINK, GC_GEOMETRY_BLUE, lobe),
             1.0
         );
     }
     float core = gaussianPoint(point - center, sizeValue * 0.60);
-    sampleValue.radiance += GC_VIOLET * core * 0.050;
+    sampleValue.radiance += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.50)
+        * core * 0.050;
     sampleValue.opacity = max(sampleValue.opacity, core * 0.14);
     return sampleValue;
 }
@@ -1322,7 +1339,7 @@ void renderAllFamilyCursor(
         effectOpacity = max(effectOpacity, ringCore * 0.28 + ringGlow * 0.06);
     }
     float centralCore = gaussianPoint(point - head, cursorScale * 0.24);
-    effectLight += mix(GC_VIOLET, GC_CYAN, 0.52)
+    effectLight += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, 0.52)
         * centralCore * GCC_CONSTELLATION_CORE_STRENGTH;
     effectOpacity = max(effectOpacity, centralCore * 0.22);
 }
@@ -1540,7 +1557,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
             trailWidth * GCC_TRAIL_GLOW_MULTIPLIER,
             0.0004
         )) * smoothstep(0.0, 0.16, along);
-        vec3 trailColor = mix(GC_VIOLET, GC_CYAN, along);
+        vec3 trailColor = mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, along);
         effectLight += trailColor * (
             trailCore * GCC_TRAIL_CORE_STRENGTH
             + trailGlow * GCC_TRAIL_GLOW_STRENGTH
@@ -1628,7 +1645,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
                 point - sparkCenter,
                 cursorSize * GCC_SPARK_RADIUS
             );
-            effectLight += mix(GC_CYAN, GC_GOLD, sideRandom)
+            effectLight += mix(GC_GEOMETRY_BLUE, GC_GEOMETRY_PINK, sideRandom)
                 * spark * GCC_SPARK_STRENGTH;
             effectOpacity = max(effectOpacity, spark * 0.18);
         }

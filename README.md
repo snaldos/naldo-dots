@@ -25,24 +25,29 @@ Run the complete user-level bootstrap:
 ```
 
 It validates prerequisites and the selected profile, serializes against
-`sync-all`, enforces clean package-source boundaries, deploys all packages,
-initializes machine-local Noctalia, Fish, and Pi files when absent, enforces mode
+`sync-all` and other dotfiles operations, enforces clean package-source
+boundaries, deploys all packages, initializes machine-local Noctalia, Fish, and
+Pi files when absent, enforces mode
 `0600` on those private files, and reloads user-systemd units. It does not
 install Arch packages or modify system files.
 
-Equivalent manual Stow command (links only):
+The shared links-only reconciler used by installation and synchronization is:
 
 ```bash
-stow --no-folding ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi desktop automation machine
+./deploy-links.sh --dry-run
+./deploy-links.sh
 ```
 
-Reapply links with `stow --no-folding --restow PACKAGE`, or remove links with
-`stow --no-folding --delete PACKAGE`.
+It restows every declared package with `--no-folding`. To remove a package's
+links explicitly, use `stow --no-folding --delete PACKAGE` before deleting or
+renaming the complete package source; GNU Stow has no deployment database from
+which to recover an already-removed package.
 
 `--no-folding` is required: deployed directories stay real, tracked files are
 individual symlinks, and generated/private files stay physically outside the
 repository. Package `.gitignore` files are source metadata and are not deployed.
-Conflicting files or invalid topology stop installation for explicit review.
+Conflicting files or invalid topology stop deployment for explicit review;
+links are never adopted automatically.
 
 `desktop` owns portable desktop preferences such as `mimeapps.list`.
 `automation` owns the centralized synchronization commands and user systemd
@@ -52,10 +57,13 @@ history, and other runtime state stay machine-local.
 ## Synchronization
 
 `./sync.sh` stages all non-ignored dotfile changes, checks whitespace, scans the
-complete Git index for likely plaintext credentials, commits, fetches/rebases
-`origin/main`, and pushes. The credential guard reports only paths and detector
-labels, never matched values. It stops before committing on a credential match
-or conflict rather than silently choosing a side.
+complete Git index for likely plaintext credentials, and commits. It then
+reconciles Stow links for the local tree, fetches/rebases `origin/main`,
+reconciles again when the integrated tree changed, reloads the user-systemd
+inventory when tracked unit sources changed, and pushes. Consequently, added,
+deleted, and renamed files are reflected in the live target rather than leaving
+missing or dangling links. A credential, Git, or Stow conflict stops the task
+before push rather than silently choosing a side or adopting a target file.
 
 One user timer runs all repository synchronizers:
 

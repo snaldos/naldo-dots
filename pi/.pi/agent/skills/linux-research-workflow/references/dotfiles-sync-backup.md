@@ -27,14 +27,18 @@ desktop automation machine
 
 Important entry points:
 
+- `~/dotfiles/deploy-links.sh`: validates package-source boundaries and restows
+  the canonical package list with `--no-folding`; `--dry-run` simulates the
+  complete reconciliation.
 - `~/dotfiles/install.sh`: runs the complete user-level bootstrap, prompts for
-  a fresh interactive machine profile, rejects invalid package-source state,
-  restows all packages without folding, initializes local Noctalia, Fish, and
-  Pi files, enforces mode `0600` on them, and reloads the user-systemd unit
-  inventory. It shares `sync-all`'s lock and refuses to race an active
-  synchronization.
-- `~/dotfiles/sync.sh`: stages all non-ignored changes, checks whitespace,
-  commits, fetches/rebases `origin/main`, and pushes.
+  a fresh interactive machine profile, invokes the shared link reconciler,
+  initializes local Noctalia, Fish, and Pi files, enforces mode `0600` on them,
+  and reloads the user-systemd unit inventory. It shares `sync-all`'s lock and
+  the dotfiles Git lock, so it refuses to race synchronization.
+- `~/dotfiles/sync.sh`: stages and validates all non-ignored changes, commits,
+  reconciles local Stow links, fetches/rebases `origin/main`, reconciles an
+  updated integrated tree, reloads changed user-systemd units, and pushes only
+  after successful deployment.
 - `~/dotfiles/README.md`: concise deployment and synchronization instructions.
 
 `sync.sh` is a Git/network mutation, not a validator. Do not invoke it unless a
@@ -45,12 +49,14 @@ reviewing every resulting source change.
 Always use `--no-folding`: target directories are real, portable files are
 symlinks, and generated/private files are real target-side files. Package
 `.gitignore` files are source metadata and must not appear in deployed paths.
+A restow prunes deleted or renamed entries inside a declared package. Removing
+or renaming an entire package is an explicit migration: unstow it while its
+source still exists because GNU Stow has no deployment database.
 
 Preferred dry run:
 
 ```bash
-packages=(ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi desktop automation machine)
-stow -d "$HOME/dotfiles" -t "$HOME" --no-folding -n --verbose=2 -R "${packages[@]}"
+~/dotfiles/deploy-links.sh --dry-run
 ```
 
 Neovim's local repository metadata under `~/.config/nvim/.git` is machine-local;

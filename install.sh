@@ -3,10 +3,8 @@
 set -Eeuo pipefail
 
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-packages=(
-  ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi
-  desktop automation machine
-)
+DEPLOY_LINKS="$REPO_DIR/deploy-links.sh"
+
 fail() {
   printf 'install: ERROR: %s\n' "$*" >&2
   exit 2
@@ -139,14 +137,11 @@ runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
 install -d "$runtime_dir"
 exec 8>"$runtime_dir/naldo-sync-all.lock"
 flock -n 8 || fail "synchronization is active; retry after sync-all finishes"
+exec 9>"$(git -C "$REPO_DIR" rev-parse --git-path naldo-sync.lock)"
+flock -n 9 || fail "another dotfiles operation is active"
 
-mapfile -d '' ignored_source_entries < <(
-  git -C "$REPO_DIR" ls-files --others --ignored --exclude-standard -z -- "${packages[@]}"
-)
-((${#ignored_source_entries[@]} == 0)) ||
-  fail "ignored generated/private state exists inside a package source"
-
-stow --dir="$REPO_DIR" --target="$HOME" --no-folding --restow "${packages[@]}"
+[[ -x "$DEPLOY_LINKS" ]] || fail "missing executable: $DEPLOY_LINKS"
+NALDO_DOTFILES_LOCK_HELD=1 "$DEPLOY_LINKS" || fail "could not reconcile Stow links"
 
 [[ ! -e "$profile_dir" || -d "$profile_dir" ]] ||
   fail "machine profile path must be a directory: $profile_dir"
