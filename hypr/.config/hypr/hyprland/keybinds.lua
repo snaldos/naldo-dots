@@ -42,6 +42,26 @@ local function resize_window_by_percent(x_percent, y_percent)
   end
 end
 
+local function scrolling_toggle_maximized_or_promote()
+  local window = hl.get_active_window()
+  local monitor = hl.get_active_monitor()
+  if window == nil or monitor == nil or type(window.size) ~= "table" then
+    return
+  end
+
+  local window_width = window.size.x
+  if type(window_width) ~= "number" or monitor.width <= 0 then
+    return
+  end
+
+  if window_width >= monitor.width * 0.9 then
+    hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset" }))
+    hl.dispatch(hl.dsp.layout("promote"))
+  else
+    hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "set" }))
+  end
+end
+
 local function focus_window_or_workspace(dispatcher, workspace_fallback)
   if workspace_fallback == nil then
     return dispatcher
@@ -478,25 +498,3 @@ bind(
   hl.dsp.exec_cmd(shell.command(vars.scripts.snip_to_search, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Utilities: Google Lens" }
 )
-
-local dotool_scroll = "/home/naldo/.local/bin/dotool-scroll"
-
--- Start scrolling when pressed.
-bind(main_mod .. " + Equal", hl.dsp.exec_cmd(dotool_scroll .. " up start"), {
-  description = "Pointer: Start scrolling up",
-})
-
-bind(main_mod .. " + Minus", hl.dsp.exec_cmd(dotool_scroll .. " down start"), {
-  description = "Pointer: Start scrolling down",
-})
-
--- Stop scrolling when released.
-bind(main_mod .. " + Equal", hl.dsp.exec_cmd(dotool_scroll .. " up stop"), {
-  release = true,
-  description = "Pointer: Stop scrolling up",
-})
-
-bind(main_mod .. " + Minus", hl.dsp.exec_cmd(dotool_scroll .. " down stop"), {
-  release = true,
-  description = "Pointer: Stop scrolling down",
-})
