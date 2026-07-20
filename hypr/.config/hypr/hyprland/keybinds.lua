@@ -436,10 +436,10 @@ bind(main_mod .. " + Period", scrolling_dispatch("move " .. vars.scrolling.move_
 bind(main_mod .. " + Comma", scrolling_dispatch("move " .. vars.scrolling.move_col.next), {
   description = "Scrolling: Move down",
 })
-bind(main_mod .. " + mouse_up", scrolling_dispatch("move " .. vars.scrolling.move_col.prev), {
+bind(main_mod .. " + CTRL + mouse_up", scrolling_dispatch("move " .. vars.scrolling.move_col.prev), {
   description = "Scrolling: Move up",
 })
-bind(main_mod .. " + mouse_down", scrolling_dispatch("move " .. vars.scrolling.move_col.next), {
+bind(main_mod .. " + CTRL + mouse_down", scrolling_dispatch("move " .. vars.scrolling.move_col.next), {
   description = "Scrolling: Move down",
 })
 
