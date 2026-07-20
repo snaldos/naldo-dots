@@ -42,24 +42,17 @@ local function resize_window_by_percent(x_percent, y_percent)
   end
 end
 
-local function scrolling_toggle_maximized_or_promote()
+local function scrolling_toggle_column_width()
   local window = hl.get_active_window()
-  local monitor = hl.get_active_monitor()
-  if window == nil or monitor == nil or type(window.size) ~= "table" then
+  local layout_state = window ~= nil and window.layout or nil
+  local column = type(layout_state) == "table" and layout_state.column or nil
+  local column_width = type(column) == "table" and column.width or nil
+  if type(column_width) ~= "number" then
     return
   end
 
-  local window_width = window.size.x
-  if type(window_width) ~= "number" or monitor.width <= 0 then
-    return
-  end
-
-  if window_width >= monitor.width * 0.9 then
-    hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset" }))
-    hl.dispatch(hl.dsp.layout("promote"))
-  else
-    hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "set" }))
-  end
+  local target_width = column_width < 1 and 1 or 0.5
+  hl.dispatch(hl.dsp.layout("colresize " .. target_width))
 end
 
 local function focus_window_or_workspace(dispatcher, workspace_fallback)
@@ -264,10 +257,10 @@ bind(
     },
     {
       layout = "scrolling",
-      dispatcher = hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }),
+      dispatcher = scrolling_toggle_column_width,
     },
   }),
-  { description = "Window: Fullscreen" }
+  { description = "Dwindle: Toggle fullscreen / Scrolling: Toggle column width" }
 )
 bind(main_mod .. " + P", hl.dsp.window.pin(), { description = "Window: Pin" })
 
