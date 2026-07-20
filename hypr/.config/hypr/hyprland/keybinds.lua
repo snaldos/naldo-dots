@@ -498,15 +498,3 @@ bind(
   hl.dsp.exec_cmd(shell.command(vars.scripts.snip_to_search, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Utilities: Google Lens" }
 )
-
-bind(
-  "SUPER + ALT + Minus",
-  hl.dsp.exec_cmd("wlrctl pointer scroll 10 0"),
-  { repeating = true, description = "Mouse wheel down" }
-)
-
-bind(
-  "SUPER + ALT + Equal",
-  hl.dsp.exec_cmd("wlrctl pointer scroll -10 0"),
-  { repeating = true, description = "Mouse wheel up" }
-)

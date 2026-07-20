@@ -78,14 +78,14 @@
 // Cursor scheduling and style-1 constellations automatically skip removed types.
 // Example: three enabled families with counts 2, 1, and 3 produce six objects.
 #define GC_ENABLE_TESSERACT 1
-#define GC_ENABLE_GEM 1
+#define GC_ENABLE_GEM 0
 #define GC_ENABLE_ORBITAL 1
 #define GC_ENABLE_CRYSTAL 1
-#define GC_ENABLE_TORUS_KNOT 1
-#define GC_ENABLE_MOBIUS 1
+#define GC_ENABLE_TORUS_KNOT 0
+#define GC_ENABLE_MOBIUS 0
 #define GC_ENABLE_FRACTAL_TETRA 1
 #define GC_ENABLE_ICOSAHEDRON 1
-#define GC_ENABLE_LORENZ 1
+#define GC_ENABLE_LORENZ 0
 
 #define GC_TESSERACT_INSTANCES 1
 #define GC_GEM_INSTANCES 1
@@ -96,6 +96,32 @@
 #define GC_FRACTAL_TETRA_INSTANCES 1
 #define GC_ICOSAHEDRON_INSTANCES 1
 #define GC_LORENZ_INSTANCES 1
+
+// These expressions are compile-time constants, preserving the original loop cost.
+#define GC_TESSERACT_ACTIVE_INSTANCES ((GC_ENABLE_TESSERACT != 0 && GC_TESSERACT_INSTANCES > 0) ? GC_TESSERACT_INSTANCES : 0)
+#define GC_GEM_ACTIVE_INSTANCES ((GC_ENABLE_GEM != 0 && GC_GEM_INSTANCES > 0) ? GC_GEM_INSTANCES : 0)
+#define GC_ORBITAL_ACTIVE_INSTANCES ((GC_ENABLE_ORBITAL != 0 && GC_ORBITAL_INSTANCES > 0) ? GC_ORBITAL_INSTANCES : 0)
+#define GC_CRYSTAL_ACTIVE_INSTANCES ((GC_ENABLE_CRYSTAL != 0 && GC_CRYSTAL_INSTANCES > 0) ? GC_CRYSTAL_INSTANCES : 0)
+#define GC_TORUS_KNOT_ACTIVE_INSTANCES ((GC_ENABLE_TORUS_KNOT != 0 && GC_TORUS_KNOT_INSTANCES > 0) ? GC_TORUS_KNOT_INSTANCES : 0)
+#define GC_MOBIUS_ACTIVE_INSTANCES ((GC_ENABLE_MOBIUS != 0 && GC_MOBIUS_INSTANCES > 0) ? GC_MOBIUS_INSTANCES : 0)
+#define GC_FRACTAL_TETRA_ACTIVE_INSTANCES ((GC_ENABLE_FRACTAL_TETRA != 0 && GC_FRACTAL_TETRA_INSTANCES > 0) ? GC_FRACTAL_TETRA_INSTANCES : 0)
+#define GC_ICOSAHEDRON_ACTIVE_INSTANCES ((GC_ENABLE_ICOSAHEDRON != 0 && GC_ICOSAHEDRON_INSTANCES > 0) ? GC_ICOSAHEDRON_INSTANCES : 0)
+#define GC_LORENZ_ACTIVE_INSTANCES ((GC_ENABLE_LORENZ != 0 && GC_LORENZ_INSTANCES > 0) ? GC_LORENZ_INSTANCES : 0)
+#define GC_CONFIGURED_OBJECT_COUNT (GC_TESSERACT_ACTIVE_INSTANCES + GC_GEM_ACTIVE_INSTANCES + GC_ORBITAL_ACTIVE_INSTANCES + GC_CRYSTAL_ACTIVE_INSTANCES + GC_TORUS_KNOT_ACTIVE_INSTANCES + GC_MOBIUS_ACTIVE_INSTANCES + GC_FRACTAL_TETRA_ACTIVE_INSTANCES + GC_ICOSAHEDRON_ACTIVE_INSTANCES + GC_LORENZ_ACTIVE_INSTANCES)
+
+#if GC_ENABLE_TESSERACT != 0 && GC_TESSERACT_INSTANCES == 1 \
+    && GC_ENABLE_GEM != 0 && GC_GEM_INSTANCES == 1 \
+    && GC_ENABLE_ORBITAL != 0 && GC_ORBITAL_INSTANCES == 1 \
+    && GC_ENABLE_CRYSTAL != 0 && GC_CRYSTAL_INSTANCES == 1 \
+    && GC_ENABLE_TORUS_KNOT != 0 && GC_TORUS_KNOT_INSTANCES == 1 \
+    && GC_ENABLE_MOBIUS != 0 && GC_MOBIUS_INSTANCES == 1 \
+    && GC_ENABLE_FRACTAL_TETRA != 0 && GC_FRACTAL_TETRA_INSTANCES == 1 \
+    && GC_ENABLE_ICOSAHEDRON != 0 && GC_ICOSAHEDRON_INSTANCES == 1 \
+    && GC_ENABLE_LORENZ != 0 && GC_LORENZ_INSTANCES == 1
+#define GC_DEFAULT_FAMILY_LAYOUT 1
+#else
+#define GC_DEFAULT_FAMILY_LAYOUT 0
+#endif
 
 const float GC_MASTER_BRIGHTNESS = 1.00;
 const float GC_BASE_SIZE = 0.048;
@@ -193,6 +219,7 @@ const float GC_LORENZ_SCALE = 1.10;
 #define GCC_CURSOR_STYLE 0               // fixed standalone variant
 #define GCC_CURSOR_MODE 1                // style 0: 0 fixed, 1 shuffled, 2 sequential
 #define GCC_FIXED_TYPE 0                 // type ID used when mode == 0
+#define GCC_CURSOR_WEIGHT_BY_INSTANCES 0 // 1 weights style-0 scheduling by family counts
 #define GCC_ENABLE_TRAIL 1
 #define GCC_ENABLE_SPARKS 1
 #define GCC_ENABLE_OBJECT_LINKS 0    // standalone cursor: no links to invisible objects
@@ -221,6 +248,8 @@ const float GCC_ALPHA_GAIN = 1.35;
 // Style 1 arranges one miniature of every geometry around a shared sigil.
 const float GCC_CONSTELLATION_ORBIT_RADIUS = 1.45;
 const float GCC_CONSTELLATION_MINI_SCALE = 0.34;
+const float GCC_CONSTELLATION_COUNT_SCALE_MIN = 0.62;
+const float GCC_CONSTELLATION_COUNT_SCALE_MAX = 1.28;
 const float GCC_CONSTELLATION_ROTATION_SPEED = 0.22;
 const float GCC_CONSTELLATION_FAMILY_STRENGTH = 0.88;
 const float GCC_CONSTELLATION_RING_WIDTH = 0.014;
@@ -412,90 +441,179 @@ float typeScale(int typeIndex) {
 }
 
 int configuredInstancesForType(int typeIndex) {
-    if (typeIndex == 0) return GC_ENABLE_TESSERACT != 0
-        ? max(GC_TESSERACT_INSTANCES, 0) : 0;
-    if (typeIndex == 1) return GC_ENABLE_GEM != 0
-        ? max(GC_GEM_INSTANCES, 0) : 0;
-    if (typeIndex == 2) return GC_ENABLE_ORBITAL != 0
-        ? max(GC_ORBITAL_INSTANCES, 0) : 0;
-    if (typeIndex == 3) return GC_ENABLE_CRYSTAL != 0
-        ? max(GC_CRYSTAL_INSTANCES, 0) : 0;
-    if (typeIndex == 4) return GC_ENABLE_TORUS_KNOT != 0
-        ? max(GC_TORUS_KNOT_INSTANCES, 0) : 0;
-    if (typeIndex == 5) return GC_ENABLE_MOBIUS != 0
-        ? max(GC_MOBIUS_INSTANCES, 0) : 0;
-    if (typeIndex == 6) return GC_ENABLE_FRACTAL_TETRA != 0
-        ? max(GC_FRACTAL_TETRA_INSTANCES, 0) : 0;
-    if (typeIndex == 7) return GC_ENABLE_ICOSAHEDRON != 0
-        ? max(GC_ICOSAHEDRON_INSTANCES, 0) : 0;
-    if (typeIndex == 8) return GC_ENABLE_LORENZ != 0
-        ? max(GC_LORENZ_INSTANCES, 0) : 0;
+#if GC_DEFAULT_FAMILY_LAYOUT
+    return typeIndex >= 0 && typeIndex < GC_GEOMETRY_TYPE_COUNT ? 1 : 0;
+#else
+    if (typeIndex == 0) return GC_TESSERACT_ACTIVE_INSTANCES;
+    if (typeIndex == 1) return GC_GEM_ACTIVE_INSTANCES;
+    if (typeIndex == 2) return GC_ORBITAL_ACTIVE_INSTANCES;
+    if (typeIndex == 3) return GC_CRYSTAL_ACTIVE_INSTANCES;
+    if (typeIndex == 4) return GC_TORUS_KNOT_ACTIVE_INSTANCES;
+    if (typeIndex == 5) return GC_MOBIUS_ACTIVE_INSTANCES;
+    if (typeIndex == 6) return GC_FRACTAL_TETRA_ACTIVE_INSTANCES;
+    if (typeIndex == 7) return GC_ICOSAHEDRON_ACTIVE_INSTANCES;
+    if (typeIndex == 8) return GC_LORENZ_ACTIVE_INSTANCES;
     return 0;
+#endif
 }
 
 bool typeEnabled(int typeIndex) {
+#if GC_DEFAULT_FAMILY_LAYOUT
+    return typeIndex >= 0 && typeIndex < GC_GEOMETRY_TYPE_COUNT;
+#else
     return configuredInstancesForType(typeIndex) > 0;
+#endif
 }
 
 int enabledTypeCount() {
-    int count = 0;
-    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
-        if (typeEnabled(typeIndex)) count++;
-    }
-    return count;
+#if GC_DEFAULT_FAMILY_LAYOUT
+    return GC_GEOMETRY_TYPE_COUNT;
+#else
+    return (GC_TESSERACT_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_GEM_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_ORBITAL_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_CRYSTAL_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_TORUS_KNOT_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_MOBIUS_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_FRACTAL_TETRA_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_ICOSAHEDRON_ACTIVE_INSTANCES > 0 ? 1 : 0)
+        + (GC_LORENZ_ACTIVE_INSTANCES > 0 ? 1 : 0);
+#endif
 }
 
 int enabledTypeForOrdinal(int ordinal) {
+#if GC_DEFAULT_FAMILY_LAYOUT
+    int wrappedOrdinal = ordinal % GC_GEOMETRY_TYPE_COUNT;
+    return wrappedOrdinal < 0 ? wrappedOrdinal + GC_GEOMETRY_TYPE_COUNT : wrappedOrdinal;
+#else
     int count = enabledTypeCount();
     if (count <= 0) return -1;
-    int wrappedOrdinal = ordinal % count;
-    if (wrappedOrdinal < 0) wrappedOrdinal += count;
-    int enabledOrdinal = 0;
-    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
-        if (!typeEnabled(typeIndex)) continue;
-        if (enabledOrdinal == wrappedOrdinal) return typeIndex;
-        enabledOrdinal++;
+    int remainingOrdinal = ordinal % count;
+    if (remainingOrdinal < 0) remainingOrdinal += count;
+    if (GC_TESSERACT_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 0;
+        remainingOrdinal--;
     }
+    if (GC_GEM_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 1;
+        remainingOrdinal--;
+    }
+    if (GC_ORBITAL_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 2;
+        remainingOrdinal--;
+    }
+    if (GC_CRYSTAL_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 3;
+        remainingOrdinal--;
+    }
+    if (GC_TORUS_KNOT_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 4;
+        remainingOrdinal--;
+    }
+    if (GC_MOBIUS_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 5;
+        remainingOrdinal--;
+    }
+    if (GC_FRACTAL_TETRA_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 6;
+        remainingOrdinal--;
+    }
+    if (GC_ICOSAHEDRON_ACTIVE_INSTANCES > 0) {
+        if (remainingOrdinal == 0) return 7;
+        remainingOrdinal--;
+    }
+    if (GC_LORENZ_ACTIVE_INSTANCES > 0 && remainingOrdinal == 0) return 8;
     return -1;
+#endif
 }
 
 int configuredGeometryObjectCount() {
-    int count = 0;
-    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
-        count += configuredInstancesForType(typeIndex);
-    }
-    return min(count, GC_OBJECT_LIMIT);
+    return GC_CONFIGURED_OBJECT_COUNT;
 }
 
 int geometryObjectType(int objectIndex) {
-    if (objectIndex < 0 || objectIndex >= configuredGeometryObjectCount()) return -1;
-    int remainingIndex = objectIndex;
-    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
-        int familyCount = configuredInstancesForType(typeIndex);
-        if (remainingIndex < familyCount) return typeIndex;
-        remainingIndex -= familyCount;
-    }
-    return -1;
+#if GC_DEFAULT_FAMILY_LAYOUT
+    return objectIndex >= 0 && objectIndex < GC_GEOMETRY_TYPE_COUNT
+        ? objectIndex : -1;
+#else
+    if (objectIndex < 0 || objectIndex >= GC_CONFIGURED_OBJECT_COUNT) return -1;
+    int boundary = GC_TESSERACT_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 0;
+    boundary += GC_GEM_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 1;
+    boundary += GC_ORBITAL_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 2;
+    boundary += GC_CRYSTAL_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 3;
+    boundary += GC_TORUS_KNOT_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 4;
+    boundary += GC_MOBIUS_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 5;
+    boundary += GC_FRACTAL_TETRA_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 6;
+    boundary += GC_ICOSAHEDRON_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return 7;
+    return 8;
+#endif
 }
 
 int geometryObjectInstanceIndex(int objectIndex) {
-    if (objectIndex < 0 || objectIndex >= configuredGeometryObjectCount()) return -1;
-    int remainingIndex = objectIndex;
-    for (int typeIndex = 0; typeIndex < GC_GEOMETRY_TYPE_COUNT; typeIndex++) {
-        int familyCount = configuredInstancesForType(typeIndex);
-        if (remainingIndex < familyCount) return remainingIndex;
-        remainingIndex -= familyCount;
-    }
-    return -1;
+#if GC_DEFAULT_FAMILY_LAYOUT
+    return objectIndex >= 0 && objectIndex < GC_GEOMETRY_TYPE_COUNT ? 0 : -1;
+#else
+    if (objectIndex < 0 || objectIndex >= GC_CONFIGURED_OBJECT_COUNT) return -1;
+    int familyStart = 0;
+    int boundary = GC_TESSERACT_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex;
+    familyStart = boundary;
+    boundary += GC_GEM_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    familyStart = boundary;
+    boundary += GC_ORBITAL_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    familyStart = boundary;
+    boundary += GC_CRYSTAL_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    familyStart = boundary;
+    boundary += GC_TORUS_KNOT_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    familyStart = boundary;
+    boundary += GC_MOBIUS_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    familyStart = boundary;
+    boundary += GC_FRACTAL_TETRA_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    familyStart = boundary;
+    boundary += GC_ICOSAHEDRON_ACTIVE_INSTANCES;
+    if (objectIndex < boundary) return objectIndex - familyStart;
+    return objectIndex - boundary;
+#endif
 }
 
 int firstGeometryObjectIndexForType(int requestedType) {
+#if GC_DEFAULT_FAMILY_LAYOUT
+    return requestedType >= 0 && requestedType < GC_GEOMETRY_TYPE_COUNT
+        ? requestedType : -1;
+#else
     if (!typeEnabled(requestedType)) return -1;
-    int firstIndex = 0;
-    for (int typeIndex = 0; typeIndex < requestedType; typeIndex++) {
-        firstIndex += configuredInstancesForType(typeIndex);
-    }
-    return firstIndex < configuredGeometryObjectCount() ? firstIndex : -1;
+    if (requestedType == 0) return 0;
+    int firstIndex = GC_TESSERACT_ACTIVE_INSTANCES;
+    if (requestedType == 1) return firstIndex;
+    firstIndex += GC_GEM_ACTIVE_INSTANCES;
+    if (requestedType == 2) return firstIndex;
+    firstIndex += GC_ORBITAL_ACTIVE_INSTANCES;
+    if (requestedType == 3) return firstIndex;
+    firstIndex += GC_CRYSTAL_ACTIVE_INSTANCES;
+    if (requestedType == 4) return firstIndex;
+    firstIndex += GC_TORUS_KNOT_ACTIVE_INSTANCES;
+    if (requestedType == 5) return firstIndex;
+    firstIndex += GC_MOBIUS_ACTIVE_INSTANCES;
+    if (requestedType == 6) return firstIndex;
+    firstIndex += GC_FRACTAL_TETRA_ACTIVE_INSTANCES;
+    if (requestedType == 7) return firstIndex;
+    firstIndex += GC_ICOSAHEDRON_ACTIVE_INSTANCES;
+    return requestedType == 8 ? firstIndex : -1;
+#endif
 }
 
 vec3 geometryAngle(float identity, int typeIndex) {
@@ -1191,7 +1309,6 @@ GeometrySample renderGeometryType(
     float sizeValue,
     float identity
 ) {
-    if (!typeEnabled(typeIndex)) return emptyGeometrySample();
     if (typeIndex == 0) return renderTesseract(point, center, sizeValue, identity);
     if (typeIndex == 1) return renderGem(point, center, sizeValue, identity);
     if (typeIndex == 2) return renderOrbital(point, center, sizeValue, identity);
@@ -1227,10 +1344,8 @@ void renderGeometricCosmosBackground(out vec4 fragColor, vec2 fragCoord) {
     vec3 composite = terminalColor.rgb;
 #endif
     float sceneAlpha = 0.0;
-    int objectCount = configuredGeometryObjectCount();
 
-    for (int objectIndex = 0; objectIndex < GC_OBJECT_LIMIT; objectIndex++) {
-        if (objectIndex >= objectCount) break;
+    for (int objectIndex = 0; objectIndex < GC_CONFIGURED_OBJECT_COUNT; objectIndex++) {
         int typeIndex = geometryObjectType(objectIndex);
         if (typeIndex < 0) continue;
         float identity = float(objectIndex);
@@ -1307,7 +1422,7 @@ vec4 compositeGeometricCosmosBehindTerminal(
 int greatestCommonDivisor(int firstValue, int secondValue) {
     int first = max(firstValue, 1);
     int second = max(secondValue, 0);
-    for (int iteration = 0; iteration < GC_GEOMETRY_TYPE_COUNT; iteration++) {
+    for (int iteration = 0; iteration < GC_OBJECT_LIMIT; iteration++) {
         if (second == 0) break;
         int remainder = first % second;
         first = second;
@@ -1317,31 +1432,77 @@ int greatestCommonDivisor(int firstValue, int secondValue) {
 }
 
 int randomCursorPermutationStep(float blockIndex, int enabledCount) {
+#if GC_DEFAULT_FAMILY_LAYOUT
+    int selector = int(floor(hash11(
+        blockIndex + GCC_RANDOM_SEED + 17.31
+    ) * 6.0));
+    if (selector == 0) return 1;
+    if (selector == 1) return 2;
+    if (selector == 2) return 4;
+    if (selector == 3) return 5;
+    if (selector == 4) return 7;
+    return 8;
+#else
     if (enabledCount <= 1) return 1;
     int firstCandidate = 1 + int(floor(hash11(
         blockIndex + GCC_RANDOM_SEED + 17.31
     ) * float(enabledCount)));
-    for (int offset = 0; offset < GC_GEOMETRY_TYPE_COUNT; offset++) {
+    for (int offset = 0; offset < GC_OBJECT_LIMIT; offset++) {
         int candidate = 1 + (firstCandidate - 1 + offset) % enabledCount;
         if (greatestCommonDivisor(candidate, enabledCount) == 1) return candidate;
     }
     return 1;
+#endif
+}
+
+int cursorScheduleCount() {
+#if GCC_CURSOR_WEIGHT_BY_INSTANCES
+    return configuredGeometryObjectCount();
+#else
+    return enabledTypeCount();
+#endif
+}
+
+int cursorTypeForScheduleOrdinal(int ordinal) {
+#if GCC_CURSOR_WEIGHT_BY_INSTANCES
+    int scheduleCount = configuredGeometryObjectCount();
+    if (scheduleCount <= 0) return -1;
+    int wrappedOrdinal = ordinal % scheduleCount;
+    if (wrappedOrdinal < 0) wrappedOrdinal += scheduleCount;
+    return geometryObjectType(wrappedOrdinal);
+#else
+    return enabledTypeForOrdinal(ordinal);
+#endif
 }
 
 int randomCursorType(float epoch) {
-    int enabledCount = enabledTypeCount();
-    if (enabledCount <= 0) return -1;
-    // Each block is an affine permutation of only the enabled family ordinals.
-    // Every selected family appears once before the order reshuffles.
+#if GC_DEFAULT_FAMILY_LAYOUT && GCC_CURSOR_WEIGHT_BY_INSTANCES == 0
+    // Fast affine permutation for the default nine-family configuration.
     int epochIndex = max(int(epoch), 0);
-    int position = epochIndex % enabledCount;
-    float blockIndex = floor(epoch / float(enabledCount));
+    int position = epochIndex % GC_GEOMETRY_TYPE_COUNT;
+    float blockIndex = floor(epoch / float(GC_GEOMETRY_TYPE_COUNT));
     int offset = int(floor(hash11(
         blockIndex + GCC_RANDOM_SEED
-    ) * float(enabledCount)));
-    int stepValue = randomCursorPermutationStep(blockIndex, enabledCount);
-    int enabledOrdinal = (offset + stepValue * position) % enabledCount;
-    return enabledTypeForOrdinal(enabledOrdinal);
+    ) * float(GC_GEOMETRY_TYPE_COUNT)));
+    int stepValue = randomCursorPermutationStep(
+        blockIndex,
+        GC_GEOMETRY_TYPE_COUNT
+    );
+    return (offset + stepValue * position) % GC_GEOMETRY_TYPE_COUNT;
+#else
+    int scheduleCount = cursorScheduleCount();
+    if (scheduleCount <= 0) return -1;
+    // Each block is an affine permutation of the configured cursor slots.
+    int epochIndex = max(int(epoch), 0);
+    int position = epochIndex % scheduleCount;
+    float blockIndex = floor(epoch / float(scheduleCount));
+    int offset = int(floor(hash11(
+        blockIndex + GCC_RANDOM_SEED
+    ) * float(scheduleCount)));
+    int stepValue = randomCursorPermutationStep(blockIndex, scheduleCount);
+    int scheduleOrdinal = (offset + stepValue * position) % scheduleCount;
+    return cursorTypeForScheduleOrdinal(scheduleOrdinal);
+#endif
 }
 
 int cursorTypeForEpoch(float epoch) {
@@ -1352,9 +1513,10 @@ int cursorTypeForEpoch(float epoch) {
     if (requestedType < 0) requestedType += GC_GEOMETRY_TYPE_COUNT;
     return typeEnabled(requestedType) ? requestedType : enabledTypeForOrdinal(0);
 #elif GCC_CURSOR_MODE == 2
-    int sequenceIndex = int(epoch) % enabledCount;
-    if (sequenceIndex < 0) sequenceIndex += enabledCount;
-    return enabledTypeForOrdinal(sequenceIndex);
+    int scheduleCount = cursorScheduleCount();
+    int sequenceIndex = int(epoch) % scheduleCount;
+    if (sequenceIndex < 0) sequenceIndex += scheduleCount;
+    return cursorTypeForScheduleOrdinal(sequenceIndex);
 #else
     return randomCursorType(epoch);
 #endif
@@ -1416,40 +1578,44 @@ void renderAllFamilyCursor(
     vec2 head,
     float cursorScale
 ) {
-    int enabledCount = enabledTypeCount();
-    if (enabledCount <= 0) return;
-    vec2 familyCenter[GC_GEOMETRY_TYPE_COUNT];
-    int familyType[GC_GEOMETRY_TYPE_COUNT];
+    int instanceCount = configuredGeometryObjectCount();
+    if (instanceCount <= 0) return;
+    vec2 instanceCenter[GC_OBJECT_LIMIT];
+    int instanceType[GC_OBJECT_LIMIT];
+    float countScale = clamp(
+        sqrt(9.0 / float(instanceCount)),
+        GCC_CONSTELLATION_COUNT_SCALE_MIN,
+        GCC_CONSTELLATION_COUNT_SCALE_MAX
+    );
     float orbitRotation = iTime * GCC_CONSTELLATION_ROTATION_SPEED;
-    for (int familyOrdinal = 0; familyOrdinal < GC_GEOMETRY_TYPE_COUNT; familyOrdinal++) {
-        if (familyOrdinal >= enabledCount) break;
-        int typeIndex = enabledTypeForOrdinal(familyOrdinal);
-        familyType[familyOrdinal] = typeIndex;
-        float familyPhase = float(familyOrdinal) / float(enabledCount);
-        float angle = orbitRotation + familyPhase * GC_TAU;
-        familyCenter[familyOrdinal] = head + vec2(cos(angle), sin(angle))
+    for (int instanceOrdinal = 0; instanceOrdinal < GC_CONFIGURED_OBJECT_COUNT; instanceOrdinal++) {
+        int typeIndex = geometryObjectType(instanceOrdinal);
+        instanceType[instanceOrdinal] = typeIndex;
+        float instancePhase = float(instanceOrdinal) / float(instanceCount);
+        float angle = orbitRotation + instancePhase * GC_TAU;
+        instanceCenter[instanceOrdinal] = head + vec2(cos(angle), sin(angle))
             * cursorScale * GCC_CONSTELLATION_ORBIT_RADIUS;
-        GeometrySample familyShape = renderGeometryType(
+        GeometrySample instanceShape = renderGeometryType(
             typeIndex,
             point,
-            familyCenter[familyOrdinal],
-            cursorScale * GCC_CONSTELLATION_MINI_SCALE * typeScale(typeIndex),
-            91.0 + float(typeIndex)
+            instanceCenter[instanceOrdinal],
+            cursorScale * GCC_CONSTELLATION_MINI_SCALE * countScale
+                * typeScale(typeIndex),
+            91.0 + float(instanceOrdinal)
         );
-        effectLight += familyShape.radiance * GCC_CONSTELLATION_FAMILY_STRENGTH;
+        effectLight += instanceShape.radiance * GCC_CONSTELLATION_FAMILY_STRENGTH;
         effectOpacity = max(
             effectOpacity,
-            familyShape.opacity * GCC_CONSTELLATION_FAMILY_STRENGTH
+            instanceShape.opacity * GCC_CONSTELLATION_FAMILY_STRENGTH
         );
     }
-    if (enabledCount > 1) {
-        for (int familyOrdinal = 0; familyOrdinal < GC_GEOMETRY_TYPE_COUNT; familyOrdinal++) {
-            if (familyOrdinal >= enabledCount) break;
-            int nextOrdinal = (familyOrdinal + 1) % enabledCount;
+    if (instanceCount > 1) {
+        for (int instanceOrdinal = 0; instanceOrdinal < GC_CONFIGURED_OBJECT_COUNT; instanceOrdinal++) {
+            int nextOrdinal = (instanceOrdinal + 1) % instanceCount;
             float ringDistance = segmentDistance(
                 point,
-                familyCenter[familyOrdinal],
-                familyCenter[nextOrdinal]
+                instanceCenter[instanceOrdinal],
+                instanceCenter[nextOrdinal]
             );
             float ringCore = exp(-ringDistance / max(
                 cursorScale * GCC_CONSTELLATION_RING_WIDTH,
@@ -1460,8 +1626,8 @@ void renderAllFamilyCursor(
                 0.00032
             ));
             vec3 ringColor = mix(
-                typeColorA(familyType[familyOrdinal]),
-                typeColorB(familyType[nextOrdinal]),
+                typeColorA(instanceType[instanceOrdinal]),
+                typeColorB(instanceType[nextOrdinal]),
                 0.55
             );
             effectLight += ringColor * GCC_CONSTELLATION_RING_STRENGTH * (
@@ -1571,9 +1737,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
     bool nearAnyLink = false;
     vec2 linkObjectPixels[GC_OBJECT_LIMIT];
 #if GCC_ENABLE_OBJECT_LINKS
-    int linkObjectCount = configuredGeometryObjectCount();
-    for (int linkIndex = 0; linkIndex < GC_OBJECT_LIMIT; linkIndex++) {
-        if (linkIndex >= linkObjectCount) break;
+    for (int linkIndex = 0; linkIndex < GC_CONFIGURED_OBJECT_COUNT; linkIndex++) {
         linkObjectPixels[linkIndex] = geometryUv(
             iTime,
             float(linkIndex)
@@ -1610,8 +1774,7 @@ void applyGeometricCosmosCursor(inout vec4 scene, vec2 fragCoord) {
     float effectOpacity = 0.0;
 
 #if GCC_ENABLE_OBJECT_LINKS
-    for (int linkIndex = 0; linkIndex < GC_OBJECT_LIMIT; linkIndex++) {
-        if (linkIndex >= linkObjectCount) break;
+    for (int linkIndex = 0; linkIndex < GC_CONFIGURED_OBJECT_COUNT; linkIndex++) {
         if (!shouldLinkGeometryObject(linkIndex, linkCursorType)) continue;
         float identity = float(linkIndex);
         int objectType = geometryObjectType(linkIndex);
