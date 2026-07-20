@@ -36,7 +36,7 @@
 #endif
 
 #define ICO_OBJECT_COUNT 2               // quantity: 1..4
-#define ICO_ENABLE_NEBULA 1
+#define ICO_ENABLE_CAGE_AURA 1
 #define ICO_ENABLE_VERTEX_STARS 1
 #define ICO_ENABLE_ORBITAL_WISP 1
 
@@ -68,14 +68,11 @@ const float ICO_EDGE_GLOW_STRENGTH = 0.105;
 const float ICO_DEPTH_COLOR_STRENGTH = 0.78;
 const float ICO_VERTEX_RADIUS = 0.025;
 const float ICO_VERTEX_STRENGTH = 0.46;
-const float ICO_NEBULA_RADIUS = 0.88;
-const float ICO_NEBULA_DARKEN = 0.20;
-const float ICO_NEBULA_STRENGTH = 0.24;
-const float ICO_NEBULA_SWIRL_COUNT = 4.0;
-const float ICO_NEBULA_RADIAL_FREQUENCY = 11.0;
-const float ICO_NEBULA_SPIN_SPEED = 0.38;
-const float ICO_NEBULA_CONTRAST = 0.62;
-const float ICO_WISP_RADIUS = 0.68;
+const float ICO_CAGE_AURA_RADIUS = 1.04;
+const float ICO_CAGE_AURA_WIDTH = 0.24;
+const float ICO_CAGE_AURA_STRENGTH = 0.040;
+const float ICO_CAGE_AURA_OPACITY = 0.065;
+const float ICO_WISP_RADIUS = 1.18; // exterior orbit; keep cage interior clear
 const float ICO_WISP_COMPRESSION = 0.32;
 const float ICO_WISP_WIDTH = 0.090;
 const float ICO_WISP_STRENGTH = 0.13;
@@ -102,7 +99,7 @@ const float ICO_TAU = 6.28318530718;
 #define IC_ENABLE_SPARKS 1
 #define IC_ENABLE_RESONANCE_LINK 1    // 0 removes every cursor-object connection
 #define IC_LINK_ALL_OBJECTS 1         // 1: every object; 0: primary object only
-#define IC_ENABLE_CURSOR_NOVA 1
+#define IC_ENABLE_CURSOR_NOVA 0    // keep the cursor cage interior empty
 
 const float IC_EFFECT_DURATION = 0.40;
 const float IC_FADE_POWER = 1.66;
@@ -355,30 +352,16 @@ void renderIcosaBackground(out vec4 fragColor, vec2 fragCoord) {
 
         vec3 radiance = vec3(0.0);
         float opacity = 0.0;
-#if ICO_ENABLE_NEBULA
-        vec2 nebulaPoint = rotate2d(
-            (point - center) / max(sizeValue, 0.0001),
-            -iTime * ICO_NEBULA_SPIN_SPEED - identity
-        );
-        float nebulaRadius = length(nebulaPoint);
-        float nebulaAngle = atan(nebulaPoint.y, nebulaPoint.x);
-        float envelope = exp(-pow(nebulaRadius / ICO_NEBULA_RADIUS, 2.4));
-        float swirl = 0.5 + 0.5 * sin(
-            nebulaAngle * ICO_NEBULA_SWIRL_COUNT
-            + nebulaRadius * ICO_NEBULA_RADIAL_FREQUENCY
-            - iTime * ICO_NEBULA_SPIN_SPEED * 4.0
-            + identity * 1.7
-        );
-        float cloud = envelope * mix(1.0 - ICO_NEBULA_CONTRAST, 1.0, swirl);
-        composite = mix(
-            composite,
-            ICO_VOID,
-            envelope * ICO_NEBULA_DARKEN * objectCullFeather * backgroundMask
-        );
-        radiance += mix(ICO_VIOLET, ICO_CYAN, swirl)
-            * cloud * ICO_NEBULA_STRENGTH;
-        radiance += ICO_ROSE * envelope * (1.0 - swirl) * ICO_NEBULA_STRENGTH * 0.52;
-        opacity = max(opacity, cloud * 0.44);
+#if ICO_ENABLE_CAGE_AURA
+        // Edge-centered radial haze only: no angular term, so no interior spiral.
+        float cageRadius = length((point - center) / max(sizeValue, 0.0001));
+        float cageAura = exp(
+            -abs(cageRadius - ICO_CAGE_AURA_RADIUS)
+                / max(ICO_CAGE_AURA_WIDTH, 0.001)
+        ) * smoothstep(0.48, 0.86, cageRadius);
+        radiance += mix(ICO_VIOLET, ICO_CYAN, 0.52)
+            * cageAura * ICO_CAGE_AURA_STRENGTH;
+        opacity = max(opacity, cageAura * ICO_CAGE_AURA_OPACITY);
 #endif
 #if ICO_ENABLE_ORBITAL_WISP
         vec2 wispPoint = rotate2d(

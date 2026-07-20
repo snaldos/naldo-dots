@@ -10,8 +10,8 @@
 // scale is independently tunable below.
 
 // Orbital Orbs — configurable floating 3D planets, rings, and moons for Ghostty
-// Analytic sphere normals provide real lighting while projected orbital planes
-// split rings and moons into front/back layers around each wandering orb.
+// Hollow latitude-longitude surfaces preserve spherical form while projected
+// orbital planes keep rings and moons in coherent front/back layers.
 
 // =============================================================================
 // GPU PROFILE AND FEATURE QUANTITIES
@@ -80,27 +80,30 @@ const float ORB_OBJECT_PATH_SPEED_STEP = 0.061;
 const float ORB_COMPANION_PATH_SCALE = 0.93;
 
 // =============================================================================
-// PLANET SURFACE AND SPIN
+// HOLLOW LATITUDE-LONGITUDE SPHERE AND SPIN
 // =============================================================================
 
 const float ORB_SPIN_SPEED = 0.22;
 const float ORB_SPIN_SPEED_STEP = 0.07;
 const float ORB_AXIAL_TILT = 0.34;
-const float ORB_BAND_COUNT = 8.0;
-const float ORB_BAND_WARP = 0.72;
-const float ORB_BAND_LONGITUDE_FREQUENCY = 3.0;
-const float ORB_BAND_FLOW_SPEED = 0.13;
-const float ORB_BAND_CONTRAST = 0.48;
-const float ORB_STORM_FREQUENCY = 6.0;
-const float ORB_STORM_STRENGTH = 0.14;
+const float ORB_LATITUDE_COUNT = 7.0;
+const float ORB_LONGITUDE_COUNT = 12.0;
+const float ORB_GRID_CORE_WIDTH = 0.030;
+const float ORB_GRID_GLOW_WIDTH = 0.105;
+const float ORB_GRID_CORE_STRENGTH = 0.54;
+const float ORB_GRID_GLOW_STRENGTH = 0.095;
+const float ORB_GRID_BACK_STRENGTH = 0.24;
+const float ORB_GRID_POLE_FADE_START = 0.055;
+const float ORB_GRID_POLE_FADE_END = 0.20;
+const float ORB_SILHOUETTE_CORE_WIDTH = 0.018;
+const float ORB_SILHOUETTE_GLOW_WIDTH = 0.075;
+const float ORB_SILHOUETTE_CORE_STRENGTH = 0.62;
+const float ORB_SILHOUETTE_GLOW_STRENGTH = 0.12;
+const float ORB_RING_BACK_VISIBILITY = 0.30;
+const float ORB_MOON_BACK_VISIBILITY = 0.24;
 const vec3 ORB_LIGHT_DIRECTION = vec3(-0.62, 0.72, 1.25);
-const float ORB_AMBIENT_LIGHT = 0.14;
-const float ORB_DIFFUSE_LIGHT = 0.86;
-const float ORB_FRESNEL_POWER = 2.10;
-const float ORB_FRESNEL_STRENGTH = 0.34;
-const float ORB_SPECULAR_POWER = 42.0;
-const float ORB_SPECULAR_STRENGTH = 0.72;
-const float ORB_TERMINATOR_SOFTNESS = 0.16;
+const float ORB_GRID_AMBIENT_LIGHT = 0.44;
+const float ORB_GRID_DIFFUSE_LIGHT = 0.56;
 
 // =============================================================================
 // ATMOSPHERE
@@ -152,8 +155,6 @@ const float ORB_MOON_BODY_STRENGTH = 0.72;
 const float ORB_WAKE_SECONDS = 1.15;
 const float ORB_WAKE_WIDTH = 0.090;
 const float ORB_WAKE_STRENGTH = 0.020;
-const float ORB_BODY_BLEND = 0.52;
-const float ORB_BODY_OPACITY = 0.36;
 const float ORB_LIGHT_ALPHA_GAIN = 0.55;
 const float ORB_BACKGROUND_TOLERANCE_LOW = 0.030;
 const float ORB_BACKGROUND_TOLERANCE_HIGH = 0.245;
@@ -254,67 +255,161 @@ vec2 orbUv(float timeValue, float identity) {
 }
 
 struct OrbSample {
-    vec3 bodyColor;
     vec3 radiance;
-    float coverage;
     float opacity;
 };
+
+float periodicGridDistance(float phase) {
+    return abs(fract(phase + 0.5) - 0.5);
+}
+
+void sphericalGridMask(
+    vec3 surfaceNormal,
+    float latitudeCount,
+    float longitudeCount,
+    float coreWidth,
+    float glowWidth,
+    float pixelRadius,
+    float poleFadeStart,
+    float poleFadeEnd,
+    out float core,
+    out float glow
+) {
+    float latitude = asin(clamp(surfaceNormal.y, -1.0, 1.0));
+    float longitude = atan(surfaceNormal.z, surfaceNormal.x);
+    float latitudePhase = (latitude / PI + 0.5) * latitudeCount;
+    float longitudePhase = (longitude / TAU + 0.5) * longitudeCount;
+    float latitudeDistance = periodicGridDistance(latitudePhase);
+    float longitudeDistance = periodicGridDistance(longitudePhase);
+    float latitudeAa = 0.72 * latitudeCount
+        / max(PI * pixelRadius, 1.0);
+    float longitudeAa = 0.72 * longitudeCount
+        / max(TAU * pixelRadius, 1.0);
+    float latitudeCore = 1.0 - smoothstep(
+        coreWidth,
+        coreWidth + latitudeAa,
+        latitudeDistance
+    );
+    float latitudeGlow = 1.0 - smoothstep(
+        glowWidth,
+        glowWidth + latitudeAa,
+        latitudeDistance
+    );
+    float poleFade = smoothstep(
+        poleFadeStart,
+        poleFadeEnd,
+        length(surfaceNormal.xz)
+    );
+    float longitudeCore = poleFade * (1.0 - smoothstep(
+        coreWidth,
+        coreWidth + longitudeAa,
+        longitudeDistance
+    ));
+    float longitudeGlow = poleFade * (1.0 - smoothstep(
+        glowWidth,
+        glowWidth + longitudeAa,
+        longitudeDistance
+    ));
+    core = max(latitudeCore, longitudeCore);
+    glow = max(latitudeGlow, longitudeGlow);
+}
 
 OrbSample renderOrb(vec2 point, vec2 center, float radius, float identity) {
     vec2 local = (point - center) / max(radius, 0.0001);
     float radial = length(local);
     float sphereAa = max(fwidth(radial), 0.002);
-    float sphereCoverage = 1.0 - smoothstep(1.0 - sphereAa, 1.0 + sphereAa, radial);
-    vec3 bodyColor = vec3(0.0);
+    float sphereCoverage = 1.0 - smoothstep(
+        1.0 - sphereAa,
+        1.0 + sphereAa,
+        radial
+    );
     vec3 radiance = vec3(0.0);
     float opacity = 0.0;
 
     if (radial < 1.0 + sphereAa * 2.0) {
         float z = sqrt(max(1.0 - dot(local, local), 0.0));
-        vec3 normal = normalize(vec3(local, z));
+        vec3 frontNormal = normalize(vec3(local, z));
+        vec3 backNormal = normalize(vec3(local, -z));
         float spin = iTime * (ORB_SPIN_SPEED + identity * ORB_SPIN_SPEED_STEP);
-        vec3 textureNormal = rotateY(rotateX(normal, ORB_AXIAL_TILT), spin);
-        float longitude = atan(textureNormal.z, textureNormal.x);
-        float latitude = asin(clamp(textureNormal.y, -1.0, 1.0));
-        float bands = 0.5 + 0.5 * sin(
-            latitude * ORB_BAND_COUNT
-            + sin(longitude * ORB_BAND_LONGITUDE_FREQUENCY) * ORB_BAND_WARP
-            + iTime * ORB_BAND_FLOW_SPEED
-            + identity * 1.7
+        vec3 frontGridNormal = rotateY(rotateX(frontNormal, ORB_AXIAL_TILT), spin);
+        vec3 backGridNormal = rotateY(rotateX(backNormal, ORB_AXIAL_TILT), spin);
+        float frontCore, frontGlow, backCore, backGlow;
+        float pixelRadius = max(radius * iResolution.y, 1.0);
+        sphericalGridMask(
+            frontGridNormal,
+            ORB_LATITUDE_COUNT,
+            ORB_LONGITUDE_COUNT,
+            ORB_GRID_CORE_WIDTH,
+            ORB_GRID_GLOW_WIDTH,
+            pixelRadius,
+            ORB_GRID_POLE_FADE_START,
+            ORB_GRID_POLE_FADE_END,
+            frontCore,
+            frontGlow
         );
-        bands = mix(0.5, smoothstep(0.18, 0.82, bands), ORB_BAND_CONTRAST);
-        float storm = 0.5 + 0.5 * sin(
-            longitude * ORB_STORM_FREQUENCY
-            + latitude * 3.0
-            - iTime * ORB_BAND_FLOW_SPEED * 0.7
+        sphericalGridMask(
+            backGridNormal,
+            ORB_LATITUDE_COUNT,
+            ORB_LONGITUDE_COUNT,
+            ORB_GRID_CORE_WIDTH,
+            ORB_GRID_GLOW_WIDTH,
+            pixelRadius,
+            ORB_GRID_POLE_FADE_START,
+            ORB_GRID_POLE_FADE_END,
+            backCore,
+            backGlow
         );
-        float paletteBase = identity * 0.29 + bands * 0.22 + storm * ORB_STORM_STRENGTH;
-        vec3 darkColor = mix(ORB_VOID, orbPalette(paletteBase), 0.62);
-        vec3 lightColor = orbPalette(paletteBase + 0.18);
-
         vec3 lightDirection = normalize(ORB_LIGHT_DIRECTION);
-        float diffuseRaw = dot(normal, lightDirection);
-        float diffuse = ORB_AMBIENT_LIGHT + ORB_DIFFUSE_LIGHT
-            * smoothstep(-ORB_TERMINATOR_SOFTNESS, ORB_TERMINATOR_SOFTNESS, diffuseRaw);
-        float fresnel = pow(1.0 - max(normal.z, 0.0), ORB_FRESNEL_POWER);
-        float specular = pow(
-            max(dot(reflect(-lightDirection, normal), vec3(0.0, 0.0, 1.0)), 0.0),
-            ORB_SPECULAR_POWER
+        float diffuse = ORB_GRID_AMBIENT_LIGHT + ORB_GRID_DIFFUSE_LIGHT
+            * max(dot(frontNormal, lightDirection), 0.0);
+        vec3 frontColor = mix(
+            orbPalette(identity * 0.29 + frontGridNormal.y * 0.12),
+            ORB_CYAN,
+            0.48 + 0.24 * frontGridNormal.y
+        ) * diffuse;
+        vec3 backColor = mix(ORB_VIOLET, ORB_BLUE, 0.52);
+        radiance += frontColor * ORB_PROFILE_SPECULAR_GAIN * (
+            frontCore * ORB_GRID_CORE_STRENGTH
+            + frontGlow * ORB_GRID_GLOW_STRENGTH
         );
-        bodyColor = mix(darkColor, lightColor, diffuse * 0.66 + bands * 0.14);
-        bodyColor *= mix(0.42, 1.08, diffuse);
-        radiance += mix(ORB_CYAN, ORB_VIOLET, identity * 0.31)
-            * fresnel * ORB_FRESNEL_STRENGTH * sphereCoverage;
-        radiance += ORB_WHITE * specular * ORB_SPECULAR_STRENGTH
-            * ORB_PROFILE_SPECULAR_GAIN * sphereCoverage;
-        opacity = max(opacity, sphereCoverage * ORB_BODY_OPACITY);
+        radiance += backColor * ORB_GRID_BACK_STRENGTH * (
+            backCore * ORB_GRID_CORE_STRENGTH
+            + backGlow * ORB_GRID_GLOW_STRENGTH
+        );
+        float silhouetteDistance = abs(radial - 1.0);
+        float silhouetteCore = exp(
+            -silhouetteDistance / max(ORB_SILHOUETTE_CORE_WIDTH, 0.001)
+        );
+        float silhouetteGlow = exp(
+            -silhouetteDistance / max(ORB_SILHOUETTE_GLOW_WIDTH, 0.002)
+        );
+        vec3 silhouetteColor = mix(
+            ORB_CYAN,
+            ORB_VIOLET,
+            0.5 + 0.5 * sin(identity * 1.7 + iTime * 0.08)
+        );
+        radiance += silhouetteColor * (
+            silhouetteCore * ORB_SILHOUETTE_CORE_STRENGTH
+            + silhouetteGlow * ORB_SILHOUETTE_GLOW_STRENGTH
+        );
+        opacity = max(opacity, max(
+            frontCore,
+            max(backCore * ORB_GRID_BACK_STRENGTH, silhouetteCore)
+        ));
+        opacity = max(opacity, max(frontGlow, silhouetteGlow) * 0.20);
     }
 
 #if ORB_ENABLE_ATMOSPHERE
     float atmosphereBand = exp(
         -abs(radial - 1.0) / max(ORB_ATMOSPHERE_RIM_WIDTH, 0.001)
-    ) * (1.0 - smoothstep(ORB_ATMOSPHERE_RADIUS, ORB_ATMOSPHERE_RADIUS + 0.08, radial));
-    float atmosphereHalo = gaussianPoint(point - center, radius * ORB_ATMOSPHERE_HALO_RADIUS);
+    ) * (1.0 - smoothstep(
+        ORB_ATMOSPHERE_RADIUS,
+        ORB_ATMOSPHERE_RADIUS + 0.08,
+        radial
+    ));
+    float atmosphereHalo = exp(-abs(radial - 1.10) / 0.24)
+        * smoothstep(0.76, 0.98, radial)
+        * (1.0 - smoothstep(ORB_ATMOSPHERE_HALO_RADIUS, 1.72, radial));
     vec3 atmosphereColor = mix(ORB_CYAN, ORB_VIOLET, fract(identity * 0.37));
     radiance += atmosphereColor * (
         atmosphereBand * ORB_ATMOSPHERE_STRENGTH
@@ -345,7 +440,12 @@ OrbSample renderOrb(vec2 point, vec2 center, float radius, float identity) {
             ),
             ORB_RING_DASH_STRENGTH
         );
-        float occlusion = mix(1.0, frontHalf, sphereCoverage);
+        float insideSphereVisibility = mix(
+            ORB_RING_BACK_VISIBILITY,
+            1.0,
+            frontHalf
+        );
+        float occlusion = mix(1.0, insideSphereVisibility, sphereCoverage);
         float ringStrength = pow(ORB_RING_STRENGTH_FALLOFF, index);
         vec3 ringColor = mix(
             mix(ORB_GOLD, ORB_ROSE, fract(identity * 0.31)),
@@ -378,10 +478,14 @@ OrbSample renderOrb(vec2 point, vec2 center, float radius, float identity) {
             moonDistance
         );
         float behind = 1.0 - step(0.0, orbitDepth);
-        float moonOcclusion = 1.0 - behind * sphereCoverage;
+        float moonOcclusion = 1.0 - behind * sphereCoverage
+            * (1.0 - ORB_MOON_BACK_VISIBILITY);
         vec3 moonColor = mix(ORB_WHITE, orbPalette(identity * 0.29 + index * 0.23), 0.52);
         float moonShade = 0.35 + 0.65 * saturate(
-            dot(normalize(vec3(moonDelta / max(moonRadius, 0.0001), 0.65)), normalize(ORB_LIGHT_DIRECTION))
+            dot(
+                normalize(vec3(moonDelta / max(moonRadius, 0.0001), 0.65)),
+                normalize(ORB_LIGHT_DIRECTION)
+            )
         );
         float moonGlow = gaussianPoint(moonDelta, moonRadius * ORB_MOON_GLOW_RADIUS);
         radiance += moonColor * moonOcclusion * (
@@ -391,7 +495,9 @@ OrbSample renderOrb(vec2 point, vec2 center, float radius, float identity) {
         opacity = max(opacity, moonOcclusion * (moonCoverage * 0.42 + moonGlow * 0.035));
     }
 
-    return OrbSample(bodyColor, radiance, sphereCoverage, saturate(opacity));
+    // Only the spherical surface grid, silhouette, rings, and moons contribute;
+    // no disk-shaped body color is composited, so the interior stays empty.
+    return OrbSample(radiance, saturate(opacity));
 }
 
 void renderOrbitalBackground(out vec4 fragColor, in vec2 fragCoord) {
@@ -438,12 +544,6 @@ void renderOrbitalBackground(out vec4 fragColor, in vec2 fragCoord) {
             vec3 light = vec3(1.0) - exp(
                 -max(sampleValue.radiance, vec3(0.0))
                     * ORB_EXPOSURE * ORB_MASTER_BRIGHTNESS
-            );
-            vec3 bodyTarget = mix(ORB_VOID, sampleValue.bodyColor, 0.90);
-            composite = mix(
-                composite,
-                bodyTarget,
-                sampleValue.coverage * ORB_BODY_BLEND * backgroundMask
             );
             composite += light * backgroundMask;
             sceneAlpha = max(
@@ -498,16 +598,25 @@ const float OC_PLANET_RADIUS_MIN = 0.72;
 const float OC_PLANET_RADIUS_MAX = 1.62;
 const float OC_SIZE_PULSE = 0.10;
 const vec3 OC_LIGHT_DIRECTION = vec3(-0.62, 0.72, 1.25);
-const float OC_AMBIENT_LIGHT = 0.18;
-const float OC_DIFFUSE_LIGHT = 0.82;
-const float OC_FRESNEL_POWER = 2.00;
-const float OC_FRESNEL_STRENGTH = 0.34;
-const float OC_SPECULAR_POWER = 34.0;
-const float OC_SPECULAR_STRENGTH = 0.62;
-const float OC_BODY_OPACITY = 0.58;
-const float OC_SURFACE_BAND_COUNT = 6.0;
+const float OC_AXIAL_TILT = 0.34;
 const float OC_SURFACE_SPIN_SPEED = 1.25;
-const float OC_SURFACE_BAND_STRENGTH = 0.28;
+const float OC_LATITUDE_COUNT = 6.0;
+const float OC_LONGITUDE_COUNT = 10.0;
+const float OC_GRID_CORE_WIDTH = 0.032;
+const float OC_GRID_GLOW_WIDTH = 0.110;
+const float OC_GRID_CORE_STRENGTH = 0.54;
+const float OC_GRID_GLOW_STRENGTH = 0.10;
+const float OC_GRID_BACK_STRENGTH = 0.24;
+const float OC_GRID_POLE_FADE_START = 0.055;
+const float OC_GRID_POLE_FADE_END = 0.20;
+const float OC_SILHOUETTE_CORE_WIDTH = 0.020;
+const float OC_SILHOUETTE_GLOW_WIDTH = 0.082;
+const float OC_SILHOUETTE_CORE_STRENGTH = 0.64;
+const float OC_SILHOUETTE_GLOW_STRENGTH = 0.13;
+const float OC_RING_BACK_VISIBILITY = 0.30;
+const float OC_MOON_BACK_VISIBILITY = 0.24;
+const float OC_GRID_AMBIENT_LIGHT = 0.46;
+const float OC_GRID_DIFFUSE_LIGHT = 0.54;
 
 const float OC_RING_RADIUS_START = 1.34;
 const float OC_RING_RADIUS_SPACING = 0.28;
@@ -787,32 +896,65 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
 
         if (radial < 1.0 + sphereAa * 2.0) {
             float z = sqrt(max(1.0 - dot(local, local), 0.0));
-            vec3 sphereNormal = normalize(vec3(local, z));
+            vec3 frontNormal = normalize(vec3(local, z));
+            vec3 backNormal = normalize(vec3(local, -z));
+            float spin = iTime * OC_SURFACE_SPIN_SPEED;
+            vec3 frontGridNormal = rotateY(rotateX(frontNormal, OC_AXIAL_TILT), spin);
+            vec3 backGridNormal = rotateY(rotateX(backNormal, OC_AXIAL_TILT), spin);
+            float frontCore, frontGlow, backCore, backGlow;
+            float pixelRadius = max(planetRadius * resolution.y, 1.0);
+            sphericalGridMask(
+                frontGridNormal,
+                OC_LATITUDE_COUNT,
+                OC_LONGITUDE_COUNT,
+                OC_GRID_CORE_WIDTH,
+                OC_GRID_GLOW_WIDTH,
+                pixelRadius,
+                OC_GRID_POLE_FADE_START,
+                OC_GRID_POLE_FADE_END,
+                frontCore,
+                frontGlow
+            );
+            sphericalGridMask(
+                backGridNormal,
+                OC_LATITUDE_COUNT,
+                OC_LONGITUDE_COUNT,
+                OC_GRID_CORE_WIDTH,
+                OC_GRID_GLOW_WIDTH,
+                pixelRadius,
+                OC_GRID_POLE_FADE_START,
+                OC_GRID_POLE_FADE_END,
+                backCore,
+                backGlow
+            );
             vec3 lightDirection = normalize(OC_LIGHT_DIRECTION);
-            float diffuse = OC_AMBIENT_LIGHT
-                + OC_DIFFUSE_LIGHT * max(dot(sphereNormal, lightDirection), 0.0);
-            float fresnel = pow(1.0 - max(sphereNormal.z, 0.0), OC_FRESNEL_POWER);
-            float specular = pow(
-                max(dot(reflect(-lightDirection, sphereNormal), vec3(0.0, 0.0, 1.0)), 0.0),
-                OC_SPECULAR_POWER
+            float diffuse = OC_GRID_AMBIENT_LIGHT + OC_GRID_DIFFUSE_LIGHT
+                * max(dot(frontNormal, lightDirection), 0.0);
+            vec3 frontColor = mix(
+                OC_BLUE,
+                OC_CYAN,
+                0.58 + 0.22 * frontGridNormal.y
+            ) * diffuse;
+            vec3 backColor = mix(OC_VIOLET, OC_BLUE, 0.48);
+            cursorLight += frontColor * (
+                frontCore * OC_GRID_CORE_STRENGTH
+                + frontGlow * OC_GRID_GLOW_STRENGTH
             );
-            float longitude = atan(sphereNormal.z, sphereNormal.x)
-                + iTime * OC_SURFACE_SPIN_SPEED;
-            float latitude = asin(clamp(sphereNormal.y, -1.0, 1.0));
-            float bands = 0.5 + 0.5 * sin(
-                latitude * OC_SURFACE_BAND_COUNT + sin(longitude * 3.0) * 0.72
+            cursorLight += backColor * OC_GRID_BACK_STRENGTH * (
+                backCore * OC_GRID_CORE_STRENGTH
+                + backGlow * OC_GRID_GLOW_STRENGTH
             );
-            vec3 bodyColor = mix(OC_BLUE, OC_TEAL, bands * OC_SURFACE_BAND_STRENGTH + 0.24);
-            bodyColor = mix(bodyColor, OC_VIOLET, (1.0 - diffuse) * 0.42);
-            bodyColor *= mix(0.46, 1.08, diffuse);
-            scene.rgb = mix(
-                scene.rgb,
-                bodyColor,
-                sphereCoverage * OC_BODY_OPACITY * life * contentMask
+            float silhouetteDistance = abs(radial - 1.0);
+            float silhouetteCore = exp(
+                -silhouetteDistance / max(OC_SILHOUETTE_CORE_WIDTH, 0.001)
             );
-            cursorLight += mix(OC_CYAN, OC_VIOLET, 0.38)
-                * fresnel * OC_FRESNEL_STRENGTH * sphereCoverage;
-            cursorLight += OC_WHITE * specular * OC_SPECULAR_STRENGTH * sphereCoverage;
+            float silhouetteGlow = exp(
+                -silhouetteDistance / max(OC_SILHOUETTE_GLOW_WIDTH, 0.002)
+            );
+            cursorLight += mix(OC_CYAN, OC_VIOLET, 0.42) * (
+                silhouetteCore * OC_SILHOUETTE_CORE_STRENGTH
+                + silhouetteGlow * OC_SILHOUETTE_GLOW_STRENGTH
+            );
         }
 
         float ringRoll = OC_RING_ROLL + iTime * OC_RING_ROLL_SPEED;
@@ -835,7 +977,12 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
                 ),
                 OC_RING_DASH_STRENGTH
             );
-            float occlusion = mix(1.0, frontHalf, sphereCoverage);
+            float insideVisibility = mix(
+                OC_RING_BACK_VISIBILITY,
+                1.0,
+                frontHalf
+            );
+            float occlusion = mix(1.0, insideVisibility, sphereCoverage);
             float ringStrength = pow(OC_RING_STRENGTH_FALLOFF, index);
             vec3 ringColor = mix(OC_GOLD, OC_CYAN, index / max(float(OC_RING_COUNT - 1), 1.0));
             cursorLight += ringColor * occlusion * dash * ringStrength * (
@@ -863,7 +1010,8 @@ void applyOrbitalOrreryCursor(inout vec4 scene, vec2 fragCoord) {
                 length(moonDelta)
             );
             float behind = 1.0 - step(0.0, orbitDepth);
-            float moonOcclusion = 1.0 - behind * sphereCoverage;
+            float moonOcclusion = 1.0 - behind * sphereCoverage
+                * (1.0 - OC_MOON_BACK_VISIBILITY);
             float moonGlow = gaussianPoint(moonDelta, moonRadius * OC_MOON_GLOW_RADIUS);
             vec3 moonColor = mix(OC_WHITE, OC_CYAN, index * 0.28);
             cursorLight += moonColor * moonOcclusion * (

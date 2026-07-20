@@ -4,7 +4,7 @@
 // Background families (type IDs):
 //   0 tesseract, 1 octahedral gem, 2 orbital world, 3 stellated crystal,
 //   4 torus knot, 5 Mobius ribbon, 6 Sierpinski tetrahedra,
-//   7 icosahedral nebula, 8 Lorenz attractor.
+//   7 icosahedral cage, 8 Lorenz attractor.
 //
 // One instance of every family drifts through the default scene. The movement-
 // reactive cursor changes family over time using a stable deterministic random
@@ -133,6 +133,28 @@ const float GC_TAU = 6.28318530718;
 const float GC_TESSERACT_SCALE = 1.00;
 const float GC_GEM_SCALE = 0.92;
 const float GC_ORBITAL_SCALE = 0.92;
+const float GC_ORBITAL_LATITUDE_COUNT = 7.0;
+const float GC_ORBITAL_LONGITUDE_COUNT = 12.0;
+const float GC_ORBITAL_GRID_CORE_WIDTH = 0.030;
+const float GC_ORBITAL_GRID_GLOW_WIDTH = 0.105;
+const float GC_ORBITAL_GRID_CORE_STRENGTH = 0.52;
+const float GC_ORBITAL_GRID_GLOW_STRENGTH = 0.095;
+const float GC_ORBITAL_GRID_BACK_STRENGTH = 0.24;
+const float GC_ORBITAL_GRID_POLE_FADE_START = 0.055;
+const float GC_ORBITAL_GRID_POLE_FADE_END = 0.20;
+const float GC_ORBITAL_SILHOUETTE_CORE_WIDTH = 0.020;
+const float GC_ORBITAL_SILHOUETTE_GLOW_WIDTH = 0.080;
+const float GC_ORBITAL_SILHOUETTE_CORE_STRENGTH = 0.60;
+const float GC_ORBITAL_SILHOUETTE_GLOW_STRENGTH = 0.12;
+const float GC_ORBITAL_BACK_RING_VISIBILITY = 0.30;
+const float GC_ORBITAL_BACK_MOON_VISIBILITY = 0.24;
+const float GC_ORBITAL_AXIAL_TILT = 0.34;
+const float GC_ORBITAL_SPIN_SPEED = 0.28;
+
+const float GC_ICOSA_CAGE_AURA_RADIUS = 1.04;
+const float GC_ICOSA_CAGE_AURA_WIDTH = 0.24;
+const float GC_ICOSA_CAGE_AURA_STRENGTH = 0.040;
+const float GC_ICOSA_CAGE_AURA_OPACITY = 0.065;
 const float GC_CRYSTAL_SCALE = 1.00;
 const float GC_KNOT_SCALE = 0.78;
 const float GC_MOBIUS_SCALE = 0.88;
@@ -534,6 +556,55 @@ GeometrySample renderGem(
     return sampleValue;
 }
 
+float gcPeriodicGridDistance(float phase) {
+    return abs(fract(phase + 0.5) - 0.5);
+}
+
+void gcSphericalGridMask(
+    vec3 surfaceNormal,
+    float pixelRadius,
+    out float core,
+    out float glow
+) {
+    float latitude = asin(clamp(surfaceNormal.y, -1.0, 1.0));
+    float longitude = atan(surfaceNormal.z, surfaceNormal.x);
+    float latitudePhase = (latitude / GC_PI + 0.5) * GC_ORBITAL_LATITUDE_COUNT;
+    float longitudePhase = (longitude / GC_TAU + 0.5) * GC_ORBITAL_LONGITUDE_COUNT;
+    float latitudeDistance = gcPeriodicGridDistance(latitudePhase);
+    float longitudeDistance = gcPeriodicGridDistance(longitudePhase);
+    float latitudeAa = 0.72 * GC_ORBITAL_LATITUDE_COUNT
+        / max(GC_PI * pixelRadius, 1.0);
+    float longitudeAa = 0.72 * GC_ORBITAL_LONGITUDE_COUNT
+        / max(GC_TAU * pixelRadius, 1.0);
+    float latitudeCore = 1.0 - smoothstep(
+        GC_ORBITAL_GRID_CORE_WIDTH,
+        GC_ORBITAL_GRID_CORE_WIDTH + latitudeAa,
+        latitudeDistance
+    );
+    float latitudeGlow = 1.0 - smoothstep(
+        GC_ORBITAL_GRID_GLOW_WIDTH,
+        GC_ORBITAL_GRID_GLOW_WIDTH + latitudeAa,
+        latitudeDistance
+    );
+    float poleFade = smoothstep(
+        GC_ORBITAL_GRID_POLE_FADE_START,
+        GC_ORBITAL_GRID_POLE_FADE_END,
+        length(surfaceNormal.xz)
+    );
+    float longitudeCore = poleFade * (1.0 - smoothstep(
+        GC_ORBITAL_GRID_CORE_WIDTH,
+        GC_ORBITAL_GRID_CORE_WIDTH + longitudeAa,
+        longitudeDistance
+    ));
+    float longitudeGlow = poleFade * (1.0 - smoothstep(
+        GC_ORBITAL_GRID_GLOW_WIDTH,
+        GC_ORBITAL_GRID_GLOW_WIDTH + longitudeAa,
+        longitudeDistance
+    ));
+    core = max(latitudeCore, longitudeCore);
+    glow = max(latitudeGlow, longitudeGlow);
+}
+
 GeometrySample renderOrbital(
     vec2 point,
     vec2 center,
@@ -542,24 +613,71 @@ GeometrySample renderOrbital(
 ) {
     GeometrySample sampleValue = emptyGeometrySample();
     vec2 local = (point - center) / max(sizeValue, 0.0001);
+    const float sphereRadius = 0.88;
     float radial = length(local);
-    float bodyCoverage = 1.0 - smoothstep(0.82, 0.88, radial);
-    if (radial < 0.92) {
-        float z = sqrt(max(0.88 * 0.88 - dot(local, local), 0.0)) / 0.88;
-        vec3 normal = normalize(vec3(local / 0.88, z));
+    float sphereAa = max(1.0 / max(sizeValue * iResolution.y, 1.0), 0.002);
+    float sphereCoverage = 1.0 - smoothstep(
+        sphereRadius - sphereAa,
+        sphereRadius + sphereAa,
+        radial
+    );
+    if (radial < sphereRadius + sphereAa * 2.0) {
+        vec2 spherePoint = local / sphereRadius;
+        float z = sqrt(max(1.0 - dot(spherePoint, spherePoint), 0.0));
+        vec3 frontNormal = normalize(vec3(spherePoint, z));
+        vec3 backNormal = normalize(vec3(spherePoint, -z));
+        float spin = iTime * GC_ORBITAL_SPIN_SPEED + identity * 0.37;
+        vec3 frontGridNormal = rotateY(
+            rotateX(frontNormal, GC_ORBITAL_AXIAL_TILT),
+            spin
+        );
+        vec3 backGridNormal = rotateY(
+            rotateX(backNormal, GC_ORBITAL_AXIAL_TILT),
+            spin
+        );
+        float frontCore, frontGlow, backCore, backGlow;
+        float pixelRadius = max(sizeValue * sphereRadius * iResolution.y, 1.0);
+        gcSphericalGridMask(frontGridNormal, pixelRadius, frontCore, frontGlow);
+        gcSphericalGridMask(backGridNormal, pixelRadius, backCore, backGlow);
         vec3 lightDirection = normalize(vec3(-0.62, 0.74, 1.15));
-        float diffuse = 0.22 + 0.78 * max(dot(normal, lightDirection), 0.0);
-        float longitude = atan(normal.z, normal.x) + iTime * 0.28 + identity;
-        float latitude = asin(clamp(normal.y, -1.0, 1.0));
-        float bands = 0.5 + 0.5 * sin(latitude * 6.0 + sin(longitude * 3.0) * 0.72);
-        vec3 bodyColor = mix(GC_BLUE, GC_TEAL, 0.26 + bands * 0.48);
-        bodyColor *= mix(0.44, 1.08, diffuse);
-        float fresnel = pow(1.0 - max(normal.z, 0.0), 2.1);
-        sampleValue.radiance += bodyColor * bodyCoverage * 0.48;
-        sampleValue.radiance += GC_CYAN * fresnel * bodyCoverage * 0.22;
-        sampleValue.opacity = max(sampleValue.opacity, bodyCoverage * 0.72);
-        sampleValue.darken = max(sampleValue.darken, bodyCoverage * 0.34);
+        float diffuse = 0.44 + 0.56 * max(dot(frontNormal, lightDirection), 0.0);
+        vec3 frontColor = mix(GC_BLUE, GC_CYAN, 0.58 + 0.22 * frontGridNormal.y)
+            * diffuse;
+        vec3 backColor = mix(GC_VIOLET, GC_BLUE, 0.48);
+        sampleValue.radiance += frontColor * (
+            frontCore * GC_ORBITAL_GRID_CORE_STRENGTH
+            + frontGlow * GC_ORBITAL_GRID_GLOW_STRENGTH
+        );
+        sampleValue.radiance += backColor * GC_ORBITAL_GRID_BACK_STRENGTH * (
+            backCore * GC_ORBITAL_GRID_CORE_STRENGTH
+            + backGlow * GC_ORBITAL_GRID_GLOW_STRENGTH
+        );
+        float silhouetteDistance = abs(radial - sphereRadius) / sphereRadius;
+        float silhouetteCore = exp(
+            -silhouetteDistance / GC_ORBITAL_SILHOUETTE_CORE_WIDTH
+        );
+        float silhouetteGlow = exp(
+            -silhouetteDistance / GC_ORBITAL_SILHOUETTE_GLOW_WIDTH
+        );
+        sampleValue.radiance += mix(GC_CYAN, GC_VIOLET, 0.40) * (
+            silhouetteCore * GC_ORBITAL_SILHOUETTE_CORE_STRENGTH
+            + silhouetteGlow * GC_ORBITAL_SILHOUETTE_GLOW_STRENGTH
+        );
+        sampleValue.opacity = max(
+            sampleValue.opacity,
+            max(frontCore, max(backCore * GC_ORBITAL_GRID_BACK_STRENGTH, silhouetteCore))
+        );
+        sampleValue.opacity = max(
+            sampleValue.opacity,
+            max(frontGlow, silhouetteGlow) * 0.20
+        );
     }
+    float atmosphere = exp(-abs(radial - sphereRadius * 1.05) / 0.16)
+        * smoothstep(sphereRadius * 0.72, sphereRadius * 0.96, radial);
+    sampleValue.radiance += mix(GC_CYAN, GC_VIOLET, 0.46)
+        * atmosphere * 0.040;
+    sampleValue.opacity = max(sampleValue.opacity, atmosphere * 0.035);
+
     float roll = -0.34 + iTime * 0.08 + identity * 0.27;
     vec2 ringPoint = rotate2d(local, -roll);
     vec2 ellipsePoint = vec2(ringPoint.x, ringPoint.y / 0.32);
@@ -570,24 +688,37 @@ GeometrySample renderOrbital(
         float core = exp(-ringDistance / 0.025);
         float glow = exp(-ringDistance / 0.085);
         float front = step(0.0, ringPoint.y);
-        float occlusion = mix(1.0, front, bodyCoverage);
+        float insideVisibility = mix(
+            GC_ORBITAL_BACK_RING_VISIBILITY,
+            1.0,
+            front
+        );
+        float occlusion = mix(1.0, insideVisibility, sphereCoverage);
         vec3 ringColor = mix(GC_GOLD, GC_CYAN, float(ringIndex));
         sampleValue.radiance += ringColor * occlusion * (
             core * 0.38 + glow * 0.075
         );
-        sampleValue.opacity = max(sampleValue.opacity, occlusion * max(core, glow * 0.25));
+        sampleValue.opacity = max(
+            sampleValue.opacity,
+            occlusion * max(core, glow * 0.25)
+        );
     }
     for (int moonIndex = 0; moonIndex < 2; moonIndex++) {
         float index = float(moonIndex);
         float moonAngle = iTime * (0.42 + index * 0.09) + identity + index * GC_PI;
+        float orbitDepth = sin(moonAngle);
         vec2 moonPlane = vec2(
             cos(moonAngle) * (1.45 + index * 0.24),
-            sin(moonAngle) * (1.45 + index * 0.24) * 0.32
+            orbitDepth * (1.45 + index * 0.24) * 0.32
         );
         vec2 moonCenter = center + rotate2d(moonPlane, roll) * sizeValue;
         float moon = gaussianPoint(point - moonCenter, sizeValue * (0.095 - index * 0.012));
-        sampleValue.radiance += mix(GC_WHITE, GC_CYAN, index * 0.35) * moon * 0.62;
-        sampleValue.opacity = max(sampleValue.opacity, moon * 0.48);
+        float behind = 1.0 - step(0.0, orbitDepth);
+        float moonVisibility = 1.0 - behind * sphereCoverage
+            * (1.0 - GC_ORBITAL_BACK_MOON_VISIBILITY);
+        sampleValue.radiance += mix(GC_WHITE, GC_CYAN, index * 0.35)
+            * moon * moonVisibility * 0.62;
+        sampleValue.opacity = max(sampleValue.opacity, moon * moonVisibility * 0.48);
     }
     return sampleValue;
 }
@@ -841,7 +972,7 @@ vec3 icosaVertex(int index) {
     return vec3(-phi, 0.0, -1.0) * normalizer;
 }
 
-GeometrySample renderIcosahedralNebula(
+GeometrySample renderIcosahedralCage(
     vec2 point,
     vec2 center,
     float sizeValue,
@@ -868,18 +999,17 @@ GeometrySample renderIcosahedralNebula(
             );
         }
     }
-    vec2 nebulaPoint = rotate2d(
-        (point - center) / max(sizeValue, 0.0001),
-        -iTime * 0.24 - identity
+    float cageRadius = length((point - center) / max(sizeValue, 0.0001));
+    float cageAura = exp(
+        -abs(cageRadius - GC_ICOSA_CAGE_AURA_RADIUS)
+            / max(GC_ICOSA_CAGE_AURA_WIDTH, 0.001)
+    ) * smoothstep(0.48, 0.86, cageRadius);
+    sampleValue.radiance += mix(GC_VIOLET, GC_CYAN, 0.52)
+        * cageAura * GC_ICOSA_CAGE_AURA_STRENGTH;
+    sampleValue.opacity = max(
+        sampleValue.opacity,
+        cageAura * GC_ICOSA_CAGE_AURA_OPACITY
     );
-    float nebulaRadius = length(nebulaPoint);
-    float nebulaAngle = atan(nebulaPoint.y, nebulaPoint.x);
-    float envelope = exp(-pow(nebulaRadius / 0.82, 2.4));
-    float swirl = 0.5 + 0.5 * sin(nebulaAngle * 4.0 + nebulaRadius * 11.0 - iTime);
-    sampleValue.radiance += mix(GC_VIOLET, GC_CYAN, swirl) * envelope * 0.15;
-    sampleValue.radiance += GC_ROSE * envelope * (1.0 - swirl) * 0.075;
-    sampleValue.darken = max(sampleValue.darken, envelope * 0.18);
-    sampleValue.opacity = max(sampleValue.opacity, envelope * 0.40);
     return sampleValue;
 }
 
@@ -949,7 +1079,7 @@ GeometrySample renderGeometryType(
     if (typeIndex == 4) return renderTorusKnot(point, center, sizeValue, identity);
     if (typeIndex == 5) return renderMobius(point, center, sizeValue, identity);
     if (typeIndex == 6) return renderFractalTetra(point, center, sizeValue, identity);
-    if (typeIndex == 7) return renderIcosahedralNebula(point, center, sizeValue, identity);
+    if (typeIndex == 7) return renderIcosahedralCage(point, center, sizeValue, identity);
     return renderLorenz(point, center, sizeValue, identity);
 }
 
