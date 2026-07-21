@@ -23,6 +23,7 @@ menu_items=(
   " Terminal"
   "󰙨 Zen Browser"
   " Translator"
+  "󰌌 Smassh"
 )
 
 choice=$(
@@ -48,6 +49,10 @@ case "$choice" in
 
 " Translator")
   "${TERMINAL_FLOAT[@]}" -- rlwrap trans &
+  ;;
+
+"󰌌 Smassh")
+  "${TERMINAL_FLOAT[@]}" -- smassh &
   ;;
 
 esac

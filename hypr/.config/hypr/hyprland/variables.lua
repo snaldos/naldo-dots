@@ -57,22 +57,13 @@ assert(
   ("machine profile in %s must be desktop or laptop, got %q"):format(machine_profile_source, machine_profile)
 )
 
----@type table<HyprlandMachineProfile, HyprlandKeyboardConfig>
-local keyboards = {
-  desktop = {
-    layout = "us",
-    numlock_by_default = true,
-    repeat_delay = 250,
-    repeat_rate = 35,
-  },
-  laptop = {
-    layout = "us",
-    numlock_by_default = true,
-    repeat_delay = 250,
-    repeat_rate = 35,
-  },
+---@type HyprlandKeyboardConfig
+local keyboard = {
+  layout = "us",
+  numlock_by_default = true,
+  repeat_delay = 250,
+  repeat_rate = 35,
 }
-local keyboard = keyboards[machine_profile]
 
 local centered_floating_size = "(monitor_w*0.30) (monitor_h*0.70)"
 local workspace_monitors = { "DP-1" }

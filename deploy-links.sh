@@ -6,7 +6,7 @@ REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 TARGET_DIR="${HOME:?HOME is not set}"
 DRY_RUN=0
 packages=(
-  ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi
+  ghostty fish starship herdr nvim zathura yazi hypr niri lazygit noctalia xdg-desktop-portal pi
   desktop automation machine
 )
 

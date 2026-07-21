@@ -39,6 +39,10 @@ hl.config({
     window_direction_monitor_fallback = false,
   },
 
+  misc = {
+    vrr = 1, -- Enable Adaptive Sync on capable monitors.
+  },
+
   decoration = {
     rounding = 20,
     rounding_power = 2,
