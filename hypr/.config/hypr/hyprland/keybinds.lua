@@ -26,40 +26,19 @@ local function workspace_in_group(position)
   return math.floor((workspace.id - 1) / vars.workspace_group_size) * vars.workspace_group_size + position
 end
 
-local function dispatch_window_resize_by_percent(x_percent, y_percent, window)
-  local monitor = hl.get_active_monitor()
-  if monitor == nil then
-    return
-  end
-
-  hl.dispatch(hl.dsp.window.resize({
-    x = monitor.width * x_percent / 100,
-    y = monitor.height * y_percent / 100,
-    relative = true,
-    window = window or "active",
-  }))
-end
-
 local function resize_window_by_percent(x_percent, y_percent)
   return function()
-    dispatch_window_resize_by_percent(x_percent, y_percent)
-  end
-end
-
-local function resize_scrolling_row_by_percent(y_percent)
-  return function()
-    local window = hl.get_active_window()
-    local layout_state = window ~= nil and window.layout or nil
-    local column = type(layout_state) == "table" and layout_state.column or nil
-    local row_index = type(layout_state) == "table" and layout_state.index_in_column or nil
-    local column_windows = type(column) == "table" and column.windows or nil
-    if type(row_index) ~= "number" or type(column_windows) ~= "table" then
+    local monitor = hl.get_active_monitor()
+    if monitor == nil then
       return
     end
 
-    -- Move the boundary below the active row; the last row falls back to its upper boundary.
-    local target_window = column_windows[row_index + 2] or window
-    dispatch_window_resize_by_percent(0, -y_percent, target_window)
+    hl.dispatch(hl.dsp.window.resize({
+      x = monitor.width * x_percent / 100,
+      y = monitor.height * y_percent / 100,
+      relative = true,
+      window = "active",
+    }))
   end
 end
 
@@ -287,17 +266,14 @@ bind(main_mod .. " + P", hl.dsp.window.pin(), { description = "Window: Pin" })
 
 -- Directional window management.
 local float_move_step = 40
-local resize_step = 5
 local directional_binds = {
-  { key = "H", direction = "left", x = -float_move_step, y = 0, resize_x = -resize_step, resize_y = 0 },
+  { key = "H", direction = "left", x = -float_move_step, y = 0 },
   {
     key = "J",
     direction = "down",
     workspace_fallback = "r+1",
     x = 0,
     y = float_move_step,
-    resize_x = 0,
-    resize_y = resize_step,
   },
   {
     key = "K",
@@ -305,10 +281,8 @@ local directional_binds = {
     workspace_fallback = "r-1",
     x = 0,
     y = -float_move_step,
-    resize_x = 0,
-    resize_y = -resize_step,
   },
-  { key = "L", direction = "right", x = float_move_step, y = 0, resize_x = resize_step, resize_y = 0 },
+  { key = "L", direction = "right", x = float_move_step, y = 0 },
 }
 
 local scrolling_focus_direction = {
@@ -322,13 +296,6 @@ for _, spec in ipairs(directional_binds) do
   local focus_description = "Layout-Position: Focus window " .. spec.direction
   if spec.workspace_fallback ~= nil then
     focus_description = focus_description .. " / Workspace: Focus " .. spec.workspace_fallback .. " at edge"
-  end
-
-  local scrolling_resize
-  if spec.resize_x ~= 0 then
-    scrolling_resize = hl.dsp.layout("colresize " .. (spec.resize_x > 0 and "+conf" or "-conf"))
-  else
-    scrolling_resize = resize_scrolling_row_by_percent(spec.resize_y)
   end
 
   local scrolling_swap
@@ -359,18 +326,6 @@ for _, spec in ipairs(directional_binds) do
     { repeating = true, description = focus_description .. " / Floating: Move " .. spec.direction }
   )
 
-  bind(
-    main_mod .. " + SHIFT + " .. spec.key,
-    layout.by_floating_or_layout({
-      floating = resize_window_by_percent(spec.resize_x, spec.resize_y),
-      layouts = {
-        { layout = "dwindle", dispatcher = resize_window_by_percent(spec.resize_x, spec.resize_y) },
-        { layout = "scrolling", dispatcher = scrolling_resize },
-      },
-    }),
-    { repeating = true, description = "Layout-Size: Resize window " .. spec.direction }
-  )
-
   local move_description = "Layout-Position: Move window " .. spec.direction
   local move_dispatcher = hl.dsp.window.move({ direction = spec.direction })
   if spec.workspace_fallback ~= nil then
@@ -391,6 +346,35 @@ for _, spec in ipairs(directional_binds) do
       { layout = "scrolling", dispatcher = scrolling_swap },
     }),
     { description = "Layout-Position: Swap window " .. spec.direction }
+  )
+end
+
+local resize_step = 5
+local resize_binds = {
+  { key = "Left", x = -resize_step, y = 0, description = "Decrease width" },
+  { key = "Right", x = resize_step, y = 0, description = "Increase width" },
+  { key = "Down", x = 0, y = -resize_step, description = "Decrease height" },
+  { key = "Up", x = 0, y = resize_step, description = "Increase height" },
+}
+
+for _, spec in ipairs(resize_binds) do
+  local scrolling_resize
+  if spec.x ~= 0 then
+    scrolling_resize = hl.dsp.layout("colresize " .. (spec.x > 0 and "+conf" or "-conf"))
+  else
+    scrolling_resize = resize_window_by_percent(0, spec.y)
+  end
+
+  bind(
+    main_mod .. " + CTRL + " .. spec.key,
+    layout.by_floating_or_layout({
+      floating = resize_window_by_percent(spec.x, spec.y),
+      layouts = {
+        { layout = "dwindle", dispatcher = resize_window_by_percent(spec.x, spec.y) },
+        { layout = "scrolling", dispatcher = scrolling_resize },
+      },
+    }),
+    { repeating = true, description = "Layout-Size: " .. spec.description }
   )
 end
 
