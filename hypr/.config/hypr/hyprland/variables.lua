@@ -60,7 +60,7 @@ assert(
 ---@type table<HyprlandMachineProfile, HyprlandKeyboardConfig>
 local keyboards = {
   desktop = {
-    layout = "gb",
+    layout = "us",
     numlock_by_default = true,
     repeat_delay = 250,
     repeat_rate = 35,
