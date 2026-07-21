@@ -1,5 +1,3 @@
--- ~/.config/nvim/lua/plugins/tex.lua
-
 return {
   {
     "lervag/vimtex",

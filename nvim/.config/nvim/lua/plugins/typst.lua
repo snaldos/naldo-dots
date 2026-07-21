@@ -1,5 +1,3 @@
--- ~/.config/nvim/lua/plugins/typst.lua
-
 return {
   {
     "chomosuke/typst-preview.nvim",

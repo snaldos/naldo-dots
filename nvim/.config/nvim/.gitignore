@@ -8,4 +8,4 @@ foo.*
 data
 
 # Rendered by Noctalia from its tracked user template.
-/lua/config/matugen.lua
+/lua/generated/matugen.lua

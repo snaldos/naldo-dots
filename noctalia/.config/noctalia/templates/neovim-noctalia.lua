@@ -240,8 +240,8 @@ local function setup_signal()
 			return
 		end
 		local ok, err = pcall(function()
-			package.loaded["config.matugen"] = nil
-			require("config.matugen").setup()
+			package.loaded["generated.matugen"] = nil
+			require("generated.matugen").setup()
 		end)
 		if not ok then
 			vim.notify(("Failed to reload Noctalia theme: %s"):format(err), vim.log.levels.ERROR)

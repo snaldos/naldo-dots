@@ -1,5 +1,3 @@
--- ~/.config/nvim/lua/plugins/markdown.lua
-
 return {
   {
     "neovim/nvim-lspconfig",

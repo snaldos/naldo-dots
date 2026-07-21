@@ -1,4 +1,4 @@
-local ok, matugen = pcall(require, "config.matugen")
+local ok, matugen = pcall(require, "generated.matugen")
 
 if ok then
   matugen.setup()
