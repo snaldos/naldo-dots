@@ -683,5 +683,7 @@ binds {
 
 // The installer generates machine.kdl from the shared desktop/laptop profile.
 // The Zen theme launcher owns the second machine-local include.
+// The Noctalia theme launcher owns the third machine-local include.
 include optional=true "machine.kdl"
 include optional=true "zen-browser-theme.kdl"
+include optional=true "noctalia.kdl"

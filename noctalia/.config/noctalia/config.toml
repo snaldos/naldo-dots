@@ -120,7 +120,7 @@ source = "builtin"
 wallpaper_scheme = "m3-content"
 
 [theme.templates]
-builtin_ids = ["btop", "cava", "gtk3", "gtk4", "hyprland", "kitty"]
+builtin_ids = ["btop", "cava", "gtk3", "gtk4", "hyprland", "kitty", "niri"]
 community_ids = []
 
 [theme.templates.user.ghostty]

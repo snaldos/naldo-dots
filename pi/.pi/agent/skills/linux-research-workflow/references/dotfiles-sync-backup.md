@@ -21,15 +21,21 @@ exists.
 The canonical public repository is `~/dotfiles`, with these packages:
 
 ```text
-ghostty fish starship herdr nvim zathura yazi hypr lazygit noctalia pi
-desktop automation machine
+ghostty fish starship herdr nvim zathura yazi hypr niri lazygit noctalia
+xdg-desktop-portal pi desktop automation machine
 ```
 
 Important entry points:
 
-- `~/dotfiles/deploy-links.sh`: validates package-source boundaries and restows
-  the canonical package list with `--no-folding`; `--dry-run` simulates the
-  complete reconciliation.
+- `~/dotfiles/deploy-links.sh`: validates package-source boundaries, preflights
+  the complete Stow transaction, safely stages byte-identical targets and
+  explicitly recognized repository migrations, and restows the canonical
+  package list with `--no-folding`; `--dry-run` simulates reconciliation and
+  reports safe target migrations without changing targets. An unsuccessful
+  reconciliation restores staged files.
+- `~/dotfiles/tests/deploy-links-test.sh`: exercises identical-file adoption,
+  known portal and Zathura migrations, unsafe mixed conflicts, and rollback in
+  isolated temporary targets.
 - `~/dotfiles/install.sh`: runs the complete user-level bootstrap, prompts for
   a fresh interactive machine profile, invokes the shared link reconciler,
   initializes local Noctalia, Fish, and Pi files, enforces mode `0600` on them,
@@ -44,8 +50,10 @@ Important entry points:
 `sync.sh` is a Git/network mutation, not a validator. Do not invoke it unless a
 commit and push are explicitly authorized. Before editing a live path, resolve
 its source with `readlink -f`; portable files must be individual links and a
-folded parent is an invalid topology. Never use `stow --adopt` without first
-reviewing every resulting source change.
+folded parent is an invalid topology. Known target transitions belong in the
+reconciler's reviewed migration rules and tests. Unexpected differing files
+must still abort for manual review; never use `stow --adopt` to bypass that
+boundary.
 Always use `--no-folding`: target directories are real, portable files are
 symlinks, and generated/private files are real target-side files. Package
 `.gitignore` files are source metadata and must not appear in deployed paths.

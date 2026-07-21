@@ -39,18 +39,27 @@ The shared links-only reconciler used by installation and synchronization is:
 ```bash
 ./deploy-links.sh --dry-run
 ./deploy-links.sh
+./tests/deploy-links-test.sh
 ```
 
-It restows every declared package with `--no-folding`. To remove a package's
-links explicitly, use `stow --no-folding --delete PACKAGE` before deleting or
-renaming the complete package source; GNU Stow has no deployment database from
-which to recover an already-removed package.
+It first simulates the complete Stow transaction, then restows every declared
+package with `--no-folding`. Byte-identical regular targets and explicitly
+recognized repository migrations are staged before deployment and removed only
+after Stow succeeds; a failed reconciliation restores the staged targets.
+`--dry-run` reports these migrations without changing the target. Current
+migration rules cover the pre-Stow portal files and the old generated Zathura
+configuration split.
+
+To remove a package's links explicitly, use
+`stow --no-folding --delete PACKAGE` before deleting or renaming the complete
+package source; GNU Stow has no deployment database from which to recover an
+already-removed package.
 
 `--no-folding` is required: deployed directories stay real, tracked files are
 individual symlinks, and generated/private files stay physically outside the
 repository. Package `.gitignore` files are source metadata and are not deployed.
-Conflicting files or invalid topology stop deployment for explicit review;
-links are never adopted automatically.
+Unexpected differing files or invalid topology stop deployment before any
+migration for explicit review. Links are never adopted automatically.
 
 `desktop` owns portable desktop preferences such as `mimeapps.list`.
 `automation` owns the centralized synchronization commands and user systemd
@@ -65,8 +74,9 @@ reconciles Stow links for the local tree, fetches/rebases `origin/main`,
 reconciles again when the integrated tree changed, reloads the user-systemd
 inventory when tracked unit sources changed, and pushes. Consequently, added,
 deleted, and renamed files are reflected in the live target rather than leaving
-missing or dangling links. A credential, Git, or Stow conflict stops the task
-before push rather than silently choosing a side or adopting a target file.
+missing or dangling links. A credential, Git, or unexpected Stow conflict
+stops the task before push rather than silently choosing a side or adopting a
+target file.
 
 One user timer runs all repository synchronizers:
 
