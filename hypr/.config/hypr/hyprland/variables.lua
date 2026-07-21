@@ -8,6 +8,7 @@ local scripts_dir = config_dir .. "/scripts"
 local scripts = {
   annotated_snip = scripts_dir .. "/annotated_snip.sh",
   app_launcher = scripts_dir .. "/app_launcher.sh",
+  keybind_cheatsheet = scripts_dir .. "/keybind_cheatsheet.sh",
   launch_terminal = scripts_dir .. "/launch_terminal.sh",
   layout_selector = scripts_dir .. "/layout_selector.sh",
   scripts_launcher = scripts_dir .. "/scripts_launcher.sh",
@@ -141,6 +142,7 @@ local scrolling_direction_is_left = scrolling_direction == "left"
 ---@class HyprlandScriptPaths
 ---@field annotated_snip string
 ---@field app_launcher string
+---@field keybind_cheatsheet string
 ---@field launch_terminal string
 ---@field layout_selector string
 ---@field scripts_launcher string

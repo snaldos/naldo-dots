@@ -407,6 +407,11 @@ bind(
   hl.dsp.exec_cmd(shell.command(vars.scripts.layout_selector, vars.noctalia.executable, vars.noctalia.ipc_subcommand)),
   { description = "Layout-Management: Select layout" }
 )
+bind(
+  main_mod .. " + SHIFT + Slash",
+  hl.dsp.exec_cmd(shell.command(vars.scripts.keybind_cheatsheet, vars.noctalia.executable)),
+  { description = "Menus: Show keybind cheatsheet" }
+)
 
 bind(main_mod .. " + R", when_layout("dwindle", hl.dsp.layout("togglesplit")), {
   description = "Dwindle: Toggle split",
