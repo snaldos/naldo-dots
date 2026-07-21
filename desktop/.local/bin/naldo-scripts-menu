@@ -2,16 +2,26 @@
 
 set -Eeuo pipefail
 
-if (($# != 2)); then
-  printf 'Usage: %s TERMINAL TERMINAL_FLOAT_APP_ID\n' "${0##*/}" >&2
+case $# in
+0)
+  terminal="${NALDO_TERMINAL:-ghostty}"
+  terminal_float_app_id="${NALDO_TERMINAL_FLOAT_APP_ID:-com.mitchellh.ghostty.float}"
+  ;;
+2)
+  terminal="$1"
+  terminal_float_app_id="$2"
+  ;;
+*)
+  printf 'Usage: %s [TERMINAL TERMINAL_FLOAT_APP_ID]\n' "${0##*/}" >&2
   exit 2
-fi
+  ;;
+esac
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+LAUNCH_TERMINAL="${LAUNCH_TERMINAL:-$HOME/.local/libexec/naldo/launch-terminal}"
 TERMINAL_FLOAT=(
-  "$SCRIPT_DIR/launch_terminal.sh"
-  --terminal "$1"
-  --app-id "$2"
+  "$LAUNCH_TERMINAL"
+  --terminal "$terminal"
+  --app-id "$terminal_float_app_id"
 )
 SYNC_CONTROL="${SYNC_CONTROL:-$HOME/.local/bin/sync-control}"
 SYNC_ALL="${SYNC_ALL:-$HOME/.local/bin/sync-all}"
@@ -228,6 +238,10 @@ main() {
 
   command -v "$NOCTALIA" >/dev/null 2>&1 || {
     printf 'Noctalia is required: %s\n' "$NOCTALIA" >&2
+    return 1
+  }
+  [[ -x "$LAUNCH_TERMINAL" ]] || {
+    notify "Scripts" "Missing executable: $LAUNCH_TERMINAL"
     return 1
   }
   [[ -x "$SYNC_CONTROL" ]] || {

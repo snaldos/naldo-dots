@@ -4,15 +4,17 @@ local home = assert(os.getenv("HOME"), "HOME is not set")
 local config_home = os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")
 local config_dir = config_home .. "/hypr"
 local scripts_dir = config_dir .. "/scripts"
+local local_bin_dir = home .. "/.local/bin"
+local local_libexec_dir = home .. "/.local/libexec/naldo"
 
 local scripts = {
-  annotated_snip = scripts_dir .. "/annotated_snip.sh",
+  annotated_snip = local_bin_dir .. "/naldo-annotated-snip",
   app_launcher = scripts_dir .. "/app_launcher.sh",
   keybind_cheatsheet = scripts_dir .. "/keybind_cheatsheet.sh",
-  launch_terminal = scripts_dir .. "/launch_terminal.sh",
+  launch_terminal = local_libexec_dir .. "/launch-terminal",
   layout_selector = scripts_dir .. "/layout_selector.sh",
-  scripts_launcher = scripts_dir .. "/scripts_launcher.sh",
-  snip_to_search = scripts_dir .. "/snip_to_search.sh",
+  scripts_launcher = local_bin_dir .. "/naldo-scripts-menu",
+  snip_to_search = local_bin_dir .. "/naldo-snip-to-search",
   theme_launcher = scripts_dir .. "/theme_launcher.sh",
 }
 

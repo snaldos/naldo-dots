@@ -5,9 +5,9 @@ if (( $# != 3 )); then
   exit 2
 fi
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+LAUNCH_TERMINAL="${LAUNCH_TERMINAL:-$HOME/.local/libexec/naldo/launch-terminal}"
 TERMINAL_FLOAT=(
-  "$SCRIPT_DIR/launch_terminal.sh"
+  "$LAUNCH_TERMINAL"
   --terminal "$1"
   --app-id "$2"
 )
@@ -16,6 +16,10 @@ NOCTALIA="${NOCTALIA:-noctalia}"
 
 command -v "$NOCTALIA" >/dev/null 2>&1 || {
   printf 'Noctalia is required: %s\n' "$NOCTALIA" >&2
+  exit 1
+}
+[[ -x "$LAUNCH_TERMINAL" ]] || {
+  printf 'Terminal launcher is required: %s\n' "$LAUNCH_TERMINAL" >&2
   exit 1
 }
 

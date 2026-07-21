@@ -76,8 +76,9 @@ sync-control run             # run immediately
 sync-control status
 ```
 
-The Hyprland scripts launcher exposes the same controls, including a `1min`
-testing interval. Prefer `30min` or longer for routine use. The selected
+The shared desktop scripts launcher exposes the same controls from Hyprland
+and Niri, including a `1min` testing interval. Prefer `30min` or longer for
+routine use. The selected
 interval is machine-local and ignored by Git. Every machine uses a local
 `~/backups` clone with its own Git history and remote.
 
