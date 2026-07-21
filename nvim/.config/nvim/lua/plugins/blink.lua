@@ -22,7 +22,6 @@ return {
         "fallback",
       }
 
-      -- Accept the selected completion and remain in Insert mode
       opts.keymap["<M-l>"] = {
         function(cmp)
           if cmp.is_visible() then
@@ -32,7 +31,6 @@ return {
         "fallback",
       }
 
-      -- Cancel completion and remain in Insert mode
       opts.keymap["<M-h>"] = {
         function(cmp)
           if cmp.is_visible() then
