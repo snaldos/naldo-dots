@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if (( $# != 2 )); then
-  printf 'Usage: %s NOCTALIA NOCTALIA_IPC_SUBCOMMAND\n' "${0##*/}" >&2
+case $# in
+0)
+  NOCTALIA_IPC=("${NOCTALIA:-noctalia}" "${NOCTALIA_IPC_SUBCOMMAND:-msg}")
+  ;;
+2)
+  NOCTALIA_IPC=("$1" "$2")
+  ;;
+*)
+  printf 'Usage: %s [NOCTALIA NOCTALIA_IPC_SUBCOMMAND]\n' "${0##*/}" >&2
   exit 2
-fi
-
-NOCTALIA_IPC=("$1" "$2")
+  ;;
+esac
 
 old_hash=""
 
