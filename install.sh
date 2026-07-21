@@ -175,6 +175,21 @@ else
   chmod 600 "$noctalia_credentials"
 fi
 
+zathura_config_dir="$config_home/zathura"
+zathura_theme="$zathura_config_dir/noctaliarc"
+[[ ! -L "$zathura_config_dir" ]] ||
+  fail "Zathura config directory must be real: $zathura_config_dir"
+[[ ! -e "$zathura_config_dir" || -d "$zathura_config_dir" ]] ||
+  fail "Zathura config path must be a directory: $zathura_config_dir"
+install -d -m 755 "$zathura_config_dir"
+[[ ! -L "$zathura_theme" ]] || fail "Zathura theme include must be a real file: $zathura_theme"
+[[ ! -e "$zathura_theme" || -f "$zathura_theme" ]] ||
+  fail "Zathura theme include path must be a regular file: $zathura_theme"
+if [[ ! -e "$zathura_theme" ]]; then
+  install -m 644 /dev/null "$zathura_theme"
+  printf 'Initialized empty machine-local Zathura theme include: %s\n' "$zathura_theme"
+fi
+
 fish_config_dir="$HOME/.config/fish"
 [[ ! -e "$fish_config_dir" || -d "$fish_config_dir" ]] ||
   fail "Fish config path must be a directory: $fish_config_dir"

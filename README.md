@@ -26,9 +26,9 @@ Run the complete user-level bootstrap:
 
 It validates prerequisites and the selected profile, serializes against
 `sync-all` and other dotfiles operations, enforces clean package-source
-boundaries, deploys all packages, initializes machine-local Noctalia, Fish, and
-Pi files when absent, enforces mode
-`0600` on those private files, and reloads user-systemd units. It does not
+boundaries, deploys all packages, initializes machine-local Noctalia, Fish,
+Zathura, and Pi files when absent, enforces mode `0600` on private files, and
+reloads user-systemd units. It does not
 install Arch packages or modify system files.
 
 The shared links-only reconciler used by installation and synchronization is:
@@ -100,9 +100,10 @@ GUI-managed `settings.toml`, which is included in the guarded machine snapshot.
 Ghostty's shader manager similarly keeps its active config and content-addressed
 shader outputs machine-local. Missing outputs degrade safely: Ghostty and
 Hyprland skip optional theme fragments, Neovim and Starship use tracked
-fallbacks, Yazi and the generated Zathura config fall back to application
-defaults, and Pi's extension selects built-in `dark` when
-`noctalia.json` is unavailable.
+fallbacks, Yazi uses application defaults, and Zathura keeps its tracked
+behavior while an empty local `noctaliarc` leaves colors at application
+defaults. Pi's extension selects built-in `dark` when `noctalia.json` is
+unavailable.
 
 Pi persists `/settings`, model, thinking, and theme selections in its active
 machine-local `settings.json`. The tracked `settings.default.json` initializes a

@@ -1,4 +1,4 @@
-# Rendered by Noctalia from this tracked template.
+# Complete active config rendered by Noctalia; keep behavior aligned with starship.base.toml.
 "$schema" = 'https://starship.rs/config-schema.json'
 palette = "noctalia"
 

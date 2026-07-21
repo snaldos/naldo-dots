@@ -150,7 +150,7 @@ output_path = "$XDG_CONFIG_HOME/yazi/flavors/noctalia.yazi/tmtheme.xml"
 
 [theme.templates.user.zathura]
 input_path = "$XDG_CONFIG_HOME/noctalia/templates/zathura-noctalia.conf"
-output_path = "$XDG_CONFIG_HOME/zathura/zathurarc"
+output_path = "$XDG_CONFIG_HOME/zathura/noctaliarc"
 post_hook = "bash \"$HOME/.config/noctalia/hooks/reload-zathura-theme.sh\""
 
 [wallpaper]

@@ -1,3 +1,4 @@
+# Portable fallback; Noctalia renders the complete active config because Starship has no include support.
 "$schema" = 'https://starship.rs/config-schema.json'
 
 [buf]

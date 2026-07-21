@@ -12,6 +12,7 @@ These are inspection commands, not permission to reload or update:
 | Ghostty | tracked active config plus optional generated theme | `ghostty +validate-config --config-file=PATH` |
 | Neovim/LazyVim | tracked `init.lua`, `lua/config/`, `lua/plugins/` | `luac -p`; targeted `nvim --headless` startup/module check |
 | Starship | generated active config or tracked base fallback | `STARSHIP_CONFIG=PATH starship print-config >/dev/null` |
+| Zathura | tracked behavior config plus generated color include | inspect `zathurarc(5)`; source the config in a running instance when available |
 | Yazi | tracked behavior config plus generated selector/flavor | `yazi --debug`; inspect diagnostics, not only exit status |
 | Pi | tracked default/extensions plus ignored active settings/theme | parse JSON; test extension selection with a mock or Pi loader |
 | Noctalia | tracked config/templates plus machine state | `noctalia config validate PATH` |
@@ -72,11 +73,11 @@ All durable user-template inputs are centralized under
 source of truth; currently configured user outputs include:
 
 - Ghostty: optional `~/.config/ghostty/themes/noctalia` fragment
-- Neovim: `lua/config/matugen.lua`
+- Neovim: `lua/generated/matugen.lua`
 - Pi: `~/.pi/agent/themes/noctalia.json`
 - Starship: complete `~/.config/starship.toml`
 - Yazi: flavor, syntax theme, and `theme.toml` selector
-- Zathura: complete `~/.config/zathura/zathurarc`
+- Zathura: color fragment `~/.config/zathura/noctaliarc`
 
 Noctalia also owns selected builtin/community outputs such as Hyprland and Zen.
 Every rendered output above is ignored. Edit templates or stable consumer logic,
@@ -103,7 +104,7 @@ Shader changes still require a visual check and rollback.
 ### Neovim/LazyVim
 
 `lua/config/theme.lua` is the explicit backend selector with values
-`tokyonight`, `matugen`, or `base16`; the tracked default is `tokyonight`.
+`tokyonight` or `matugen`; the tracked default is `tokyonight`.
 Matugen must fall back when its generated module is missing. A bare startup is a
 baseline only—assert the active colorscheme or load the changed module.
 Neovim's local `.git` metadata is not part of the outer dotfiles repository.
@@ -111,8 +112,19 @@ Neovim's local `.git` metadata is not part of the outer dotfiles repository.
 ### Starship
 
 Fish sets `STARSHIP_CONFIG` to generated `~/.config/starship.toml` when present
-and tracked `~/.config/starship.base.toml` otherwise. Validate both. `starship
-config NAME VALUE` edits a file and is not a check.
+and tracked `~/.config/starship.base.toml` otherwise. Starship has no native
+config-include mechanism, so the rendered active file intentionally contains
+both portable behavior and its generated palette; keep that behavior aligned
+with the tracked base. Validate both. `starship config NAME VALUE` edits a file
+and is not a check.
+
+### Zathura
+
+The tracked `zathurarc` owns portable behavior and includes the ignored local
+`noctaliarc`, which Noctalia renders with colors only. `install.sh` initializes
+an empty real include so a missing render leaves Zathura on application colors.
+Relative includes resolve from the file currently being processed. The reload
+hook sources `zathurarc`, which in turn reloads the generated color fragment.
 
 ### Yazi
 

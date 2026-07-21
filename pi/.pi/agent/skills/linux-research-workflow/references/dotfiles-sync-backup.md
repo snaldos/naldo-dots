@@ -107,10 +107,12 @@ Rendered outputs are ignored. Supported absence behavior is intentional:
 - Ghostty optionally loads its generated theme fragment.
 - Hyprland conditionally requires generated `noctalia.lua`.
 - Neovim defaults to Tokyo Night; `theme.lua` explicitly selects
-  `tokyonight`, `matugen`, or `base16`.
-- Fish selects generated Starship config when present and the tracked base
-  config otherwise.
-- Yazi and Zathura use application defaults until outputs are rendered.
+  `tokyonight` or `matugen`.
+- Fish selects the complete generated Starship config when present and the
+  tracked base config otherwise; Starship has no native include mechanism.
+- Yazi uses application defaults until its outputs are rendered.
+- Zathura's tracked behavior config includes an ignored local `noctaliarc`;
+  `install.sh` initializes it empty so colors default safely before rendering.
 - Pi selects Noctalia only when its generated theme is discoverable and
   otherwise selects built-in `dark`.
 

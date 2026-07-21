@@ -1,0 +1,4 @@
+# Portable behavior; install.sh initializes the local Noctalia color include.
+include noctaliarc
+
+set selection-clipboard clipboard
