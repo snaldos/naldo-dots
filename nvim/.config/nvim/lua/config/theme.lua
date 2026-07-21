@@ -1,14 +1,8 @@
----@alias ThemeBackend "tokyonight" | "matugen" | "base16"
-
----@type ThemeBackend
+---@type "tokyonight" | "matugen"
 local backend = "tokyonight"
 
 return {
   backend = backend,
-
-  base16 = {
-    colorscheme = "base16-rose-pine",
-  },
 
   tokyonight = {
     opts = {
