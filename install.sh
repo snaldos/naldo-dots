@@ -62,6 +62,9 @@ profile_dir="$config_home/naldo/machine-profile"
 profile_file="$profile_dir/profile"
 profile_default_source="$REPO_DIR/machine/.config/naldo/machine-profile/default"
 profile_values_source="$REPO_DIR/machine/.config/naldo/machine-profile/profiles"
+niri_config_dir="$config_home/niri"
+niri_machine_selector="$niri_config_dir/machine.kdl"
+niri_zen_theme_config="$niri_config_dir/zen-browser-theme.kdl"
 
 read -r profile_default <"$profile_default_source"
 profile_default="${profile_default//[[:space:]]/}"
@@ -153,6 +156,39 @@ else
 fi
 printf 'Machine profile: %s (%s)\n' "$effective_profile" \
   "$([[ -n "$profile_override" ]] && printf '%s' "$profile_file" || printf '%s/default' "$profile_dir")"
+
+[[ ! -L "$niri_config_dir" ]] || fail "Niri config directory must be real: $niri_config_dir"
+[[ ! -e "$niri_config_dir" || -d "$niri_config_dir" ]] ||
+  fail "Niri config path must be a directory: $niri_config_dir"
+install -d -m 755 "$niri_config_dir"
+
+niri_profile_config="$niri_config_dir/profiles/$effective_profile.kdl"
+[[ -f "$niri_profile_config" ]] || fail "missing Niri machine profile: $niri_profile_config"
+[[ ! -L "$niri_machine_selector" ]] ||
+  fail "Niri machine selector must be a real file: $niri_machine_selector"
+[[ ! -e "$niri_machine_selector" || -f "$niri_machine_selector" ]] ||
+  fail "Niri machine selector path must be a regular file: $niri_machine_selector"
+
+niri_machine_temporary="$(mktemp --tmpdir="$niri_config_dir" '.machine.XXXXXX.kdl')"
+if ! printf 'include "profiles/%s.kdl"\n' "$effective_profile" >"$niri_machine_temporary" ||
+  ! chmod 600 "$niri_machine_temporary" ||
+  ! mv -f -- "$niri_machine_temporary" "$niri_machine_selector"; then
+  rm -f -- "$niri_machine_temporary"
+  fail "could not write Niri machine selector: $niri_machine_selector"
+fi
+printf 'Niri profile selector: %s -> profiles/%s.kdl\n' "$niri_machine_selector" "$effective_profile"
+
+[[ ! -L "$niri_zen_theme_config" ]] ||
+  fail "Niri Zen theme include must be a real file: $niri_zen_theme_config"
+[[ ! -e "$niri_zen_theme_config" || -f "$niri_zen_theme_config" ]] ||
+  fail "Niri Zen theme include path must be a regular file: $niri_zen_theme_config"
+if [[ ! -e "$niri_zen_theme_config" ]]; then
+  printf '%s\n' '// Machine-local Zen theme; managed by Niri theme launcher.' |
+    install -m 600 /dev/stdin "$niri_zen_theme_config"
+  printf 'Initialized Niri Zen theme include: %s\n' "$niri_zen_theme_config"
+else
+  chmod 600 "$niri_zen_theme_config"
+fi
 
 noctalia_config_dir="$config_home/noctalia"
 noctalia_credentials="$noctalia_config_dir/credentials.toml"

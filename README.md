@@ -1,7 +1,7 @@
 # Dotfiles
 
-Portable Arch Linux and Hyprland workstation configuration, organized as GNU
-Stow packages whose contents mirror their paths under `$HOME`.
+Portable Arch Linux workstation configuration for Hyprland and Niri, organized
+as GNU Stow packages whose contents mirror their paths under `$HOME`.
 
 <p align="center">
   <a href="assets/screenshots/desktop-overview.png">
@@ -26,10 +26,13 @@ Run the complete user-level bootstrap:
 
 It validates prerequisites and the selected profile, serializes against
 `sync-all` and other dotfiles operations, enforces clean package-source
-boundaries, deploys all packages, initializes machine-local Noctalia, Fish,
-Zathura, and Pi files when absent, enforces mode `0600` on private files, and
-reloads user-systemd units. It does not
-install Arch packages or modify system files.
+boundaries, deploys all packages, renders Niri's selected machine profile, and
+initializes missing machine-local Niri, Noctalia, Fish, Zathura, and Pi files.
+Re-running it is a repair operation: missing local seeds are recreated, while
+existing credentials, preferences, and generated theme choices are preserved;
+the selected Niri machine file is intentionally refreshed. It also enforces mode
+`0600` on private files and reloads user-systemd units. It does not install Arch
+packages or modify system files such as greetd.
 
 The shared links-only reconciler used by installation and synchronization is:
 
@@ -84,8 +87,10 @@ interval is machine-local and ignored by Git. Every machine uses a local
 
 The `machine` package deploys `~/.config/naldo/machine-profile/`. Its tracked
 `default` is `laptop`; an optional machine-local `profile` file overrides it and
-must contain `desktop` or `laptop`. Fresh interactive installs choose from this
-tracked enum; automation uses `./install.sh --profile PROFILE`.
+must contain `desktop` or `laptop`. The same selection generates Niri's local
+`machine.kdl`, which includes the corresponding tracked output/session profile.
+Fresh interactive installs choose from this tracked enum; automation uses
+`./install.sh --profile PROFILE`.
 
 ## Generated themes and machine-local settings
 

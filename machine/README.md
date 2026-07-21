@@ -9,7 +9,9 @@ This GNU Stow package deploys:
 └── profile    # optional machine-local override, ignored by Git
 ```
 
-Resolution is `profile` when it exists, otherwise `default`. A fresh interactive
+Resolution is `profile` when it exists, otherwise `default`. The installer also
+writes machine-local `~/.config/niri/machine.kdl`, selecting the corresponding
+tracked file under `~/.config/niri/profiles/`. A fresh interactive
 `./install.sh` prompts using `profiles`; scripts can select explicitly with:
 
 ```bash

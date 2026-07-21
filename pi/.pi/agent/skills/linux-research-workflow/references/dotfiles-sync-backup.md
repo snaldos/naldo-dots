@@ -78,12 +78,11 @@ Resolution is `profile` when present, otherwise `default`. A fresh interactive
 install prompts from the enum; automation uses `./install.sh --profile desktop`.
 A selection equal to the tracked default does not create a redundant override.
 
-The profile controls portable machine behavior, currently including:
-
-```text
-desktop -> XKB layout gb
-laptop  -> XKB layout us
-```
+Both profiles use XKB `us`. The profile controls machine-specific monitor and
+window sizing in Hyprland and selects the tracked Niri fragment under
+`~/.config/niri/profiles/`. `install.sh` atomically renders the ignored real file
+`~/.config/niri/machine.kdl`; Niri's generated Zen theme include is likewise a
+real machine-local file. Neither generated include belongs in the Git index.
 
 Each machine independently clones its private snapshot repository at
 `~/backups`; Git history and `origin` determine whether it is the desktop or

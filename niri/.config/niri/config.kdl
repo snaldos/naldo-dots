@@ -75,53 +75,8 @@ input {
     // focus-follows-mouse max-scroll-amount="0%"
 }
 
-// You can configure outputs by their name, which you can find
-// by running `niri msg outputs` while inside a niri instance.
-// The built-in laptop monitor is usually called "eDP-1".
-// Find more information on the wiki:
-// https://niri-wm.github.io/niri/Configuration:-Outputs
-// Remember to uncomment the node by removing "/-"!
-
-// Desktop: Microstep MSI MAG401QR EA5H156200039 on DisplayPort.
-// Niri ignores this block when the output is not connected.
-output "DP-1" {
-    mode "3440x1440@144.000"
-    scale 1
-    transform "normal"
-    position x=0 y=0
-    variable-refresh-rate
-}
-
-/-output "eDP-1" {
-    // Uncomment this line to disable this output.
-    // off
-
-    // Resolution and, optionally, refresh rate of the output.
-    // The format is "<width>x<height>" or "<width>x<height>@<refresh rate>".
-    // If the refresh rate is omitted, niri will pick the highest refresh rate
-    // for the resolution.
-    // If the mode is omitted altogether or is invalid, niri will pick one automatically.
-    // Run `niri msg outputs` while inside a niri instance to list all outputs and their modes.
-    mode "1920x1080@120.030"
-
-    // You can use integer or fractional scale, for example use 1.5 for 150% scale.
-    scale 2
-
-    // Transform allows to rotate the output counter-clockwise, valid values are:
-    // normal, 90, 180, 270, flipped, flipped-90, flipped-180 and flipped-270.
-    transform "normal"
-
-    // Position of the output in the global coordinate space.
-    // This affects directional monitor actions like "focus-monitor-left", and cursor movement.
-    // The cursor can only move between directly adjacent outputs.
-    // Output scale and rotation has to be taken into account for positioning:
-    // outputs are sized in logical, or scaled, pixels.
-    // For example, a 3840×2160 output with scale 2.0 will have a logical size of 1920×1080,
-    // so to put another output directly adjacent to it on the right, set its x to 1920.
-    // If the position is unset or results in an overlap, the output is instead placed
-    // automatically.
-    position x=1280 y=0
-}
+// Output settings are machine-specific and selected at the end of this file
+// from profiles/desktop.kdl or profiles/laptop.kdl.
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:
@@ -295,12 +250,6 @@ spawn-at-startup "wl-clip-persist" "--clipboard" "regular"
 // same external authentication agent as the Hyprland session.
 spawn-at-startup "lxqt-policykit-agent"
 
-// This event is inert on machines without a lid switch. On the laptop, logind
-// must ignore lid handling so Noctalia can lock before suspending.
-switch-events {
-    lid-close { spawn "noctalia" "msg" "session" "lock-and-suspend"; }
-}
-
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 
@@ -448,9 +397,9 @@ binds {
     Mod+Shift+Slash { show-hotkey-overlay; }
     Mod+Alt+Slash repeat=false hotkey-overlay-title="Niri: Search keybindings" { spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/keybind_cheatsheet.py\""; }
 
-    // Suggested binds for running programs: terminal, app launcher, screen locker.
-    Mod+T hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
-    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    // Keep the stock app-binding semantics, using the applications installed here.
+    Mod+T hotkey-overlay-title="Open a Terminal: Ghostty" { spawn "ghostty"; }
+    Mod+D repeat=false hotkey-overlay-title="Run an Application: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
     Super+Alt+L hotkey-overlay-title="Lock the Screen: Noctalia" { spawn "noctalia" "msg" "session" "lock"; }
 
     // Noctalia desktop-shell IPC on combinations unused by the stock config.
@@ -461,8 +410,10 @@ binds {
     Mod+B repeat=false hotkey-overlay-title="Noctalia: Toggle bar" { spawn "noctalia" "msg" "bar-toggle"; }
     Alt+Tab repeat=false hotkey-overlay-title="Noctalia: Window switcher" { spawn "noctalia" "msg" "window-switcher"; }
 
-    // Shared desktop scripts, also on combinations unused by the stock config.
+    // Script menus on combinations unused by the stock config.
     Mod+X repeat=false hotkey-overlay-title="Scripts: Open launcher" { spawn "naldo-scripts-menu"; }
+    Mod+Backslash repeat=false hotkey-overlay-title="Themes: Open launcher" { spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/theme_launcher.sh\""; }
+    Mod+Z repeat=false hotkey-overlay-title="Apps: Open curated launcher" { spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/app_launcher.sh\""; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
@@ -729,3 +680,8 @@ binds {
     // moving the mouse or pressing any other key.
     Mod+Shift+P { power-off-monitors; }
 }
+
+// The installer generates machine.kdl from the shared desktop/laptop profile.
+// The Zen theme launcher owns the second machine-local include.
+include optional=true "machine.kdl"
+include optional=true "zen-browser-theme.kdl"

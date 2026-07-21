@@ -1,0 +1,9 @@
+// Desktop-specific Niri settings.
+output "DP-1" {
+    // Microstep MSI MAG401QR EA5H156200039.
+    mode "3440x1440@144.000"
+    scale 1
+    transform "normal"
+    position x=0 y=0
+    variable-refresh-rate
+}

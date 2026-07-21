@@ -1,1 +1,4 @@
-noctalia.kdl
+# Generated or machine-local includes; the active config directory stays real.
+/noctalia.kdl
+/machine.kdl
+/zen-browser-theme.kdl
