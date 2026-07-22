@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import {
   authenticateSudoInTerminal,
   createCredentialAwareBashOperations,
+  registerCredentialAwareBashTool,
   registerSafetyGuard,
 } from "../safety-guard.ts";
 
@@ -228,6 +229,70 @@ describe("sudo authentication", () => {
     assert.deepEqual(calls[0]!.args, ["-c", "printf test"]);
     assert.equal(calls[0]!.options.cwd, "/tmp/project");
     assert.equal(calls[0]!.options.timeout, 3_000);
+  });
+
+  it("routes only the exact approved sudo call through credential-aware execution", async () => {
+    let registeredTool: any;
+    const defaultExecutions: string[] = [];
+    const privilegedExecutions: string[] = [];
+    const pi = {
+      registerTool(tool: any) { registeredTool = tool; },
+      async exec(_binary: string, args: string[]) {
+        privilegedExecutions.push(args[1]!);
+        return { stdout: "", stderr: "", code: 0, killed: false };
+      },
+    };
+    const createBashTool = (cwd: string, options?: { operations?: any }) => ({
+      name: "bash",
+      async execute(_id: string, params: { command: string; timeout?: number }, signal: AbortSignal) {
+        if (!options?.operations) {
+          defaultExecutions.push(params.command);
+          return { content: [], details: {} };
+        }
+        return options.operations.exec(params.command, cwd, {
+          onData() {},
+          signal,
+          timeout: params.timeout,
+        });
+      },
+    });
+    const approved = new Map([["approved", "/usr/bin/sudo -n true"]]);
+    registerCredentialAwareBashTool(pi as never, approved, createBashTool as never);
+
+    assert.deepEqual(
+      await registeredTool.execute(
+        "approved",
+        { command: "/usr/bin/sudo -n true", timeout: 2 },
+        undefined,
+        () => {},
+        { cwd: "/tmp/project" },
+      ),
+      { exitCode: 0 },
+    );
+    assert.deepEqual(privilegedExecutions, ["/usr/bin/sudo -n true"]);
+    assert.equal(approved.has("approved"), false);
+
+    await registeredTool.execute(
+      "ordinary",
+      { command: "printf ordinary" },
+      undefined,
+      () => {},
+      { cwd: "/tmp/project" },
+    );
+    assert.deepEqual(defaultExecutions, ["printf ordinary"]);
+
+    approved.set("changed", "/usr/bin/sudo -n true");
+    await assert.rejects(
+      registeredTool.execute(
+        "changed",
+        { command: "/usr/bin/sudo -n false" },
+        undefined,
+        () => {},
+        { cwd: "/tmp/project" },
+      ),
+      /changed after safety validation/,
+    );
+    assert.equal(approved.has("changed"), false);
   });
 
   it("confirms the exact call and reuses an existing sudo credential", async () => {

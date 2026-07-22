@@ -1,8 +1,7 @@
-import {
-  createBashTool,
-  type BashOperations,
-  type ExtensionAPI,
-  type ExtensionContext,
+import type {
+  BashOperations,
+  ExtensionAPI,
+  ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { spawnSync } from "node:child_process";
 import { chmodSync, readdirSync, statSync } from "node:fs";
@@ -182,6 +181,8 @@ const defaultDependencies: SafetyGuardDependencies = {
   authenticateSudo: authenticateSudoInTerminal,
 };
 
+type BashToolFactory = typeof import("@earendil-works/pi-coding-agent").createBashTool;
+
 export function createCredentialAwareBashOperations(
   pi: Pick<ExtensionAPI, "exec">,
 ): BashOperations {
@@ -206,6 +207,39 @@ export function createCredentialAwareBashOperations(
       return { exitCode: result.code ?? 1 };
     },
   };
+}
+
+export function registerCredentialAwareBashTool(
+  pi: ExtensionAPI,
+  approvedSudoCommands: Map<string, string>,
+  createBashTool: BashToolFactory,
+): void {
+  // Pi's built-in bash worker starts in a detached terminal session. Sudo's
+  // default tty-scoped timestamp therefore cannot follow the credential that
+  // this extension obtains in Pi's native terminal. Keep ordinary bash calls
+  // on the built-in backend, but execute the exact approved sudo call through
+  // pi.exec(), which remains in Pi's terminal session and can reuse the ticket.
+  const bashTool = createBashTool(process.cwd());
+  pi.registerTool({
+    ...bashTool,
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      const approvedCommand = approvedSudoCommands.get(toolCallId);
+      try {
+        if (approvedCommand === undefined) {
+          return createBashTool(ctx.cwd).execute(toolCallId, params, signal, onUpdate);
+        }
+        if (approvedCommand !== params.command) {
+          throw new Error("Approved sudo command changed after safety validation");
+        }
+        const tool = createBashTool(ctx.cwd, {
+          operations: createCredentialAwareBashOperations(pi),
+        });
+        return tool.execute(toolCallId, params, signal, onUpdate);
+      } finally {
+        approvedSudoCommands.delete(toolCallId);
+      }
+    },
+  });
 }
 
 async function ensureSudoAuthentication(
@@ -251,33 +285,6 @@ export function registerSafetyGuard(
   const approvedSudoCommands = new Map<string, string>();
 
   hardenPrivateState();
-
-  // Pi's built-in bash worker starts in a detached terminal session. Sudo's
-  // default tty-scoped timestamp therefore cannot follow the credential that
-  // this extension obtains in Pi's native terminal. Keep ordinary bash calls
-  // on the built-in backend, but execute the exact approved sudo call through
-  // pi.exec(), which remains in Pi's terminal session and can reuse the ticket.
-  const bashTool = createBashTool(process.cwd());
-  pi.registerTool({
-    ...bashTool,
-    async execute(toolCallId, params, signal, onUpdate, ctx) {
-      const approvedCommand = approvedSudoCommands.get(toolCallId);
-      try {
-        if (approvedCommand === undefined) {
-          return createBashTool(ctx.cwd).execute(toolCallId, params, signal, onUpdate);
-        }
-        if (approvedCommand !== params.command) {
-          throw new Error("Approved sudo command changed after safety validation");
-        }
-        const tool = createBashTool(ctx.cwd, {
-          operations: createCredentialAwareBashOperations(pi),
-        });
-        return tool.execute(toolCallId, params, signal, onUpdate);
-      } finally {
-        approvedSudoCommands.delete(toolCallId);
-      }
-    },
-  });
 
   pi.registerFlag("yolo", {
     description: "Disable the high-impact safety gate for this Pi process",
@@ -453,8 +460,14 @@ export function registerSafetyGuard(
       approvedSudoCommands.set(event.toolCallId, classification.command);
     }
   });
+
+  return { approvedSudoCommands };
 }
 
-export default function safetyGuard(pi: ExtensionAPI) {
-  registerSafetyGuard(pi);
+export default function safetyGuard(pi: ExtensionAPI): void {
+  const { approvedSudoCommands } = registerSafetyGuard(pi);
+  pi.on("session_start", async () => {
+    const { createBashTool } = await import("@earendil-works/pi-coding-agent");
+    registerCredentialAwareBashTool(pi, approvedSudoCommands, createBashTool);
+  });
 }
