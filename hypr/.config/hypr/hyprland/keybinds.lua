@@ -183,7 +183,6 @@ bind("SHIFT + Print", hl.dsp.exec_cmd(noctalia_command("screenshot-region")), {
 
 -- Applications.
 bind(main_mod .. " + Return", hl.dsp.exec_cmd(vars.terminal.command), { description = "App: Terminal" })
-bind(main_mod .. " + E", hl.dsp.exec_cmd(vars.file_manager), { description = "App: File manager" })
 
 -- Numbered workspaces.
 local total_workspaces = vars.workspace_group_size * #vars.workspace_monitors

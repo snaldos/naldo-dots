@@ -108,7 +108,6 @@ local scrolling_direction_is_left = scrolling_direction == "left"
 ---@field noctalia HyprlandNoctaliaConfig
 ---@field window HyprlandWindowConfig
 ---@field terminal HyprlandTerminalConfig
----@field file_manager string
 ---@field scripts HyprlandScriptPaths
 ---@field workspace_group_size integer
 ---@field workspace_monitors string[]
@@ -159,7 +158,6 @@ local M = {
   noctalia = noctalia,
   window = window,
   terminal = terminal,
-  file_manager = terminal_command(terminal_app_id, "fish", "-c", "y"),
   scripts = scripts,
   workspace_group_size = 5,
   workspace_monitors = workspace_monitors,
