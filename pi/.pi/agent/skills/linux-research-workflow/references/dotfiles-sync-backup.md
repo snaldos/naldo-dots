@@ -200,10 +200,12 @@ snapshot/
 
 The allowlisted snapshot covers reconstruction-relevant package manifests,
 boot configuration, selected `/etc` and `/usr/local` configuration, systemd
-state, keyd and udev rules, greetd/Noctalia-greeter state, HyprPM state, and
-non-secret Noctalia settings/plugin manifests. It intentionally excludes
-portable dotfiles, browser profiles, histories, caches, logs, UKIs/EFI binaries,
-private keys, network credentials, Pi credentials, Noctalia's local
+state, keyd and udev rules, greetd/Noctalia-greeter state, HyprPM state,
+non-secret Noctalia settings/plugin manifests, and Mason's installed-package
+receipt inventory. It records Mason names and source versions, not the large
+reproducible package trees. It intentionally excludes portable dotfiles, browser
+profiles, histories, caches, logs, UKIs/EFI binaries, private keys, network
+credentials, Pi credentials, Noctalia's local
 `credentials.toml`, and its credential-bearing `state.toml`. A content guard
 aborts before replacing the snapshot if any allowlisted file resembles a
 credential.

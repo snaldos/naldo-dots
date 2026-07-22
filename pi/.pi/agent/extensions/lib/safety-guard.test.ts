@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { authenticateSudoInTerminal, registerSafetyGuard } from "../safety-guard.ts";
+import {
+  authenticateSudoInTerminal,
+  createCredentialAwareBashOperations,
+  registerSafetyGuard,
+} from "../safety-guard.ts";
 
 type Handler = (event: any, ctx: any) => Promise<unknown> | unknown;
 type Command = { handler: (args: string, ctx: any) => Promise<void> | void };
@@ -30,6 +34,7 @@ type SudoHarnessOptions = {
 function harness(yoloFlag = false, hasUI = true, sudoOptions: SudoHarnessOptions = {}) {
   const handlers = new Map<string, Handler[]>();
   const commands = new Map<string, Command>();
+  const tools = new Map<string, any>();
   const statuses = new Map<string, string>();
   const notifications: string[] = [];
   const validationResults = [...(sudoOptions.validationResults ?? [true])];
@@ -40,6 +45,9 @@ function harness(yoloFlag = false, hasUI = true, sudoOptions: SudoHarnessOptions
 
   const pi = {
     registerFlag() {},
+    registerTool(tool: { name: string }) {
+      tools.set(tool.name, tool);
+    },
     registerCommand(name: string, command: Command) {
       commands.set(name, command);
     },
@@ -96,6 +104,7 @@ function harness(yoloFlag = false, hasUI = true, sudoOptions: SudoHarnessOptions
 
   return {
     commands,
+    tools,
     statuses,
     notifications,
     ctx,
@@ -195,6 +204,30 @@ describe("sudo authentication", () => {
     toolName: "bash",
     toolCallId,
     input: { command },
+  });
+
+  it("runs credential-aware bash operations in Pi's terminal session", async () => {
+    const calls: Array<{ binary: string; args: string[]; options: Record<string, unknown> }> = [];
+    const chunks: string[] = [];
+    const operations = createCredentialAwareBashOperations({
+      async exec(binary: string, args: string[], options: Record<string, unknown>) {
+        calls.push({ binary, args, options });
+        return { stdout: "out", stderr: "err", code: 7, killed: false };
+      },
+    } as never);
+
+    const result = await operations.exec("printf test", "/tmp/project", {
+      onData(data: Buffer) { chunks.push(data.toString()); },
+      signal: undefined,
+      timeout: 3,
+    });
+
+    assert.deepEqual(result, { exitCode: 7 });
+    assert.deepEqual(chunks, ["out", "err"]);
+    assert.equal(calls[0]!.binary, "/usr/bin/bash");
+    assert.deepEqual(calls[0]!.args, ["-c", "printf test"]);
+    assert.equal(calls[0]!.options.cwd, "/tmp/project");
+    assert.equal(calls[0]!.options.timeout, 3_000);
   });
 
   it("confirms the exact call and reuses an existing sudo credential", async () => {

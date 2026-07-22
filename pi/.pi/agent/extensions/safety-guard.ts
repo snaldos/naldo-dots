@@ -1,4 +1,9 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import {
+  createBashTool,
+  type BashOperations,
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { spawnSync } from "node:child_process";
 import { chmodSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
@@ -177,6 +182,32 @@ const defaultDependencies: SafetyGuardDependencies = {
   authenticateSudo: authenticateSudoInTerminal,
 };
 
+export function createCredentialAwareBashOperations(
+  pi: Pick<ExtensionAPI, "exec">,
+): BashOperations {
+  return {
+    async exec(command, cwd, { onData, signal, timeout }) {
+      let result;
+      try {
+        result = await pi.exec("/usr/bin/bash", ["-c", command], {
+          cwd,
+          signal,
+          ...(timeout ? { timeout: timeout * 1_000 } : {}),
+        });
+      } catch (error) {
+        if (signal?.aborted) throw new Error("aborted");
+        throw error;
+      }
+
+      if (result.stdout) onData(Buffer.from(result.stdout));
+      if (result.stderr) onData(Buffer.from(result.stderr));
+      if (signal?.aborted) throw new Error("aborted");
+      if (result.killed && timeout) throw new Error(`timeout:${timeout}`);
+      return { exitCode: result.code ?? 1 };
+    },
+  };
+}
+
 async function ensureSudoAuthentication(
   pi: ExtensionAPI,
   ctx: ExtensionContext,
@@ -217,8 +248,36 @@ export function registerSafetyGuard(
   let enabled = guardEnabledFromEnvironment();
   const completedConfirmations = new Map<string, boolean>();
   const pendingConfirmations = new Map<string, Promise<boolean>>();
+  const approvedSudoCommands = new Map<string, string>();
 
   hardenPrivateState();
+
+  // Pi's built-in bash worker starts in a detached terminal session. Sudo's
+  // default tty-scoped timestamp therefore cannot follow the credential that
+  // this extension obtains in Pi's native terminal. Keep ordinary bash calls
+  // on the built-in backend, but execute the exact approved sudo call through
+  // pi.exec(), which remains in Pi's terminal session and can reuse the ticket.
+  const bashTool = createBashTool(process.cwd());
+  pi.registerTool({
+    ...bashTool,
+    async execute(toolCallId, params, signal, onUpdate, ctx) {
+      const approvedCommand = approvedSudoCommands.get(toolCallId);
+      try {
+        if (approvedCommand === undefined) {
+          return createBashTool(ctx.cwd).execute(toolCallId, params, signal, onUpdate);
+        }
+        if (approvedCommand !== params.command) {
+          throw new Error("Approved sudo command changed after safety validation");
+        }
+        const tool = createBashTool(ctx.cwd, {
+          operations: createCredentialAwareBashOperations(pi),
+        });
+        return tool.execute(toolCallId, params, signal, onUpdate);
+      } finally {
+        approvedSudoCommands.delete(toolCallId);
+      }
+    },
+  });
 
   pi.registerFlag("yolo", {
     description: "Disable the high-impact safety gate for this Pi process",
@@ -240,6 +299,7 @@ export function registerSafetyGuard(
     process.env[modeEnvironmentVariable] = next ? "on" : "off";
     completedConfirmations.clear();
     pendingConfirmations.clear();
+    approvedSudoCommands.clear();
     publishMode(ctx);
     if (!notify || !ctx.hasUI) return;
     ctx.ui.notify(
@@ -325,6 +385,7 @@ export function registerSafetyGuard(
     enabled = guardEnabledFromEnvironment();
     completedConfirmations.clear();
     pendingConfirmations.clear();
+    approvedSudoCommands.clear();
     hardenPrivateState(ctx.sessionManager.getSessionFile());
     publishMode(ctx);
   });
@@ -334,6 +395,7 @@ export function registerSafetyGuard(
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    approvedSudoCommands.clear();
     hardenPrivateState(ctx.sessionManager.getSessionFile());
     if (ctx.hasUI) ctx.ui.setStatus("safety-guard", undefined);
   });
@@ -388,6 +450,7 @@ export function registerSafetyGuard(
     if (needsSudo) {
       const failure = await ensureSudoAuthentication(pi, ctx, classification.command, dependencies);
       if (failure) return { block: true, reason: failure };
+      approvedSudoCommands.set(event.toolCallId, classification.command);
     }
   });
 }
