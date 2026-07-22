@@ -296,6 +296,7 @@ window-rule {
     }
 }
 // Route the dedicated Ghostty + Neovim notes window to its named workspace.
+// Its launcher and the Mod+F wrapper center this tiled column explicitly.
 window-rule {
     match app-id="com.mitchellh.ghostty.notes"
     open-on-workspace "notes"
@@ -795,8 +796,10 @@ binds {
     Mod+Ctrl+R {
         reset-window-height
     }
-    Mod+F {
-        maximize-column
+    // Preserve maximize-column for every window, then recenter the notes
+    // column after both maximizing and restoring its normal width.
+    Mod+F repeat=false hotkey-overlay-title="Windows: Toggle maximized column" {
+        spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/maximize_column.sh\""
     }
     Mod+Shift+F {
         fullscreen-window

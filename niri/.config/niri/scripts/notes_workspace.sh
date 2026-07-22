@@ -27,8 +27,27 @@ require_command() {
   }
 }
 
+notes_window_id_from_json() {
+  local windows_json="$1"
+
+  # $app_id is a jq variable, not a shell variable.
+  # shellcheck disable=SC2016
+  printf '%s\n' "$windows_json" |
+    "$JQ" -r --arg app_id "$NOTES_APP_ID" \
+      'first(.[] | select(.app_id == $app_id) | .id) // empty'
+}
+
+center_notes_window() {
+  local window_id="$1" output
+
+  if ! output="$("$NIRI" msg action center-window --id "$window_id" 2>&1)"; then
+    notify "Could not center the notes window: $output"
+    return 1
+  fi
+}
+
 main() {
-  local windows_json workspaces_json window_id workspace_idx empty_idx output
+  local windows_json workspaces_json window_id workspace_idx empty_idx output attempt
 
   if (($# != 0)); then
     printf 'Usage: %s\n' "${0##*/}" >&2
@@ -49,13 +68,7 @@ main() {
     return 1
   fi
 
-  # $app_id is a jq variable, not a shell variable.
-  # shellcheck disable=SC2016
-  if ! window_id="$(
-    printf '%s\n' "$windows_json" |
-      "$JQ" -r --arg app_id "$NOTES_APP_ID" \
-        'first(.[] | select(.app_id == $app_id) | .id) // empty'
-  )"; then
+  if ! window_id="$(notes_window_id_from_json "$windows_json")"; then
     notify "Could not parse Niri's window list"
     return 1
   fi
@@ -65,7 +78,8 @@ main() {
       notify "Could not focus the notes window: $output"
       return 1
     fi
-    return 0
+    center_notes_window "$window_id"
+    return
   fi
 
   if ! workspaces_json="$("$NIRI" msg -j workspaces 2>&1)"; then
@@ -130,6 +144,21 @@ main() {
     notify "Could not open the notes workspace: $output"
     return 1
   fi
+
+  # Spawning returns before Ghostty maps its window. Wait briefly, then center
+  # the new tiled column once Niri exposes its window ID.
+  for ((attempt = 0; attempt < 50; attempt++)); do
+    if windows_json="$("$NIRI" msg -j windows 2>/dev/null)" &&
+      window_id="$(notes_window_id_from_json "$windows_json")" &&
+      [[ -n "$window_id" ]]; then
+      center_notes_window "$window_id"
+      return
+    fi
+    sleep 0.1
+  done
+
+  notify "Opened notes, but its window did not appear in time to center it"
+  return 1
 }
 
 main "$@"
