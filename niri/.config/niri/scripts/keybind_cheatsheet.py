@@ -13,10 +13,12 @@ import sys
 from pathlib import Path
 
 ONE_LINE_BIND_RE = re.compile(
-    r"^ {4}(?P<combo>[^/\s{]+)(?P<attributes>.*?)"
+    r"^(?P<indent> +)(?P<combo>[^/\s{]+)(?P<attributes>.*?)"
     r"\{\s*(?P<action>.*?)\s*\}\s*$"
 )
-BIND_START_RE = re.compile(r"^ {4}(?P<combo>[^/\s{]+)(?P<attributes>.*?)\{\s*$")
+BIND_START_RE = re.compile(
+    r"^(?P<indent> +)(?P<combo>[^/\s{]+)(?P<attributes>.*?)\{\s*$"
+)
 TITLE_RE = re.compile(r'\bhotkey-overlay-title="(?P<title>(?:\\.|[^"\\])*)"')
 
 KEY_LABELS = {
@@ -109,20 +111,24 @@ def parse_bindings(path: Path) -> list[tuple[str, str]]:
     except OSError as error:
         raise RuntimeError(f"could not read Niri config {path}: {error}") from error
 
-    inside_binds = False
-    bindings: list[tuple[str, str]] = []
+    binds_indent: int | None = None
+    bindings: dict[str, str] = {}
     line_index = 0
 
     while line_index < len(lines):
         line = lines[line_index]
         line_index += 1
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
 
-        if line == "binds {":
-            inside_binds = True
+        # Parse both the top-level binds and recent-windows' nested binds.
+        if stripped == "binds {" and indent in (0, 4):
+            binds_indent = indent
             continue
-        if inside_binds and line == "}":
-            break
-        if not inside_binds:
+        if binds_indent is not None and line == f"{' ' * binds_indent}}}":
+            binds_indent = None
+            continue
+        if binds_indent is None:
             continue
 
         match = ONE_LINE_BIND_RE.match(line)
@@ -131,8 +137,13 @@ def parse_bindings(path: Path) -> list[tuple[str, str]]:
             if match is None:
                 continue
 
+            binding_indent = match.group("indent")
+            if len(binding_indent) != binds_indent + 4:
+                continue
+
             action_lines: list[str] = []
-            while line_index < len(lines) and lines[line_index] != "    }":
+            closing_line = f"{binding_indent}}}"
+            while line_index < len(lines) and lines[line_index] != closing_line:
                 action_line = lines[line_index].strip()
                 line_index += 1
                 if action_line and not action_line.startswith("//"):
@@ -146,6 +157,8 @@ def parse_bindings(path: Path) -> list[tuple[str, str]]:
             line_index += 1
             action = " ".join(action_lines)
         else:
+            if len(match.group("indent")) != binds_indent + 4:
+                continue
             action = match.group("action")
 
         combo = humanize_combo(match.group("combo"))
@@ -155,12 +168,13 @@ def parse_bindings(path: Path) -> list[tuple[str, str]]:
         else:
             description = humanize_action(action)
 
-        bindings.append((combo, description))
+        # Normal binds occur later and take precedence over recent-window binds.
+        bindings[combo] = description
 
     if not bindings:
         raise RuntimeError(f"no active bindings found in {path}")
 
-    return bindings
+    return list(bindings.items())
 
 
 def format_bindings(bindings: list[tuple[str, str]]) -> str:

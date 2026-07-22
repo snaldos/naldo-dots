@@ -8,7 +8,9 @@ output "DP-1" {
     variable-refresh-rate
 }
 
-// Named workspaces remain addressable even when their numeric index changes.
-workspace "notes" {
-    open-on-output "DP-1"
-}
+// A persistent declaration would insert the notes workspace at the top and
+// shift existing numeric indices. Super+N instead names the bottom empty
+// workspace on demand, leaving existing workspace numbers undisturbed.
+// workspace "notes" {
+//     open-on-output "DP-1"
+// }

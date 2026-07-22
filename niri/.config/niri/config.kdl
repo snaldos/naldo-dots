@@ -335,6 +335,36 @@ debug {
     // Permit notification actions and window activation initiated by Noctalia.
     honor-xdg-activation-with-invalid-serial
 }
+// Keep Niri's native recent-window bindings explicit. Defining this section
+// replaces its implicit defaults, so every stock binding is listed here.
+recent-windows {
+    binds {
+        Alt+Tab hotkey-overlay-title="Niri: Next recent window" {
+            next-window
+        }
+        Alt+Shift+Tab hotkey-overlay-title="Niri: Previous recent window" {
+            previous-window
+        }
+        Alt+grave hotkey-overlay-title="Niri: Next recent window for current app" {
+            next-window filter="app-id"
+        }
+        Alt+Shift+grave hotkey-overlay-title="Niri: Previous recent window for current app" {
+            previous-window filter="app-id"
+        }
+        Mod+Tab hotkey-overlay-title="Niri: Next recent window" {
+            next-window
+        }
+        Mod+Shift+Tab hotkey-overlay-title="Niri: Previous recent window" {
+            previous-window
+        }
+        Mod+grave hotkey-overlay-title="Niri: Next recent window for current app" {
+            next-window filter="app-id"
+        }
+        Mod+Shift+grave hotkey-overlay-title="Niri: Previous recent window for current app" {
+            previous-window filter="app-id"
+        }
+    }
+}
 binds {
     // Keys consist of modifiers separated by + signs, followed by an XKB key name
     // in the end. To find an XKB name for a particular key, you may use a program
@@ -379,10 +409,8 @@ binds {
     Mod+B repeat=false hotkey-overlay-title="Noctalia: Toggle bar" {
         spawn "noctalia" "msg" "bar-toggle"
     }
-    // Both window-switcher chords are explicit; Mod is Super in this session.
-    Mod+Tab repeat=false hotkey-overlay-title="Noctalia: Window switcher" {
-        spawn "noctalia" "msg" "window-switcher"
-    }
+    // Keep Noctalia's switcher on Alt+Tab. Niri's native Mod+Tab switcher is
+    // configured explicitly in the recent-windows section above.
     Alt+Tab repeat=false hotkey-overlay-title="Noctalia: Window switcher" {
         spawn "noctalia" "msg" "window-switcher"
     }
@@ -731,9 +759,9 @@ binds {
     // Mod+Tab {
     //     focus-workspace-previous
     // }
-    // Mod+Tab opens Noctalia's switcher above; keep the previous-workspace
-    // action on the otherwise unused key directly beside Tab.
-    Mod+Grave repeat=false hotkey-overlay-title="Workspaces: Focus previous" {
+    // Mod+Tab and Mod+Grave retain Niri's native recent-window actions above.
+    // Use a separate, otherwise unused chord to return to the previous workspace.
+    Mod+BackSpace repeat=false hotkey-overlay-title="Workspaces: Focus previous" {
         focus-workspace-previous
     }
     // The following binds move the focused window in and out of a column.

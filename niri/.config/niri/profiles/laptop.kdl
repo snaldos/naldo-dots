@@ -8,10 +8,12 @@ output "eDP-1" {
     position x=0 y=0
 }
 
-// Named workspaces remain addressable even when their numeric index changes.
-workspace "notes" {
-    open-on-output "eDP-1"
-}
+// A persistent declaration would insert the notes workspace at the top and
+// shift existing numeric indices. Super+N instead names the bottom empty
+// workspace on demand, leaving existing workspace numbers undisturbed.
+// workspace "notes" {
+//     open-on-output "eDP-1"
+// }
 
 // Let Noctalia lock the session before requesting suspend. The laptop's logind
 // configuration must leave lid handling to the desktop session.
