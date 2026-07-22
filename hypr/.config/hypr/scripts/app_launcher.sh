@@ -6,6 +6,7 @@ if (( $# != 3 )); then
 fi
 
 LAUNCH_TERMINAL="${LAUNCH_TERMINAL:-$HOME/.local/libexec/naldo/launch-terminal}"
+YAZI_CHOOSER="${YAZI_CHOOSER:-$HOME/.local/libexec/naldo/yazi-chooser}"
 TERMINAL_FLOAT=(
   "$LAUNCH_TERMINAL"
   --terminal "$1"
@@ -25,6 +26,7 @@ command -v "$NOCTALIA" >/dev/null 2>&1 || {
 
 menu_items=(
   " Terminal"
+  "󰇥 Files (Yazi)"
   "󰙨 Zen Browser"
   " Translator"
   "󰌌 Smassh"
@@ -40,6 +42,14 @@ choice=$(
 case "$choice" in
 " Terminal")
   "${TERMINAL_FLOAT[@]}" -- &
+  ;;
+
+"󰇥 Files (Yazi)")
+  [[ -x "$YAZI_CHOOSER" ]] || {
+    printf 'Yazi chooser is required: %s\n' "$YAZI_CHOOSER" >&2
+    exit 1
+  }
+  "${TERMINAL_FLOAT[@]}" -- "$YAZI_CHOOSER" &
   ;;
 
 "󰙨 Zen Browser")

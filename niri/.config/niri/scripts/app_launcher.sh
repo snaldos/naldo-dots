@@ -6,11 +6,13 @@ NOCTALIA="${NOCTALIA:-noctalia}"
 NIRI="${NIRI:-niri}"
 JQ="${JQ:-jq}"
 LAUNCH_TERMINAL="${LAUNCH_TERMINAL:-$HOME/.local/libexec/naldo/launch-terminal}"
+YAZI_CHOOSER="${YAZI_CHOOSER:-$HOME/.local/libexec/naldo/yazi-chooser}"
 TERMINAL="${NALDO_TERMINAL:-ghostty}"
 TERMINAL_FLOAT_APP_ID="${NALDO_TERMINAL_FLOAT_APP_ID:-com.mitchellh.ghostty.float}"
 
 menu_items=(
   " Terminal"
+  "󰇥 Files (Yazi)"
   "󰙨 Zen Browser"
   " Translator"
   "󰌌 Smassh"
@@ -109,6 +111,14 @@ main() {
   case "$choice" in
   " Terminal")
     spawn_app "$LAUNCH_TERMINAL" --terminal "$TERMINAL" --app-id "$TERMINAL_FLOAT_APP_ID" --
+    ;;
+
+  "󰇥 Files (Yazi)")
+    [[ -x "$YAZI_CHOOSER" ]] || {
+      notify "App launcher" "Missing executable: $YAZI_CHOOSER"
+      return 1
+    }
+    spawn_app "$LAUNCH_TERMINAL" --terminal "$TERMINAL" --app-id "$TERMINAL_FLOAT_APP_ID" -- "$YAZI_CHOOSER"
     ;;
 
   "󰙨 Zen Browser")

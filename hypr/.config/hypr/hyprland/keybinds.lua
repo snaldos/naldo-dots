@@ -138,7 +138,8 @@ local function scrolling_dispatch(message)
 end
 
 -- Noctalia and media.
-bind(main_mod .. " + Space", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "launcher")), {
+-- Keep the Super+Space variants free for Niri's optional keyboard-layout switching.
+bind(main_mod .. " + D", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "launcher")), {
   description = "Noctalia: Toggle launcher",
 })
 bind(main_mod .. " + O", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "control-center")), {
@@ -147,7 +148,7 @@ bind(main_mod .. " + O", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "contr
 bind(main_mod .. " + I", hl.dsp.exec_cmd(noctalia_command("settings-toggle")), {
   description = "Noctalia: Toggle settings",
 })
-bind(main_mod .. " + SHIFT + Space", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "clipboard")), {
+bind(main_mod .. " + Y", hl.dsp.exec_cmd(noctalia_command("panel-toggle", "clipboard")), {
   description = "Noctalia: Toggle clipboard",
 })
 bind(main_mod .. " + B", hl.dsp.exec_cmd(noctalia_command("bar-toggle")), {
@@ -412,6 +413,9 @@ bind(
   hl.dsp.exec_cmd(shell.command(vars.scripts.keybind_cheatsheet, vars.noctalia.executable)),
   { description = "Menus: Show keybind cheatsheet" }
 )
+bind(main_mod .. " + CTRL + Slash", hl.dsp.exec_cmd(shell.command(vars.scripts.keyd_remaps)), {
+  description = "Menus: Search keyd remaps",
+})
 
 bind(main_mod .. " + R", when_layout("dwindle", hl.dsp.layout("togglesplit")), {
   description = "Dwindle: Toggle split",
@@ -477,7 +481,7 @@ bind(
   hl.dsp.exec_cmd(shell.command(vars.scripts.scripts_launcher, vars.terminal.executable, vars.terminal.float_app_id)),
   { description = "Menus: Open scripts launcher" }
 )
-bind(main_mod .. " + Backslash", hl.dsp.exec_cmd(shell.command(vars.scripts.theme_launcher)), {
+bind(main_mod .. " + SHIFT + T", hl.dsp.exec_cmd(shell.command(vars.scripts.theme_launcher)), {
   description = "Menus: Open theme launcher",
 })
 bind(

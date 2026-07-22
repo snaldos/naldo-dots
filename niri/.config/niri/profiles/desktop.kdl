@@ -7,3 +7,8 @@ output "DP-1" {
     position x=0 y=0
     variable-refresh-rate
 }
+
+// Named workspaces remain addressable even when their numeric index changes.
+workspace "notes" {
+    open-on-output "DP-1"
+}

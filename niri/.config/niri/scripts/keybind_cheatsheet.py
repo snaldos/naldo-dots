@@ -12,10 +12,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-BIND_RE = re.compile(
+ONE_LINE_BIND_RE = re.compile(
     r"^ {4}(?P<combo>[^/\s{]+)(?P<attributes>.*?)"
     r"\{\s*(?P<action>.*?)\s*\}\s*$"
 )
+BIND_START_RE = re.compile(r"^ {4}(?P<combo>[^/\s{]+)(?P<attributes>.*?)\{\s*$")
 TITLE_RE = re.compile(r'\bhotkey-overlay-title="(?P<title>(?:\\.|[^"\\])*)"')
 
 KEY_LABELS = {
@@ -60,7 +61,7 @@ def decode_title(encoded: str) -> str:
     try:
         return json.loads(f'"{encoded}"')
     except json.JSONDecodeError:
-        return encoded.replace(r'\"', '"').replace(r"\\", "\\")
+        return encoded.replace(r"\"", '"').replace(r"\\", "\\")
 
 
 def humanize_key(key: str) -> str:
@@ -110,8 +111,12 @@ def parse_bindings(path: Path) -> list[tuple[str, str]]:
 
     inside_binds = False
     bindings: list[tuple[str, str]] = []
+    line_index = 0
 
-    for line in lines:
+    while line_index < len(lines):
+        line = lines[line_index]
+        line_index += 1
+
         if line == "binds {":
             inside_binds = True
             continue
@@ -120,21 +125,40 @@ def parse_bindings(path: Path) -> list[tuple[str, str]]:
         if not inside_binds:
             continue
 
-        match = BIND_RE.match(line)
+        match = ONE_LINE_BIND_RE.match(line)
         if match is None:
-            continue
+            match = BIND_START_RE.match(line)
+            if match is None:
+                continue
+
+            action_lines: list[str] = []
+            while line_index < len(lines) and lines[line_index] != "    }":
+                action_line = lines[line_index].strip()
+                line_index += 1
+                if action_line and not action_line.startswith("//"):
+                    action_lines.append(action_line)
+
+            if line_index == len(lines):
+                raise RuntimeError(
+                    f"unterminated binding for {match.group('combo')} in {path}"
+                )
+
+            line_index += 1
+            action = " ".join(action_lines)
+        else:
+            action = match.group("action")
 
         combo = humanize_combo(match.group("combo"))
         title_match = TITLE_RE.search(match.group("attributes"))
         if title_match is not None:
             description = decode_title(title_match.group("title"))
         else:
-            description = humanize_action(match.group("action"))
+            description = humanize_action(action)
 
         bindings.append((combo, description))
 
     if not bindings:
-        raise RuntimeError(f"no one-line bindings found in {path}")
+        raise RuntimeError(f"no active bindings found in {path}")
 
     return bindings
 

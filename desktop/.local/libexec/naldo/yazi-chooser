@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+YAZI="${YAZI:-yazi}"
+OPENER="${OPENER:-xdg-open}"
+DETACH="${DETACH:-setsid}"
+
+usage() {
+  printf 'Usage: %s [START_PATH]\n' "${0##*/}" >&2
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'Missing command: %s\n' "$1" >&2
+    return 1
+  }
+}
+
+main() {
+  local start_path="${1:-$HOME}"
+  local temporary_dir chooser_file selected status=0
+
+  if (( $# > 1 )); then
+    usage
+    return 2
+  fi
+
+  require_command "$YAZI" || return 1
+  require_command "$OPENER" || return 1
+  require_command "$DETACH" || return 1
+
+  temporary_dir="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+  [[ -d "$temporary_dir" && -w "$temporary_dir" ]] || temporary_dir="/tmp"
+  chooser_file="$(mktemp --tmpdir="$temporary_dir" 'naldo-yazi-chooser.XXXXXX')"
+  trap 'rm -f -- "$chooser_file"' RETURN
+
+  "$YAZI" --chooser-file="$chooser_file" "$start_path" || status=$?
+  (( status == 0 )) || return "$status"
+  [[ -s "$chooser_file" ]] || return 0
+
+  while IFS= read -r selected || [[ -n "$selected" ]]; do
+    [[ -n "$selected" ]] || continue
+    "$DETACH" --fork "$OPENER" "$selected" >/dev/null 2>&1
+  done <"$chooser_file"
+}
+
+main "$@"

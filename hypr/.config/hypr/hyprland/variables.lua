@@ -11,6 +11,7 @@ local scripts = {
   annotated_snip = local_bin_dir .. "/naldo-annotated-snip",
   app_launcher = scripts_dir .. "/app_launcher.sh",
   keybind_cheatsheet = scripts_dir .. "/keybind_cheatsheet.sh",
+  keyd_remaps = local_bin_dir .. "/naldo-keyd-remaps",
   launch_terminal = local_libexec_dir .. "/launch-terminal",
   layout_selector = scripts_dir .. "/layout_selector.sh",
   scripts_launcher = local_bin_dir .. "/naldo-scripts-menu",
@@ -136,6 +137,7 @@ local scrolling_direction_is_left = scrolling_direction == "left"
 ---@field annotated_snip string
 ---@field app_launcher string
 ---@field keybind_cheatsheet string
+---@field keyd_remaps string
 ---@field launch_terminal string
 ---@field layout_selector string
 ---@field scripts_launcher string

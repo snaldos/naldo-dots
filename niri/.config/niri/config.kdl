@@ -295,6 +295,12 @@ window-rule {
         fixed 920
     }
 }
+// Route the dedicated Ghostty + Neovim notes window to its named workspace.
+window-rule {
+    match app-id="com.mitchellh.ghostty.notes"
+    open-on-workspace "notes"
+    open-focused true
+}
 // Float Noctalia's settings window at a comfortable fixed size.
 window-rule {
     match app-id="dev.noctalia.Noctalia"
@@ -347,6 +353,9 @@ binds {
     Mod+Alt+Slash repeat=false hotkey-overlay-title="Niri: Search keybindings" {
         spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/keybind_cheatsheet.py\""
     }
+    Mod+Ctrl+Slash repeat=false hotkey-overlay-title="keyd: Search remaps" {
+        spawn "naldo-keyd-remaps"
+    }
     // Keep the stock app-binding semantics, using the applications installed here.
     Mod+T hotkey-overlay-title="Open a Terminal: Ghostty" {
         spawn "ghostty"
@@ -358,20 +367,21 @@ binds {
         spawn "noctalia" "msg" "session" "lock"
     }
     // Noctalia desktop-shell IPC on combinations unused by the stock config.
-    Mod+Space repeat=false hotkey-overlay-title="Noctalia: Toggle launcher" {
-        spawn "noctalia" "msg" "panel-toggle" "launcher"
-    }
     Mod+S repeat=false hotkey-overlay-title="Noctalia: Toggle control center" {
         spawn "noctalia" "msg" "panel-toggle" "control-center"
     }
     Mod+Shift+S repeat=false hotkey-overlay-title="Noctalia: Toggle settings" {
         spawn "noctalia" "msg" "settings-toggle"
     }
-    Mod+Shift+Space repeat=false hotkey-overlay-title="Noctalia: Toggle clipboard" {
+    Mod+Y repeat=false hotkey-overlay-title="Noctalia: Toggle clipboard" {
         spawn "noctalia" "msg" "panel-toggle" "clipboard"
     }
     Mod+B repeat=false hotkey-overlay-title="Noctalia: Toggle bar" {
         spawn "noctalia" "msg" "bar-toggle"
+    }
+    // Both window-switcher chords are explicit; Mod is Super in this session.
+    Mod+Tab repeat=false hotkey-overlay-title="Noctalia: Window switcher" {
+        spawn "noctalia" "msg" "window-switcher"
     }
     Alt+Tab repeat=false hotkey-overlay-title="Noctalia: Window switcher" {
         spawn "noctalia" "msg" "window-switcher"
@@ -380,11 +390,14 @@ binds {
     Mod+X repeat=false hotkey-overlay-title="Scripts: Open launcher" {
         spawn "naldo-scripts-menu"
     }
-    Mod+Backslash repeat=false hotkey-overlay-title="Themes: Open launcher" {
+    Mod+Shift+T repeat=false hotkey-overlay-title="Themes: Open launcher" {
         spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/theme_launcher.sh\""
     }
     Mod+Z repeat=false hotkey-overlay-title="Apps: Open curated launcher" {
         spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/app_launcher.sh\""
+    }
+    Mod+N repeat=false hotkey-overlay-title="Notes: Focus or open Neovim vault" {
+        spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/notes_workspace.sh\""
     }
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
     // Note: the entire command goes as a single argument. It's passed verbatim to `sh -c`.
@@ -718,6 +731,11 @@ binds {
     // Mod+Tab {
     //     focus-workspace-previous
     // }
+    // Mod+Tab opens Noctalia's switcher above; keep the previous-workspace
+    // action on the otherwise unused key directly beside Tab.
+    Mod+Grave repeat=false hotkey-overlay-title="Workspaces: Focus previous" {
+        focus-workspace-previous
+    }
     // The following binds move the focused window in and out of a column.
     // If the window is alone, they will consume it into the nearby column to the side.
     // If the window is already in a column, they will expel it out.
