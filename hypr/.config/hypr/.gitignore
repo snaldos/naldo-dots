@@ -1,5 +1,0 @@
-workspaces.lua
-monitors.lua
-
-# Rendered by Noctalia; hyprland.lua loads it only when present.
-noctalia.lua

@@ -30,10 +30,6 @@ if status is-interactive
         alias ls "eza --icons=auto"
     end
 
-    # Kitty SSH integration
-    if test "$TERM" = xterm-kitty
-        alias ssh "kitten ssh"
-    end
 end
 
 # Conda

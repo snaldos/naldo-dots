@@ -1,7 +1,7 @@
 ---
 name: linux-research-workflow
-description: "Inspect, debug, validate, migrate, or configure Naldo's Arch Linux desktop/laptop: GNU Stow dotfiles, centralized Git synchronization and machine snapshots, Hyprland Lua/hl and plugins, native Noctalia v5, systemd/systemd-boot, Wayland/UWSM, Herdr/Tailscale, Ghostty, Fish, Neovim, Starship, Yazi, Zen, packages, and scientific tooling."
-compatibility: "Arch Linux; Hyprland 0.55+ Lua configuration; native Noctalia v5 beta; GNU Stow; UWSM/systemd-user; Fish interactive shell; Bash automation; Ghostty; Neovim/LazyVim; Herdr; Tailscale."
+description: "Inspect, debug, validate, migrate, or configure Naldo's Arch Linux desktop/laptop: GNU Stow dotfiles, centralized Git synchronization and machine snapshots, Niri, native Noctalia v5, systemd/systemd-boot, Wayland, Herdr/Tailscale, Ghostty, Fish, Neovim, Starship, Yazi, Zen, packages, and scientific tooling."
+compatibility: "Arch Linux; Niri; native Noctalia v5 beta; GNU Stow; systemd-user; Fish interactive shell; Bash automation; Ghostty; Neovim/LazyVim; Herdr; Tailscale."
 ---
 
 # Linux Research Workstation
@@ -11,8 +11,7 @@ compatibility: "Arch Linux; Hyprland 0.55+ Lua configuration; native Noctalia v5
 Treat this as a current profile that must still be inspected:
 
 - rolling Arch Linux; installed versions, help, schemas, and package files are authoritative
-- Hyprland 0.55+ with Lua configuration and embedded `hl`, normally under UWSM/systemd-user
-- HyprPM `scrolloverview`, configured by `hyprland/plugins.lua` when loaded
+- Niri running through `niri-session` and `niri.service`
 - native Noctalia v5 beta invoked as `noctalia`, not the old Quickshell/QML shell
 - Ghostty, Fish, Starship, Neovim/LazyVim, Yazi, Zen Browser, and Herdr
 - portable user config in the public GNU Stow repository `~/dotfiles`, deployed with `--no-folding`
@@ -28,7 +27,7 @@ Before nontrivial diagnosis or editing, read only the relevant guide:
 
 - Stow ownership, machine profiles, Git synchronization, timers, or snapshots:
   [references/dotfiles-sync-backup.md](references/dotfiles-sync-backup.md)
-- Hyprland, plugins, Noctalia, UWSM, portals, or Wayland:
+- Niri, Noctalia, portals, or Wayland:
   [references/desktop-wayland.md](references/desktop-wayland.md)
 - systemd, Arch packages, systemd-boot, Herdr, Tailscale, or remote continuity:
   [references/system-remote.md](references/system-remote.md)
@@ -44,7 +43,7 @@ is valid; a successful service start does not prove every repository pushed.
 Classify the target first:
 
 1. portable tracked source in a Stow package
-2. ignored machine override such as the Hyprland profile or timer interval
+2. ignored machine override such as the Niri profile or timer interval
 3. generated output whose template/source must be edited instead
 4. runtime/private state that must remain untracked
 5. allowlisted system reconstruction data captured by `~/backups`
@@ -77,7 +76,7 @@ do not assume an older command, plugin dispatcher, or schema still applies.
 - Pi's command tool executes Bash; interactive shell configuration targets Fish.
 - Emit Fish syntax only for `.fish` files or an explicitly requested interactive command.
 - Identify whether Bash is executed or sourced before changing strict mode or dialect.
-- `luac -p` checks grammar only; Hyprland's `hl` and Neovim's `vim` require host validation.
+- `luac -p` checks grammar only; Neovim's `vim` requires host validation.
 - Prefer the owning application's effective-config/validator over generic TOML parsing.
 - Preserve local style; do not install or run broad formatters for a focused edit.
 
@@ -90,7 +89,7 @@ do not assume an older command, plugin dispatcher, or schema still applies.
 - Do not run repository sync scripts unless staging, committing, rebasing, and
   pushing all non-ignored changes is authorized.
 - If access may use Tailscale, SSH, or Herdr, map the connection and recovery
-  path before restarting networking, the user manager, UWSM, Hyprland, or Herdr.
+  path before restarting networking, the user manager, Niri, or Herdr.
 - Never expose Tailscale/SSH state, browser profiles, cookies/history, clipboard
   or notification history, full environments, Pi credentials/sessions, or
   Noctalia credential state.

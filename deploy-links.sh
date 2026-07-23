@@ -6,7 +6,7 @@ REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 TARGET_DIR="${HOME:?HOME is not set}"
 DRY_RUN=0
 packages=(
-  ghostty fish starship herdr nvim zathura yazi hypr niri lazygit noctalia xdg-desktop-portal pi
+  ghostty fish starship herdr nvim zathura yazi niri lazygit noctalia xdg-desktop-portal pi
   desktop automation machine
 )
 
@@ -71,20 +71,6 @@ find_conflict_source() {
 # Differing files need explicit, content-recognized migration rules. Add a rule
 # and an isolated regression test whenever tracked ownership expands to a path
 # that older machines already own as a regular file.
-is_known_legacy_portal() {
-  local relative="$1" target="$2"
-  local expected=$'[preferred]\ndefault=hyprland;gtk;\norg.freedesktop.impl.portal.FileChooser=termfilechooser;\n'
-
-  case "$relative" in
-  .config/xdg-desktop-portal/hyprland-portals.conf | .config/xdg-desktop-portal/portals.conf)
-    cmp -s -- "$target" <(printf '%s' "$expected")
-    ;;
-  *)
-    return 1
-    ;;
-  esac
-}
-
 is_known_legacy_zathurarc() {
   local target="$1"
 
@@ -195,9 +181,6 @@ classify_target_conflict() {
   if cmp -s -- "$source" "$target"; then
     classified_kind="identical"
     classified_reason="replace byte-identical file with its managed symlink"
-  elif is_known_legacy_portal "$relative" "$target"; then
-    classified_kind="known-portal"
-    classified_reason="remove the recognized pre-Stow portal configuration"
   elif [[ "$relative" == ".config/zathura/zathurarc" ]] &&
     is_known_legacy_zathurarc "$target"; then
     noctalia_fragment="$TARGET_DIR/.config/zathura/noctaliarc"

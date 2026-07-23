@@ -926,15 +926,15 @@ function classifySystemOperation(executable: string, args: string[]): SafetyIssu
     return [issue("network configuration change", "This changes a WireGuard interface and can interrupt connectivity.", `Would run wg-quick ${args.join(" ")}.`)];
   }
 
-  if (executable === "hyprctl" && /\bdispatch\s+exit\b/i.test(args.join(" "))) {
-    return [issue("graphical session termination", "This exits Hyprland and can close the active desktop session.", `Would run hyprctl ${args.join(" ")}.`)];
+  if (executable === "niri" && /^msg\s+action\s+quit\b/i.test(args.join(" "))) {
+    return [issue("graphical session termination", "This exits Niri and can close the active desktop session.", `Would run niri ${args.join(" ")}.`)];
   }
   if (executable === "loginctl" && args.some((argument) => /^(?:terminate-user|terminate-session|kill-user)$/i.test(argument))) {
     return [issue("login session termination", "This terminates a login session and its processes.", `Would run loginctl ${args.join(" ")}.`)];
   }
   if (["pkill", "killall"].includes(executable)) {
     const target = operands(args).at(-1) ?? "";
-    if (/(?:hyprland|greetd|systemd|wayland|ghostty|herdr|sshd|tailscaled)/i.test(target)) {
+    if (/(?:niri|greetd|systemd|wayland|ghostty|herdr|sshd|tailscaled)/i.test(target)) {
       return [issue("critical process termination", "The target may own login, networking, the terminal, or the active agent session.", `Would terminate processes matching ${target}.`, target)];
     }
   }

@@ -32,8 +32,8 @@ split-inherit-working-directory = true
 # Transparency
 # -----------------------------------------------------------------------------
 
-# Ghostty supplies alpha; Hyprland supplies blur. Apply opacity to explicit
-# cells too; each cell's alpha controls how much Cosmos is visible behind it.
+# Ghostty supplies alpha; Niri supplies blur. Apply opacity to explicit cells
+# too; each cell's alpha controls how much Cosmos is visible behind it.
 background-opacity = 0.70
 background-opacity-cells = true
 

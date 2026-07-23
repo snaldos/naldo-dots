@@ -1,5 +1,5 @@
 # Machine-local plugin credentials; see credentials.toml.example.
 /credentials.toml
 
-# Temporary full export created by the Hyprland scripts menu.
+# Temporary full export created by the shared scripts menu.
 /full-config-export.toml.tmp

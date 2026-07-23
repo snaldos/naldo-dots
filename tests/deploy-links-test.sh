@@ -55,12 +55,6 @@ assert_no_staging_directory() {
     fail "migration staging directory remains under $target"
 }
 
-write_legacy_portal() {
-  printf '%s' \
-    $'[preferred]\ndefault=hyprland;gtk;\norg.freedesktop.impl.portal.FileChooser=termfilechooser;\n' \
-    >"$1"
-}
-
 run_successfully() {
   local output="$1"
   shift
@@ -94,22 +88,6 @@ assert_link_to "$TARGET/.config/xdg-desktop-portal/portals.conf" \
 assert_no_staging_directory "$TARGET"
 pass 'byte-identical regular target is safely linked'
 
-# The exact portal configuration superseded by the tracked package is a known migration.
-new_target portal
-install -d "$TARGET/.config/xdg-desktop-portal"
-write_legacy_portal "$TARGET/.config/xdg-desktop-portal/hyprland-portals.conf"
-write_legacy_portal "$TARGET/.config/xdg-desktop-portal/portals.conf"
-run_successfully "$workspace/portal-dry.log" "$DEPLOY_LINKS" --dry-run --target "$TARGET"
-assert_regular "$TARGET/.config/xdg-desktop-portal/hyprland-portals.conf"
-assert_regular "$TARGET/.config/xdg-desktop-portal/portals.conf"
-run_successfully "$workspace/portal-apply.log" "$DEPLOY_LINKS" --target "$TARGET"
-assert_link_to "$TARGET/.config/xdg-desktop-portal/hyprland-portals.conf" \
-  "$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal/hyprland-portals.conf"
-assert_link_to "$TARGET/.config/xdg-desktop-portal/portals.conf" \
-  "$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal/portals.conf"
-assert_no_staging_directory "$TARGET"
-pass 'recognized portal files migrate without --adopt'
-
 # The old generated Zathura file is split into tracked behavior and local colors.
 new_target zathura
 install -d "$TARGET/.config/zathura"
@@ -132,7 +110,8 @@ pass 'recognized generated Zathura config is split safely'
 # One unexpected conflict prevents every otherwise-safe migration in the same run.
 new_target mixed
 install -d "$TARGET/.config/xdg-desktop-portal" "$TARGET/.config/zathura"
-write_legacy_portal "$TARGET/.config/xdg-desktop-portal/portals.conf"
+cp "$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal/portals.conf" \
+  "$TARGET/.config/xdg-desktop-portal/portals.conf"
 printf 'user-specific configuration\n' >"$TARGET/.config/zathura/zathurarc"
 cp "$TARGET/.config/xdg-desktop-portal/portals.conf" "$workspace/mixed-portal.before"
 cp "$TARGET/.config/zathura/zathurarc" "$workspace/mixed-zathura.before"

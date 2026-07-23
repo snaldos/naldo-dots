@@ -23,8 +23,6 @@ systemd-analyze calendar 'CALENDAR SPEC'
 
 After an authorized unit-file edit, `daemon-reload` updates manager metadata but does not restart the service. Treat `start`, `restart`, `stop`, `enable`, `disable`, `--now`, timer activation, and lingering as separate decisions. For timers inspect both units and `systemctl --user list-timers --all`.
 
-Under UWSM, the Wayland session is a systemd-user lifecycle. Do not restart `user@UID.service`, UWSM session targets, or import broad environment dumps as a shortcut.
-
 ### Central synchronization timer
 
 The current user setup has one periodic timer, `sync-all.timer`, activating the

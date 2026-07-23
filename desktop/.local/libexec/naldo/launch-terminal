@@ -56,15 +56,6 @@ if (( $# > 0 )); then
   terminal_args+=(-e "$@")
 fi
 
-# A UWSM-managed compositor has an active wayland-wm@….service. Niri's
-# niri-session also activates graphical-session.target, so `uwsm check
-# is-active` alone cannot distinguish the two session types.
-if command -v uwsm >/dev/null 2>&1 &&
-  command -v systemctl >/dev/null 2>&1 &&
-  systemctl --user --quiet is-active 'wayland-wm@*.service'; then
-  exec uwsm app -- "${terminal_args[@]}"
-fi
-
-# Niri already starts applications in app-niri scopes; launching directly keeps
-# the process inside that session rather than incorrectly routing it through UWSM.
+# Niri already starts applications in app-niri scopes. Keep the terminal in
+# that session by replacing this helper directly with the terminal process.
 exec "${terminal_args[@]}"

@@ -1,6 +1,0 @@
-hl.on("hyprland.start", function()
-  hl.exec_cmd("hyprpm reload")
-  hl.exec_cmd("command -v wl-clip-persist >/dev/null 2>&1 && wl-clip-persist --clipboard regular")
-  hl.exec_cmd("command -v lxqt-policykit-agent >/dev/null 2>&1 && lxqt-policykit-agent")
-  hl.exec_cmd("noctalia")
-end)

@@ -1,16 +1,10 @@
 # Dotfiles
 
-Portable Arch Linux workstation configuration for Hyprland and Niri, organized
-as GNU Stow packages whose contents mirror their paths under `$HOME`.
+Portable Arch Linux workstation configuration for Niri, organized as GNU Stow
+packages whose contents mirror their paths under `$HOME`.
 
 <p align="center">
-  <a href="assets/screenshots/desktop-overview.png">
-    <img src="assets/screenshots/desktop-overview.png" alt="Hyprland desktop with Noctalia, Ghostty, Neovim, Yazi, and Zathura" width="100%">
-  </a>
-</p>
-
-<p align="center">
-  <em>Hyprland · Noctalia · Ghostty Cosmos · Pi Coding Agent · LazyVim · Zathura</em>
+  <em>Niri · Noctalia · Ghostty Cosmos · Pi Coding Agent · LazyVim · Zathura</em>
 </p>
 
 ## Install
@@ -47,7 +41,7 @@ package with `--no-folding`. Byte-identical regular targets and explicitly
 recognized repository migrations are staged before deployment and removed only
 after Stow succeeds; a failed reconciliation restores the staged targets.
 `--dry-run` reports these migrations without changing the target. Current
-migration rules cover the pre-Stow portal files and the old generated Zathura
+migration rules cover byte-identical targets and the old generated Zathura
 configuration split.
 
 To remove a package's links explicitly, use
@@ -89,9 +83,8 @@ sync-control run             # run immediately
 sync-control status
 ```
 
-The shared desktop scripts launcher exposes the same controls from Hyprland
-and Niri, including a `1min` testing interval. Prefer `30min` or longer for
-routine use. The selected
+The shared desktop scripts launcher exposes these controls from Niri, including
+a `1min` testing interval. Prefer `30min` or longer for routine use. The selected
 interval is machine-local and ignored by Git. Every machine uses a local
 `~/backups` clone with its own Git history and remote.
 
@@ -114,8 +107,8 @@ placeholder is unnecessary. Never enter credentials in the tracked config or
 GUI-managed `settings.toml`, which is included in the guarded machine snapshot.
 
 Ghostty's shader manager similarly keeps its active config and content-addressed
-shader outputs machine-local. Missing outputs degrade safely: Ghostty and
-Hyprland skip optional theme fragments, Neovim and Starship use tracked
+shader outputs machine-local. Missing outputs degrade safely: Ghostty and Niri
+skip optional theme fragments, Neovim and Starship use tracked
 fallbacks, Yazi uses application defaults, and Zathura keeps its tracked
 behavior while an empty local `noctaliarc` leaves colors at application
 defaults. Pi's extension selects built-in `dark` when `noctalia.json` is

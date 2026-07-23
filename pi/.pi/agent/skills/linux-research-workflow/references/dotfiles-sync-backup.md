@@ -21,7 +21,7 @@ exists.
 The canonical public repository is `~/dotfiles`, with these packages:
 
 ```text
-ghostty fish starship herdr nvim zathura yazi hypr niri lazygit noctalia
+ghostty fish starship herdr nvim zathura yazi niri lazygit noctalia
 xdg-desktop-portal pi desktop automation machine
 ```
 
@@ -34,8 +34,8 @@ Important entry points:
   reports safe target migrations without changing targets. An unsuccessful
   reconciliation restores staged files.
 - `~/dotfiles/tests/deploy-links-test.sh`: exercises identical-file adoption,
-  known portal and Zathura migrations, unsafe mixed conflicts, and rollback in
-  isolated temporary targets.
+  the Zathura migration, unsafe mixed conflicts, and rollback in isolated
+  temporary targets.
 - `~/dotfiles/install.sh`: runs the complete user-level bootstrap, prompts for
   a fresh interactive machine profile, invokes the shared link reconciler,
   initializes local Noctalia, Fish, and Pi files, enforces mode `0600` on them,
@@ -86,8 +86,7 @@ Resolution is `profile` when present, otherwise `default`. A fresh interactive
 install prompts from the enum; automation uses `./install.sh --profile desktop`.
 A selection equal to the tracked default does not create a redundant override.
 
-Both profiles use XKB `us`. The profile controls machine-specific monitor and
-window sizing in Hyprland and selects the tracked Niri fragment under
+Both profiles use XKB `us` and select the tracked Niri fragment under
 `~/.config/niri/profiles/`. `install.sh` atomically renders the ignored real file
 `~/.config/niri/machine.kdl`; Niri's generated Zen theme include is likewise a
 real machine-local file. Neither generated include belongs in the Git index.
@@ -112,7 +111,7 @@ current list.
 Rendered outputs are ignored. Supported absence behavior is intentional:
 
 - Ghostty optionally loads its generated theme fragment.
-- Hyprland conditionally requires generated `noctalia.lua`.
+- Niri optionally includes generated `noctalia.kdl`.
 - Neovim defaults to Tokyo Night; `theme.lua` explicitly selects
   `tokyonight` or `matugen`.
 - Fish selects the complete generated Starship config when present and the
@@ -200,8 +199,8 @@ snapshot/
 
 The allowlisted snapshot covers reconstruction-relevant package manifests,
 boot configuration, selected `/etc` and `/usr/local` configuration, systemd
-state, keyd and udev rules, greetd/Noctalia-greeter state, HyprPM state,
-non-secret Noctalia settings/plugin manifests, and Mason's installed-package
+state, keyd and udev rules, greetd/Noctalia-greeter state, non-secret Noctalia
+settings/plugin manifests, and Mason's installed-package
 receipt inventory. It records Mason names and source versions, not the large
 reproducible package trees. It intentionally excludes portable dotfiles, browser
 profiles, histories, caches, logs, UKIs/EFI binaries, private keys, network

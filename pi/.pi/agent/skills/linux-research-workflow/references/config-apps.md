@@ -47,7 +47,6 @@ Fish package tree as real files on each machine.
 
 Keep host environments distinct:
 
-- Hyprland supplies global `hl`; inspect `/usr/share/hypr/stubs/hl.meta.lua`.
 - Neovim supplies global `vim`; use a headless Neovim semantic test.
 - `luac -p` resolves neither host API.
 
@@ -79,7 +78,7 @@ source of truth; currently configured user outputs include:
 - Yazi: flavor, syntax theme, and `theme.toml` selector
 - Zathura: color fragment `~/.config/zathura/noctaliarc`
 
-Noctalia also owns selected builtin/community outputs such as Hyprland and Zen.
+Noctalia also owns selected builtin/community outputs such as Niri and Zen.
 Every rendered output above is ignored. Edit templates or stable consumer logic,
 not outputs. See
 [dotfiles-sync-backup.md](dotfiles-sync-backup.md) for absence fallbacks and

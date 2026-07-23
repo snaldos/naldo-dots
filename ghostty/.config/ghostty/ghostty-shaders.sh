@@ -9,7 +9,7 @@ set -Eeuo pipefail
 # UI-independent backend for selecting cursor, background, and combined Ghostty
 # shaders and materializing a compile-time GPU profile into the active files.
 #
-# It intentionally has no desktop-menu, Hyprland, or notification dependency.
+# It intentionally has no desktop-menu or notification dependency.
 # A desktop-specific launcher can call this script with command-line arguments.
 #
 # Expected layout under the canonical Ghostty config directory:

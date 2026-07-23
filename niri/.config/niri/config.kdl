@@ -20,7 +20,7 @@ input {
             // from org.freedesktop.locale1. You can control these using
             // localectl set-x11-keymap.
         }
-        // Match Hyprland's responsive key-repeat behavior.
+        // Responsive key-repeat behavior.
         repeat-delay 250
         repeat-rate 35
         // Enable numlock on startup, omitting this setting disables it.
@@ -213,8 +213,8 @@ layout {
 spawn-at-startup "noctalia"
 // Keep copied data available after the source application exits.
 spawn-at-startup "wl-clip-persist" "--clipboard" "regular"
-// Noctalia's built-in polkit agent is disabled in config.toml, so use the
-// same external authentication agent as the Hyprland session.
+// Noctalia's built-in polkit agent is disabled in config.toml, so use an
+// external authentication agent for this session.
 spawn-at-startup "lxqt-policykit-agent"
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"

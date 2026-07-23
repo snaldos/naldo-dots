@@ -241,7 +241,7 @@ describe("critical machine boundaries", () => {
       "ip link set wlan0 down",
       "tailscale logout",
       "reboot",
-      "hyprctl dispatch exit",
+      "niri msg action quit",
     ]) {
       assert.equal(bashAction(command), "ask", command);
     }
