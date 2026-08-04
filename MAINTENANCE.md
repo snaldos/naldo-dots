@@ -1,125 +1,123 @@
 # Workstation maintenance
 
 Run `naldo-update` manually from a terminal when there is time to review prompts
-and failures. The same workflow works on the desktop and laptop even when their
-installed package sets differ: each package manager updates only its locally
-installed packages.
+and failures. It works on both profiles because
+each package manager updates only its locally installed packages. It never synchronizes repositories,
+reboots, enables services, removes software, or installs a missing provider.
 
-`naldo-update` runs the available providers in this order:
+Provider order:
 
 1. `sudo dnf upgrade --refresh`
 2. `flatpak update --user`
-3. `npm update --global`
-4. `uv tool upgrade --all`
-5. `cargo install-update -a`
-6. `herdr update`, only for a stable-channel direct install carrying the
-   reviewed official-installer receipt
+3. `code --update-extensions`, only when VS Code has extensions
+4. `gh extension upgrade --all`, only when `gh` is authenticated and has extensions
+5. outdated global npm packages, excluding TypeScript's incompatible next major
+6. `npm install --global 'typescript@6'`, only when TypeScript is already installed
+7. `uv tool upgrade --all`
+8. `cargo install-update -a`
+9. `tuicr update`, only with a valid official-installer receipt
+10. `herdr update`, only with a valid stable-channel official-installer receipt
 
-An unavailable or unrecognized provider is reported and skipped. Any attempted
-update failure stops the command with that failure status. The command does not
-install missing applications, remove or autoremove packages, enable or restart
-services, reboot, synchronize repositories, or use a generic GitHub binary
-updater. DNF owns LazyGit and Starship; their upstream-documented third-party
-COPRs participate in the ordinary DNF step rather than separate replacement
-logic.
+An unavailable/unrecognized provider is reported and skipped. Any attempted
+update failure stops the command. DNF owns Fedora, COPR, Microsoft VS Code,
+Google Chrome, and Tailscale RPMs; the updater does not replace them through a
+generic GitHub downloader.
+
+Pixi self-update and the two Git-tagged Cargo tools remain deliberate manual
+operations because they replace environment/session infrastructure or bypass
+the Cargo registry update mechanism.
+
+## npm and TypeScript
+
+The selected TypeScript Language Server still requires `tsserver`. TypeScript 7
+removed that executable, so `typescript@6` is the active compatibility boundary.
+`naldo-update` queries outdated packages, updates every other installed global
+package, and reifies the latest TypeScript 6 only if TypeScript is already
+present. It does not use that command to install TypeScript on an unprovisioned
+machine.
+
+Remove the constraint only after a real Helix LSP initialization succeeds with
+the replacement TypeScript server architecture—not merely when `tsc` exists.
+
+## VS Code and GitHub CLI extensions
+
+Only these VS Code extensions are directly selected:
+
+```text
+ms-python.python
+ms-toolsai.jupyter
+charliermarsh.ruff
+```
+
+Their dependency extensions are managed by VS Code. `code --update-extensions`
+updates the installed closure. `gh-dash` is managed by GitHub CLI; its update
+requires a valid keyring-backed `gh auth` login.
+
+## Tuicr direct installation
+
+The reviewed installer places Tuicr at `~/.local/bin/tuicr`. Clean installation
+also compares it against a checksum-verified release asset and writes:
+
+```text
+${XDG_DATA_HOME:-~/.local/share}/naldo/provider-receipts/tuicr-official-installer
+```
+
+`naldo-update` runs `tuicr update` only when that receipt exactly names
+`https://tuicr.dev/install.sh` and the resolved binary. A specific known-good
+release can be restored manually:
+
+```bash
+tuicr update 0.20.0
+```
+
+Remove only `~/.local/bin/tuicr` and its receipt when uninstalling; repository
+configuration is separate.
 
 ## Cargo binaries
 
 `22.1.1` is the version of the **cargo-update program**, not the Fedora Cargo
-toolchain version. The `cargo-update` package exports both
-`cargo-install-update` and `cargo-install-update-config`; Cargo exposes the first
-as the `cargo install-update` subcommand.
+toolchain. The package exports both
+`cargo-install-update` and `cargo-install-update-config`; Cargo exposes the first as the
+`cargo install-update` subcommand.
 
-The clean-install Cargo inventory records reviewed, known installation routes;
-its pins are not the routine update mechanism. `naldo-update` runs exactly
-`cargo install-update -a` for locally installed crates.io binaries.
-It never passes `--git` or its short form `-g`, so Git-originating packages
-remain outside automatic maintenance.
-
-The two Git-tagged editor tools use official upstream tagged sources and remain
-deliberate manual exceptions. Their current recoverable installation commands
-are:
+`naldo-update` runs exactly `cargo install-update -a` for registry binaries.
+It never passes `--git` or its short form `-g`, so Git-originating tools are not
+silently moved to a new commit/tag. Update the two selected tagged tools only
+after reviewing a new stable tag and editing their manifest command:
 
 ```bash
 cargo install --locked --git https://github.com/Myriad-Dreamin/tinymist.git --tag v0.15.2 tinymist-cli
 cargo install --locked --git https://github.com/Feel-ix-343/markdown-oxide.git --tag v0.25.12 markdown-oxide
-```
-
-Changing either tag is an occasional maintenance action: inspect the new stable
-upstream tag and source, change the command deliberately, reinstall it, and then
-check its Helix integration:
-
-```bash
 hx --health typst
 hx --health markdown
 ```
 
 ## Herdr direct installation
 
-Herdr's official Linux installer and `herdr update` both use the selected stable
-channel. The installer writes only `${HERDR_INSTALL_DIR:-~/.local/bin}/herdr`;
-it creates no package-manager database, installer state, or ownership marker.
-The tracked `[update]` section leaves `channel` unset, whose Linux default is
-`stable`. The reviewed clean-install procedure therefore writes a machine-local
-receipt at:
-
-```text
-${XDG_DATA_HOME:-~/.local/share}/naldo/provider-receipts/herdr-official-installer
-```
-
+Herdr's installer writes `~/.local/bin/herdr`; the clean-install procedure adds
+a machine-local receipt under
+`${XDG_DATA_HOME:-~/.local/share}/naldo/provider-receipts/`.
 `naldo-update` runs `herdr update` only when that receipt exactly names the
-official installer and the resolved `~/.local/bin/herdr`, and `herdr channel
-show` reports `stable`. Installations without the receipt are skipped.
-For a direct install, `herdr update` downloads beside the running executable,
-checks a manifest SHA-256 when one is supplied, sets executable permissions, and
-atomically replaces that executable; it writes no separate update database. The
-update remains interactive and any failure propagates.
-A protocol-changing update may require restarting the active Herdr session.
-Follow Herdr's prompt because stopping a server also exits its pane processes.
+official installer and resolved binary, and `herdr channel show` reports
+`stable`.
 
-Upstream documents installer-managed updates but no dedicated Linux
-uninstaller. The exact inverse of the default installer is therefore removal of
-`~/.local/bin/herdr`; remove the receipt at the same time. Herdr configuration,
-logs, integrations, and persistent session state are separate and must not be
-deleted as an implied binary uninstall.
+A protocol-changing update may require restarting the active Herdr session.
+Follow its interactive prompt: stopping the server also exits pane processes.
+Remove the binary and receipt together when uninstalling; configuration, logs,
+integrations, and session state are separate.
 
 ## Pixi
 
-Pixi is selected through the reviewed official installer at
-`https://pixi.sh/install.sh`, which places the binary at
-`~/.pixi/bin/pixi`. For that installer-owned binary, use `pixi self-update`;
-do not use it for a package-manager-owned Pixi. Pixi self-update remains a
-separate deliberate maintenance action rather than an unconditional
-`naldo-update` step, because it replaces the environment manager itself.
-Upstream documents `rm ~/.pixi/bin/pixi` as its Linux uninstall step.
+The official installer owns `~/.pixi/bin/pixi`.
+For this installation, use `pixi self-update` deliberately after reviewing its release. Do not run that
+command for a package-manager-owned Pixi. Conda is not selected because Pixi
+already covers conda-forge/native/CUDA environments without another base
+environment, solver, cache, or shell activation layer.
 
 ## JetBrainsMono Nerd Font
 
-The selected font is the official Nerd Fonts `v3.5.0` `JetBrainsMono.zip`
-release. The reviewed base-family TTF files are user-owned under:
-
-```text
-~/.local/share/fonts/JetBrainsMonoNerdFont
-```
-
-For an occasional update, review a newer stable Nerd Fonts release, download
-both `JetBrainsMono.zip` and its published `SHA-256.txt`, verify the archive,
-inspect the embedded families with `fc-scan`, replace only the dedicated font
-directory, and run:
-
-```bash
-fc-cache -f "$HOME/.local/share/fonts/JetBrainsMonoNerdFont"
-```
-
-Verify the exact configured family rather than a fontconfig fallback:
-
-```bash
-fc-list --format='%{family}\n' | awk -F ',' '
-  { for (i = 1; i <= NF; i++) { value = $i; sub(/^[[:space:]]+/, "", value); sub(/[[:space:]]+$/, "", value); if (value == "JetBrainsMono Nerd Font") found = 1 } }
-  END { exit !found }
-'
-```
-
-To remove it, delete only
-`~/.local/share/fonts/JetBrainsMonoNerdFont` and refresh fontconfig. The font
-does not need daily automatic updates.
+The selected font is the official Nerd Fonts `v3.5.0` JetBrainsMono release,
+installed under `~/.local/share/fonts/JetBrainsMonoNerdFont`. Font updates are
+occasional reviewed replacements, not part of `naldo-update`: verify the release
+archive, replace only that directory, run `fc-cache`, and confirm the exact
+configured family with `fc-list`/`fc-match`.

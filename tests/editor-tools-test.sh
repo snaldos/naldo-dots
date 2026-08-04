@@ -87,7 +87,8 @@ expected = {
     "basedpyright-langserver", "ruff", "tinymist", "harper-ls", "markdown-oxide",
     "bash-language-server", "taplo", "yaml-language-server",
     "vscode-json-language-server", "vscode-html-language-server",
-    "vscode-css-language-server", "typstyle", "prettier", "shfmt",
+    "vscode-css-language-server", "typescript-language-server", "typstyle",
+    "prettier", "shfmt",
 }
 assert helix_commands == expected, f"unexpected Helix command set: {sorted(helix_commands ^ expected)}"
 for command in helix_commands | {"basedpyright", "ty", "typst", "shellcheck"}:
@@ -113,8 +114,21 @@ assert toml_language["formatter"] == {
 for command in ["typst", "tinymist", "typstyle", "harper-ls", "markdown-oxide", "taplo"]:
     assert providers[command][0].startswith("cargo:")
 
-# npm and uv are intentionally rolling user tools; only Cargo installs retain
-# reviewed explicit versions/tags.
+for name in ["javascript", "jsx", "typescript", "tsx"]:
+    language = next(language for language in languages if language["name"] == name)
+    assert language["language-servers"] == ["typescript-language-server"]
+    assert language["formatter"] == {
+        "command": "prettier",
+        "args": ["--stdin-filepath", "%{buffer_name}"],
+    }
+    assert language["auto-format"] is True
+assert servers["typescript-language-server"]["command"] == "typescript-language-server"
+assert providers["typescript-language-server"][0] == "npm:typescript-language-server"
+assert providers["tsc"][0] == "npm:typescript@6"
+assert providers["tsserver"][0] == "npm:typescript@6"
+
+# npm and uv are rolling user tools except for the active TypeScript major
+# compatibility boundary; Cargo installs retain reviewed explicit versions/tags.
 assert all(len(row) == 5 for row in rows("npm-packages.tsv"))
 assert all(len(row) == 6 for row in rows("uv-tools.tsv"))
 assert all(len(row) == 9 for row in rows("cargo-tools.tsv"))
@@ -128,6 +142,19 @@ grep -Fq 'language-servers = ["basedpyright", "ruff"]' "$REPO_DIR/helix/.config/
 ! grep -Eq 'language-servers = .*"ty"' "$REPO_DIR/helix/.config/helix/languages.toml" ||
   fail 'experimental ty became an active Python server'
 pass 'BasedPyright Ruff and optional ty have non-conflicting roles'
+
+awk -F '\t' '
+  $1 == "typescript-language-server" && $2 == "typescript-language-server" && $3 == "feature" { server=1 }
+  $1 == "typescript@6" && $2 == "tsc,tsserver" && $3 == "feature" { runtime=1 }
+  END { exit !(server && runtime) }
+' "$REPO_DIR/bootstrap/fedora/npm-packages.tsv" ||
+  fail 'TypeScript language server and compatible tsserver runtime are not selected together'
+for language in javascript jsx typescript tsx; do
+  grep -A3 -F "name = \"$language\"" "$REPO_DIR/helix/.config/helix/languages.toml" |
+    grep -Fq 'language-servers = ["typescript-language-server"]' ||
+    fail "$language is not assigned to the selected TypeScript language server"
+done
+pass 'JavaScript TypeScript JSX and TSX share one compatible LSP and Prettier formatter policy'
 
 for command in typst tinymist typstyle harper-ls markdown-oxide taplo; do
   awk -F '\t' -v command="$command" '$2 == command && $3 == "feature" && $5 ~ /^cargo install --locked/ { found=1 } END { exit !found }' \
@@ -167,7 +194,7 @@ pass 'Tinymist uses only the tinymist-cli package from the locked v0.15.2 upstre
 ! rg -n '@[0-9]+([.][0-9]+)+' "$REPO_DIR/bootstrap/fedora/npm-packages.tsv" \
   "$REPO_DIR/bootstrap/fedora/uv-tools.tsv" >/dev/null ||
   fail 'rolling npm or uv inventory retains a stale snapshot version'
-for language in bash json yaml toml python typst markdown; do
+for language in bash json yaml toml python typst markdown javascript typescript jsx tsx; do
   grep -Fq "hx --health $language" "$REPO_DIR/bootstrap/fedora/EDITOR-TOOLS.md" ||
     fail "missing documented Helix health check: $language"
 done

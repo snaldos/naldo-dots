@@ -82,13 +82,13 @@ explicit approval.
 
 ## OpenSSH
 
-Fedora `openssh-clients` and `openssh-server` are intentional. Device-specific,
-passphrase-protected Ed25519 keys, `known_hosts`, `authorized_keys`, local host
-fragments, sockets, and agent state remain machine-local. Do not print private
-key contents. `sshd.service` is installed but enabled only by an explicit manual
-decision after `sudo sshd -t`; installers do not alter firewall or server policy.
-Prefer normal OpenSSH public-key authentication over Tailscale connectivity;
-Tailscale SSH remains an optional alternative.
+Only Fedora `openssh-clients` is selected. Device-specific, passphrase-protected
+Ed25519 keys, `known_hosts`, local host fragments, sockets, GCR state, and GitHub
+CLI tokens remain machine-local. Do not print private key or token contents.
+`openssh-server`, `authorized_keys`, agent forwarding, firewall openings, and
+Tailscale SSH are absent. GCR must store the key passphrase in the GDM-unlocked
+login keyring and pass a post-restart systemd Git operation before repository
+synchronization is enabled.
 
 Before a potentially disconnecting operation:
 

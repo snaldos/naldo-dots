@@ -1,47 +1,68 @@
-# Helix language servers and formatters
+# Helix and scientific editor tooling
 
-The tracked `languages.toml` names every active server command explicitly so
-provider drift is testable. Recheck provider availability for the installed
-Fedora release; rolling npm/uv tools are intentionally not snapshot-pinned.
+Helix (`hx`) is the primary editor. Visual Studio Code is a minimal scientific
+fallback with only Python, Jupyter, and Ruff selected directly. Provider rows in
+`dnf-packages.tsv`, `npm-packages.tsv`, `uv-tools.tsv`, and `cargo-tools.tsv`
+own installation; `helix/.config/helix/languages.toml` owns active LSP and
+formatter responsibilities.
 
-## Source of truth
+## Active responsibilities
 
-Provider, classification, command, and role metadata lives once in
-`dnf-packages.tsv`, `npm-packages.tsv`, `uv-tools.tsv`, or `cargo-tools.tsv`.
-The verifier and policy tests read those rows directly. `languages.toml` is the
-authority for which servers and formatters are active; no fallback provider is
-configured.
+| Files | Language intelligence | Formatting |
+|---|---|---|
+| Python | BasedPyright types/completion/navigation + Ruff lint/fixes/imports | Ruff |
+| Typst | Tinymist + Harper prose diagnostics | Typstyle |
+| Markdown | Markdown Oxide vault/PKM + Harper prose diagnostics | Prettier |
+| JavaScript, JSX, TypeScript, TSX | TypeScript Language Server | Prettier |
+| Bash | Bash Language Server | shfmt |
+| TOML | Taplo LSP | Taplo |
+| JSON/JSONC, YAML, HTML, CSS | selected VS Code-derived language servers | Prettier |
 
-Fedora supplies Helix, ShellCheck, shfmt, uv, Rust, and Cargo. The Typst,
-Markdown Oxide, and other selected language-server commands come only from the
-manifest source named for them. Set `profile=desktop` or `profile=laptop` as in
-`CLEAN-INSTALL.md` before running a manifest-derived command below.
+`ty` remains an optional Python experiment and is not active beside
+BasedPyright. No Helix debug adapter is selected; VS Code covers occasional
+interactive Python/JavaScript debugging without adding another Helix provider.
 
 ## User npm prefix
 
-Fedora 44's selected packages are `nodejs22` and `nodejs22-npm`. Fish adds
-`~/.npm-global/bin` to `PATH`.
+Fedora supplies Node/npm. Install selected npm tools without root:
 
 ```bash
 mkdir -p "$HOME/.npm-global"
 npm config set prefix "$HOME/.npm-global"
 mapfile -t npm_tools < <(awk -F '\t' -v profile="$profile" '
-  $1 !~ /^#/ && NF && $3 != "optional" && ($NF == "all" || $NF == profile) { print $1 }
+  $1 !~ /^#/ && NF && $3 != "optional" && ($NF == "all" || $NF == profile) {
+    print $1
+  }
 ' bootstrap/fedora/npm-packages.tsv)
 npm install --global "${npm_tools[@]}"
 ```
 
-`vscode-langservers-extracted` is a community npm repackaging of VS Code's
-language-server components, not a Fedora or Microsoft-supported system package.
-The audited package exports the exact JSON, HTML, and CSS commands above. Never
-use `sudo npm install -g`.
+Never run `sudo npm install -g`. `vscode-langservers-extracted` is a community
+npm repackaging used only for JSON, HTML, and CSS language servers.
 
-Update after reviewing release notes with `npm update --global PACKAGE` and
-remove with `npm uninstall --global PACKAGE`.
+### TypeScript compatibility boundary
+
+`typescript-language-server 5.3.0` still starts the `tsserver` API. TypeScript 7
+removed that executable, so the selected runtime is `typescript@6`. This is an
+active compatibility requirement, not a stale snapshot. `naldo-update` updates
+other outdated global npm packages normally and reifies TypeScript only within
+major version 6 while it is already installed.
+
+Verify both provider and real LSP availability:
+
+```bash
+typescript-language-server --version
+tsc --version
+command -v tsserver
+hx --health javascript
+hx --health jsx
+hx --health typescript
+hx --health tsx
+```
 
 ## Python tools through uv
 
-Global tools exist so Helix can always launch them:
+Global tools let Helix launch them outside any project:
 
 ```bash
 mapfile -t uv_tools < <(awk -F '\t' -v profile="$profile" '
@@ -51,27 +72,23 @@ mapfile -t uv_tools < <(awk -F '\t' -v profile="$profile" '
 for tool in "${uv_tools[@]}"; do
   uv tool install "$tool"
 done
-uv tool install ty@latest        # optional; remains inactive in Helix
 ```
 
-BasedPyright owns type checking, completion, navigation, and type diagnostics.
-Its tracked configuration disables import organization. Ruff owns lint
-messages, lint fixes, import organization, and formatting. `ty` is not listed as
-an active language server, so two full Python type checkers do not compete.
-
-Update with `uv tool upgrade PACKAGE`; remove with `uv tool uninstall PACKAGE`.
-For project and CI reproducibility, pin the same responsibilities separately:
+Projects should declare their own reproducible development dependencies:
 
 ```bash
 uv add --dev basedpyright ruff
-uv add --dev ty                  # optional experiment only
+# or use a Pixi environment when native/conda/CUDA dependencies justify it
 ```
 
-## Locked stable Cargo tools
+Do not install Conda beside Pixi by default. Pixi already resolves conda-forge
+packages, native dependencies, lockfiles, tasks, and PyPI packages. Add Conda
+only for an external workflow that genuinely requires the `conda` executable or
+a non-Pixi-compatible provider.
 
-Fish adds `~/.cargo/bin` to `PATH`. These pins are deliberate reproducibility
-constraints and are authoritative in `cargo-tools.tsv`; no nightly source is
-selected:
+## Locked Cargo tools
+
+Print reviewed install commands from the manifest:
 
 ```bash
 awk -F '\t' -v profile="$profile" '
@@ -79,27 +96,29 @@ awk -F '\t' -v profile="$profile" '
 ' bootstrap/fedora/cargo-tools.tsv
 ```
 
-Review that output, then execute each line exactly. This keeps the locked command
-in one authoritative place rather than copying its version into several files.
-Taplo is installed as the official `taplo-cli` crate with the `lsp` feature;
-the similarly named npm CLI is not selected because its distributed build omits
-LSP support. Helix uses the same Cargo binary for TOML language intelligence and
-stdin formatting.
+Run each printed command deliberately. Cargo pins record known installation
+routes; routine registry updates use `cargo install-update -a`. Tinymist and
+Markdown Oxide come from reviewed upstream tags and remain manual updates.
+Taplo must remain the Cargo `taplo-cli` build with its `lsp` feature; the npm
+package with the same name does not supply the required LSP build.
 
-Before changing a pin, inspect the stable release/tag and rerun the locked
-versioned command. Uninstall with `cargo uninstall PACKAGE`. The `cargo-update`
-row installs cargo-update program version `22.1.1`—not Cargo toolchain version
-22.1.1—and exports `cargo-install-update` plus
-`cargo-install-update-config`. It supplies the reviewed crates.io subcommand used
-by the permanent manual maintenance workflow in
-[`../../MAINTENANCE.md`](../../MAINTENANCE.md). Do not run the bulk update during
-provisioning.
+## Minimal Visual Studio Code fallback
 
-Markdown Oxide is required because Helix is the primary Markdown and
-Obsidian-vault editor. Prettier only formats Markdown; Markdown Oxide supplies
-PKM semantics and Harper supplies prose diagnostics.
+Visual Studio Code comes from Microsoft's signed RPM repository. Install only
+these direct selections:
 
-## Post-install health
+```bash
+for extension in ms-python.python ms-toolsai.jupyter charliermarsh.ruff; do
+  code --install-extension "$extension"
+done
+```
+
+VS Code may install extension dependencies such as debugpy, Pylance, Python
+Environments, and Jupyter renderers. Those are dependency closure, not separate
+selections. Do not copy a settings profile or add an extension pack unless a
+real workflow requires it.
+
+## Complete health check
 
 ```bash
 hx --health bash
@@ -109,7 +128,14 @@ hx --health toml
 hx --health python
 hx --health typst
 hx --health markdown
+hx --health html
+hx --health css
+hx --health javascript
+hx --health typescript
+hx --health jsx
+hx --health tsx
 ```
 
-HTML and CSS are also explicit in `languages.toml`; inspect them with
-`hx --health html` and `hx --health css` when those formats are used.
+A missing optional debug adapter does not invalidate LSP, parser, or formatter
+health. Investigate only red entries corresponding to selected responsibilities
+in the table above.

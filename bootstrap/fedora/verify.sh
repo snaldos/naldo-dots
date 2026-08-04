@@ -343,7 +343,8 @@ validate_external_source_class() {
   case "$1" in
   official-vendor-repository | reviewed-third-party-repository | reviewed-community-copr | \
     upstream-documented-third-party-copr | official-upstream-installer | \
-    official-upstream-release | official-upstream-tagged-source) ;;
+    official-upstream-release | official-upstream-tagged-source | \
+    official-vscode-extension | reviewed-gh-extension) ;;
   *)
     printf 'verify-fedora: invalid external source class %q in external-tools.tsv\n' "$1" >&2
     exit 2
@@ -370,6 +371,21 @@ verify_external_rpm_package() {
         "$source_class — unexpected RPM vendor ${vendor:-unknown}; expected COPR owner $owner"
     fi
     ;;
+  official-vendor-repository)
+    vendor="$(rpm -q --qf '%{VENDOR}\t%{PACKAGER}' "$tool")"
+    case "$tool:$vendor" in
+    google-chrome-stable:Google\ LLC*) owner=google ;;
+    code:Microsoft\ Corporation*) owner=microsoft ;;
+    tailscale:*Tailscale\ Inc*) owner=tailscale ;;
+    *) owner= ;;
+    esac
+    if [[ -n "$owner" ]]; then
+      record_present package "$classification" "$tool" "$source_class:$owner"
+    else
+      record_missing package "$classification" "$tool" \
+        "$source_class — unexpected RPM vendor/packager ${vendor:-unknown}"
+    fi
+    ;;
   *) record_present package "$classification" "$tool" "$source_class" ;;
   esac
 }
@@ -389,6 +405,21 @@ herdr_installer_receipt_is_valid() {
   [[ "${lines[1]}" == "binary=$path" ]] || return 1
   channel="$(herdr channel show 2>/dev/null)" || return 1
   [[ "$channel" == stable ]]
+}
+
+tuicr_installer_receipt_is_valid() {
+  local receipt path expected
+  local -a lines=()
+  receipt="${XDG_DATA_HOME:-$HOME/.local/share}/naldo/provider-receipts/tuicr-official-installer"
+  [[ -f "$receipt" && ! -L "$receipt" && -O "$receipt" ]] || return 1
+  command -v tuicr >/dev/null 2>&1 || return 1
+  path="$(readlink -f -- "$(command -v tuicr)")" || return 1
+  expected="$(readlink -m -- "$HOME/.local/bin/tuicr")"
+  [[ "$path" == "$expected" ]] || return 1
+  mapfile -t lines <"$receipt"
+  [[ "${#lines[@]}" == 2 ]] || return 1
+  [[ "${lines[0]}" == 'source=https://tuicr.dev/install.sh' ]] || return 1
+  [[ "${lines[1]}" == "binary=$path" ]]
 }
 
 verify_official_installer_provider() {
@@ -417,11 +448,51 @@ verify_official_installer_provider() {
         "official-upstream-installer — expected $expected — $purpose"
     fi
     ;;
+  tuicr)
+    if tuicr_installer_receipt_is_valid; then
+      record_present provider "$classification" "$tool" official-upstream-installer
+    else
+      record_missing provider "$classification" "$tool" \
+        "official-upstream-installer — missing valid installer receipt — $purpose"
+    fi
+    ;;
   *)
     printf 'verify-fedora: no official-installer ownership check for %q\n' "$tool" >&2
     exit 2
     ;;
   esac
+}
+
+verify_gh_extension_provider() {
+  local tool="$1" classification="$2" purpose="$3"
+  local extension_dir manifest binary configured_path
+  extension_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gh/extensions/$tool"
+  manifest="$extension_dir/manifest.yml"
+  binary="$extension_dir/$tool"
+  configured_path=""
+  if [[ -f "$manifest" && ! -L "$manifest" && -x "$binary" && ! -L "$binary" ]] &&
+    grep -Fxq 'owner: dlvhdr' "$manifest" &&
+    grep -Fxq 'name: gh-dash' "$manifest" &&
+    grep -Fxq 'host: github.com' "$manifest"; then
+    configured_path="$(awk -F ': ' '$1 == "path" { print $2; exit }' "$manifest")"
+  fi
+  if [[ "$tool" == gh-dash && "$configured_path" == "$binary" ]]; then
+    record_present provider "$classification" "$tool" reviewed-gh-extension
+  else
+    record_missing provider "$classification" "$tool" \
+      "reviewed-gh-extension — missing valid dlvhdr/gh-dash installation — $purpose"
+  fi
+}
+
+verify_vscode_extension_provider() {
+  local extension_id="$1" classification="$2" purpose="$3"
+  if command -v code >/dev/null 2>&1 &&
+    code --list-extensions 2>/dev/null | grep -Fxiq -- "$extension_id"; then
+    record_present provider "$classification" "$extension_id" official-vscode-extension
+  else
+    record_missing provider "$classification" "$extension_id" \
+      "official-vscode-extension — selected extension is not installed — $purpose"
+  fi
 }
 
 verify_external_tools() {
@@ -439,6 +510,12 @@ verify_external_tools() {
       ;;
     official-upstream-installer)
       verify_official_installer_provider "$tool" "$classification" "$purpose"
+      ;;
+    reviewed-gh-extension)
+      verify_gh_extension_provider "$tool" "$classification" "$purpose"
+      ;;
+    official-vscode-extension)
+      verify_vscode_extension_provider "$tool" "$classification" "$purpose"
       ;;
     esac
     verify_command_list "$classification" "$provider" "$executables" "$purpose"

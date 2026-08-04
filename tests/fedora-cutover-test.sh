@@ -18,7 +18,7 @@ pass() {
   printf 'ok %d - %s\n' "$checks" "$1"
 }
 
-for package in openssh-clients gcr git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig evtest; do
+for package in openssh-clients gcr gh git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig gnupg2 tar evtest; do
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
@@ -233,8 +233,42 @@ awk -F '\t' '
   $4 == "https://pixi.sh/install.sh" && $8 ~ /pixi self-update/ { found=1 }
   END { exit !found }
 ' "$EXTERNAL" || fail 'Pixi is not a selected official-installer feature'
+awk -F '\t' '
+  $1 == "tuicr" && $2 == "feature" && $3 == "official-upstream-installer" &&
+  $4 == "https://tuicr.dev/install.sh" && $5 == "tuicr" && $8 == "tuicr update" { found=1 }
+  END { exit !found }
+' "$EXTERNAL" || fail 'Tuicr is not a receipt-owned official-installer feature'
+awk -F '\t' '
+  $1 == "code" && $2 == "feature" && $3 == "official-vendor-repository" &&
+  $4 == "https://packages.microsoft.com/yumrepos/vscode" && $5 == "code" &&
+  $6 == "application:code.desktop" { found=1 }
+  END { exit !found }
+' "$EXTERNAL" || fail 'VS Code is not owned by Microsoft signed RPM policy'
+for extension in ms-python.python ms-toolsai.jupyter charliermarsh.ruff; do
+  awk -F '\t' -v extension="$extension" '
+    $1 == extension && $2 == "feature" && $3 == "official-vscode-extension" { found=1 }
+    END { exit !found }
+  ' "$EXTERNAL" || fail "selected VS Code extension is absent: $extension"
+done
+awk -F '\t' '
+  $1 == "gh-dash" && $2 == "feature" && $3 == "reviewed-gh-extension" &&
+  $4 == "https://github.com/dlvhdr/gh-dash" { found=1 }
+  END { exit !found }
+' "$EXTERNAL" || fail 'gh-dash is not a reviewed gh-managed extension'
+# Literal source assertions; these variables belong to the documented commands.
+# shellcheck disable=SC2016
+for command in \
+  'gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web' \
+  'gh extension install dlvhdr/gh-dash' \
+  'code --install-extension "$extension"' \
+  'TUICR_VERSION="$tuicr_version" TUICR_INSTALL_YES=1 sh "$tuicr_work/install.sh"'; do
+  grep -Fq "$command" "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+    fail "clean-install guide omits selected tool command: $command"
+done
+# shellcheck disable=SC2016
 grep -Fq '"$HOME/.pixi/bin"' "$REPO_DIR/fish/.config/fish/config.fish" ||
   fail 'Fish PATH does not include the selected official Pixi installation directory'
+# shellcheck disable=SC2016
 grep -Fq 'PIXI_NO_PATH_UPDATE=1 sh "$pixi_installer"' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean-install guide does not keep Pixi shell changes under tracked Fish ownership'
 for wording in \
@@ -251,7 +285,7 @@ awk -F '\t' '$1 == "nvidia-driver-desktop" && $2 == "feature" && $NF == "desktop
   "$EXTERNAL" || fail 'selected NVIDIA feature is not restricted to the desktop profile'
 grep -Fq 'font-family = JetBrainsMono Nerd Font' "$REPO_DIR/ghostty/.config/ghostty/config.ghostty" ||
   fail 'Ghostty does not request the exact manifest font family'
-pass 'configured prompt session font and desktop NVIDIA dependencies remain required'
+pass 'configured prompt editors review tools font and desktop NVIDIA dependencies remain required'
 
 for removed in commands.tsv desktop-files.tsv services.tsv dnf-packages.txt APPLICATIONS.md DEPENDENCIES.md; do
   [[ ! -e "$REPO_DIR/bootstrap/fedora/$removed" ]] || fail "duplicated bootstrap source remains: $removed"

@@ -10,6 +10,19 @@ skip() {
   printf 'SKIP: %s\n' "$1"
 }
 
+installer_receipt_is_valid() {
+  local command_name="$1" source="$2" expected_path="$3" receipt="$4" resolved
+  local -a lines=()
+  command -v "$command_name" >/dev/null 2>&1 || return 1
+  [[ -f "$receipt" && ! -L "$receipt" && -O "$receipt" ]] || return 1
+  resolved="$(readlink -f -- "$(command -v "$command_name")")" || return 1
+  [[ "$resolved" == "$(readlink -m -- "$expected_path")" ]] || return 1
+  mapfile -t lines <"$receipt"
+  [[ "${#lines[@]}" == 2 ]] || return 1
+  [[ "${lines[0]}" == "source=$source" ]] || return 1
+  [[ "${lines[1]}" == "binary=$resolved" ]]
+}
+
 section 'DNF packages'
 if command -v sudo >/dev/null 2>&1 && command -v dnf >/dev/null 2>&1; then
   sudo dnf upgrade --refresh
@@ -24,11 +37,61 @@ else
   skip 'flatpak is unavailable'
 fi
 
-section 'global npm packages'
-if command -v npm >/dev/null 2>&1; then
-  npm update --global
+section 'VS Code extensions'
+if command -v code >/dev/null 2>&1; then
+  mapfile -t vscode_extensions < <(code --list-extensions)
+  if ((${#vscode_extensions[@]} > 0)); then
+    code --update-extensions
+  else
+    skip 'VS Code has no installed extensions'
+  fi
 else
-  skip 'npm is unavailable'
+  skip 'VS Code is unavailable'
+fi
+
+section 'GitHub CLI extensions'
+if ! command -v gh >/dev/null 2>&1; then
+  skip 'GitHub CLI is unavailable'
+elif ! gh auth status >/dev/null 2>&1; then
+  skip 'GitHub CLI is not authenticated'
+elif [[ -z "$(gh extension list 2>/dev/null)" ]]; then
+  skip 'GitHub CLI has no installed extensions'
+else
+  gh extension upgrade --all
+fi
+
+section 'global npm packages'
+if command -v npm >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
+  set +e
+  npm_outdated_json="$(npm outdated --global --depth=0 --json)"
+  npm_outdated_status=$?
+  set -e
+  ((npm_outdated_status <= 1)) || exit "$npm_outdated_status"
+  npm_updates_file="$(mktemp "${TMPDIR:-/tmp}/naldo-npm-updates.XXXXXX")"
+  if ! printf '%s' "$npm_outdated_json" | node -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", chunk => input += chunk);
+    process.stdin.on("end", () => {
+      const outdated = input.trim() ? JSON.parse(input) : {};
+      Object.keys(outdated).filter(name => name !== "typescript").sort().forEach(name => console.log(name));
+    });
+  ' >"$npm_updates_file"; then
+    rm -f -- "$npm_updates_file"
+    exit 1
+  fi
+  mapfile -t npm_updates <"$npm_updates_file"
+  rm -f -- "$npm_updates_file"
+  if ((${#npm_updates[@]} > 0)); then
+    npm update --global "${npm_updates[@]}"
+  else
+    printf '%s\n' 'All unconstrained global npm packages are current.'
+  fi
+  if npm list --global --depth=0 --json typescript >/dev/null 2>&1; then
+    npm install --global 'typescript@6'
+  fi
+else
+  skip 'npm or node is unavailable'
 fi
 
 section 'uv tools'
@@ -43,6 +106,15 @@ if command -v cargo >/dev/null 2>&1 && command -v cargo-install-update >/dev/nul
   cargo install-update -a
 else
   skip 'cargo or cargo-install-update is unavailable'
+fi
+
+section 'Tuicr official installer'
+tuicr_receipt="${XDG_DATA_HOME:-$HOME/.local/share}/naldo/provider-receipts/tuicr-official-installer"
+if installer_receipt_is_valid tuicr https://tuicr.dev/install.sh \
+  "$HOME/.local/bin/tuicr" "$tuicr_receipt"; then
+  tuicr update
+else
+  skip 'official-installer-managed Tuicr is unavailable'
 fi
 
 section 'Herdr official installer'

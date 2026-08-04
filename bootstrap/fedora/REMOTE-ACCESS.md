@@ -1,150 +1,130 @@
-# Tailscale, OpenSSH, and machine-local identity
+# GitHub identity, GCR, Tailscale, and inbound-access policy
 
-Remote access is intentional on both machines, but enrollment, host
-authorization, daemon activation, firewall policy, and private key material are
-never dotfile-installer responsibilities.
+This workstation uses two independent mechanisms:
 
-## Tailscale: official stable Fedora repository only
+- a device-specific OpenSSH key for GitHub Git transport; and
+- Tailscale for private network connectivity.
 
-Tailscale's current official Fedora instructions publish this repository file:
+Neither machine accepts inbound SSH. Private keys, GitHub CLI tokens, keyring
+items, Tailscale enrollment, host keys, and agent state are machine-local and
+must never be committed or copied between the desktop and laptop.
 
-```text
-https://pkgs.tailscale.com/stable/fedora/tailscale.repo
-```
+## OpenSSH client only
 
-It enables `repo_gpgcheck=1` and `gpgcheck=1` and names Tailscale's repository
-key. Inspect the downloaded repository file and key URL before the explicit
-system transaction. This is an **official external vendor RPM repository**, not
-a COPR, Flatpak, unstable/RC channel, or generic `curl | sh` installation.
-Fedora 44 metadata now also lists a Fedora-built `tailscale` package, but it is
-intentionally not selected: this workstation policy follows the requested
-Tailscale stable vendor channel, and DNF5 transactions below use `--from-repo`
-to prevent provider ambiguity.
-
-Fedora 44 uses DNF5's `addrepo --from-repofile` syntax. Interactive setup is
-performed separately on each fresh machine:
-
-```bash
-sudo dnf config-manager addrepo \
-  --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
-sudo dnf install --from-repo=tailscale-stable tailscale
-sudo systemctl enable --now tailscaled.service
-sudo tailscale up
-tailscale version
-tailscale status
-systemctl status tailscaled.service
-```
-
-The final `up` authenticates the new Fedora installation as a new device. Never
-store a reusable auth/pre-auth key or automate tailnet enrollment. Do not track,
-Stow, copy, or synchronize `/var/lib/tailscale`, node keys, daemon state,
-tailnet credentials, or machine enrollment. `install-system.sh` does not manage
-any of them.
-
-## Fedora OpenSSH client only
-
-Install only Fedora's official `openssh-clients` package. It provides `ssh`,
-`scp`, `sftp`, `ssh-keygen`, `ssh-copy-id`, and `ssh-add`. This setup does not
-select `openssh-server`, activate `sshd.service`, open a firewall port, create
-`authorized_keys`, or enable Tailscale SSH.
+Install Fedora's `openssh-clients`; do not install `openssh-server`:
 
 ```bash
 sudo dnf install openssh-clients
-ssh -V
+rpm -q openssh-clients
+! rpm -q openssh-server >/dev/null 2>&1
 test "$(systemctl is-active sshd.service 2>/dev/null || true)" = inactive
 ```
 
-A future inbound SSH decision requires a separate threat-model, host-key,
-authentication, and firewall review. It is not part of this workstation setup.
+Removing `openssh-server` does not remove `ssh`, `scp`, `sftp`, `ssh-keygen`,
+`ssh-add`, or Git-over-SSH support. It removes the unused inbound daemon and
+prevents accidental future activation. Agent forwarding, `authorized_keys`,
+firewall openings, and Tailscale SSH are outside this setup.
 
-## Fresh device-specific keys
+## One independent key per device
 
-Before erasing the old installation, ensure browser access to GitHub, working
-2FA, and offline recovery methods/codes. Do not assume an old private key can be
-recovered afterward and do not copy it to the new installation by default.
-
-Create the directory without exposing existing contents:
+Create a passphrase-protected Ed25519 key:
 
 ```bash
 install -d -m 0700 "$HOME/.ssh"
+ssh-keygen -t ed25519 -a 100 -C "naldo-fedora-$profile"
+stat -c '%a %n' "$HOME/.ssh" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/id_ed25519.pub"
 ```
 
-Generate a passphrase-protected Ed25519 key independently on each machine:
-
-```bash
-# Desktop
-ssh-keygen -t ed25519 -a 100 -C "naldo-fedora-desktop"
-
-# Laptop
-ssh-keygen -t ed25519 -a 100 -C "naldo-fedora-laptop"
-```
-
-The comments are device labels, not hardcoded email identities. Give each public
-key a distinct GitHub device title so either machine can be revoked separately.
-Display and upload **only** the `.pub` file, then validate:
+Expected modes are `700`, `600`, and `644`. Upload only the public key to GitHub
+under a device-specific title:
 
 ```bash
 cat "$HOME/.ssh/id_ed25519.pub"
-ssh -T git@github.com
 ```
 
-Expected permissions, checked by metadata rather than printing private content:
+Never track private keys, `known_hosts`, `authorized_keys`, SSH config fragments,
+control sockets, agent sockets, host keys, certificates, or copied credentials.
 
-```bash
-stat -c '%a %n' "$HOME/.ssh" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/id_ed25519.pub"
-# directory 700; private key 600; public key 644
-```
+## GCR login-keyring enrollment
 
-If a portable client config is added later, an OpenSSH-accepted restrictive mode
-such as `0600` is appropriate. It may include ignored
-`~/.ssh/config.d/*.conf` or `~/.ssh/config.local`; machine-specific hosts belong
-there. This repository intentionally does not currently own an SSH Stow package.
-
-Never commit private keys, `id_*` device identity files, PEM keys,
-`known_hosts`, `known_hosts.old`, `authorized_keys`, `config.local`, control or
-agent sockets, copied host keys, or private certificates. Public keys are not
-secret but remain machine-local by default.
-
-## One Fedora GCR agent for Fish and systemd
-
-Use the Fedora `gcr` package's socket-activated agent rather than starting an
-agent in Fish, Ghostty, or Pi. Its per-user socket is
-`$XDG_RUNTIME_DIR/gcr/ssh`. Enable it and persist only the socket environment,
-not key material:
+Fedora's GCR socket is the only SSH agent. It is shared by Fish, Git, Pi, and
+systemd user services:
 
 ```bash
 systemctl --user enable --now gcr-ssh-agent.socket
 ssh_socket="$XDG_RUNTIME_DIR/gcr/ssh"
 test -S "$ssh_socket"
-
 install -d -m 0700 "$HOME/.config/environment.d"
 printf 'SSH_AUTH_SOCK=%s\n' "$ssh_socket" |
   install -m 0600 /dev/stdin \
     "$HOME/.config/environment.d/60-naldo-ssh-agent.conf"
 systemctl --user set-environment SSH_AUTH_SOCK="$ssh_socket"
 fish -c 'set -Ux SSH_AUTH_SOCK "$XDG_RUNTIME_DIR/gcr/ssh"'
-
-export SSH_AUTH_SOCK="$ssh_socket"  # current provisioning shell only
-ssh-add "$HOME/.ssh/id_ed25519"
-ssh-add -l
-ssh -T git@github.com
+export SSH_AUTH_SOCK="$ssh_socket"
 ```
 
-`environment.d` is read when the user manager starts; the Fish universal value
-is machine-local. Neither belongs in Git. New Fish/Ghostty/Pi processes and
-systemd user services then use the same socket. Validate the user-manager path
-without creating a persistent test unit:
+Do not use `ssh-add` as the enrollment test: a terminal passphrase prompt can
+load a key for only the current agent lifetime. Instead trigger an authenticated
+Git-over-SSH operation:
 
 ```bash
-systemd-run --user --wait --collect \
-  --unit=naldo-ssh-agent-check.service /usr/bin/ssh-add -l
+git ls-remote git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
 
-Do not configure `ForwardAgent`, a per-shell `ssh-agent`, or Tailscale SSH.
+In GCR's dialog, first check **Automatically unlock this key whenever I'm logged
+in**, then enter the passphrase and click **Unlock**. Without that check, the key
+is available only for the current agent lifetime. GDM unlocks the GNOME login
+keyring at login. Prove persistence by restarting GCR and using the key from a
+transient systemd unit:
 
-## Desktop-to-laptop connectivity boundary
+```bash
+systemctl --user restart gcr-ssh-agent.service
+systemd-run --user --wait --collect \
+  --unit=naldo-gcr-unlock-check.service \
+  /usr/bin/git ls-remote \
+  git@github.com:snaldos/naldo-dots.git refs/heads/main
+```
 
-Tailscale supplies private network connectivity, but neither workstation accepts
-inbound SSH in this setup. Do not run `ssh-copy-id` between them, create
-`authorized_keys`, or turn on Tailscale SSH. Revisit those decisions explicitly
-only if a concrete inbound-access requirement appears.
+That operation must succeed without another prompt. Repeat it after the first
+reboot before enabling `sync-all.timer`; otherwise the timer's first Git access
+will display an unexpected unlock dialog.
+
+## GitHub CLI authentication
+
+The SSH key authenticates Git transport but does not authorize GitHub's API.
+Authenticate `gh` separately through its browser flow:
+
+```bash
+gh auth login --hostname github.com --git-protocol ssh --skip-ssh-key --web
+gh auth status
+gh extension install dlvhdr/gh-dash
+gh extension list
+```
+
+Wait until `gh auth login` itself exits. A browser `CanCreateUserNamespace()`
+warning is non-fatal if the terminal reports successful authentication. The
+one-time device code and status prose are output, not shell commands; never
+paste the transcript back into Bash. The resulting token must be stored in the
+system keyring and must remain outside Git.
+
+## Tailscale vendor repository and enrollment
+
+Use only Tailscale's stable official Fedora repository:
+
+```bash
+sudo dnf config-manager addrepo \
+  --from-repofile=https://pkgs.tailscale.com/stable/fedora/tailscale.repo
+sudo dnf install --from-repo=tailscale-stable tailscale
+sudo systemctl enable --now tailscaled.service
+sudo tailscale up --hostname="$machine_hostname" --ssh=false
+tailscale status
+test "$(tailscale debug prefs | jq -r '.RunSSH')" = false
+```
+
+The detailed clean-install step verifies the repository signing-key fingerprint
+before installation. Enroll each machine interactively as a distinct device;
+do not store reusable auth keys or synchronize `/var/lib/tailscale`.
+
+Tailscale provides connectivity only. Revisit inbound access only when a concrete
+requirement justifies a separate authentication, firewall, host-key, and recovery
+review.

@@ -71,7 +71,7 @@ entry and reviewed commands.
 
    ```bash
    sudo install -d -o "$USER" -g "$(id -gn)" -m 0755 /mnt/data/repos
-   git clone GIT-WALLPAPERS-REMOTE /mnt/data/repos/Wallpapers
+   git clone git@github.com:snaldos/Wallpapers.git /mnt/data/repos/Wallpapers
    git -C /mnt/data/repos/Wallpapers lfs install --local
    git -C /mnt/data/repos/Wallpapers lfs pull
    git -C /mnt/data/repos/Wallpapers lfs fsck
@@ -107,7 +107,7 @@ mounted path.
 The laptop has no `/mnt/data` assumption and no external mount:
 
 ```bash
-git clone GIT-WALLPAPERS-REMOTE "$HOME/Wallpapers"
+git clone git@github.com:snaldos/Wallpapers.git "$HOME/Wallpapers"
 git -C "$HOME/Wallpapers" lfs install --local
 git -C "$HOME/Wallpapers" lfs pull
 git -C "$HOME/Wallpapers" lfs fsck

@@ -30,7 +30,7 @@ once for its chosen provider:
 | `npm-packages.tsv` | user-prefix npm packages and exported commands |
 | `uv-tools.tsv` | user-level Python tools and active/inactive policy |
 | `cargo-tools.tsv` | deliberately pinned stable Cargo commands and update/uninstall route |
-| `external-tools.tsv` | vendor repositories, precisely classified reviewed COPRs, official upstream installers/releases, RPM Fusion, and user fonts |
+| `external-tools.tsv` | vendor/COPR providers, upstream installers/releases, CLI/editor extensions, RPM Fusion, and user fonts |
 
 Each manifest has one final `profile` field. `all` applies to both machines;
 `desktop` and `laptop` apply only to that explicit profile. Shared rows remain in
@@ -59,37 +59,34 @@ not host wrappers. The final profile is exactly `all`, `desktop`, or `laptop`.
 
 Source terminology is literal: official Fedora repository,
 upstream-documented third-party COPR, reviewed community COPR, official vendor
-repository, official upstream installer, official upstream release, official
-upstream tagged source, and Flathub application. COPR is Fedora-hosted build
+repository, official upstream installer/release/tagged source, reviewed GitHub
+CLI extension, official VS Code extension, and Flathub application. COPR is Fedora-hosted build
 infrastructure; no individual COPR is an official Fedora package source. The
 existing desktop-only RPM Fusion row remains an explicitly reviewed third-party
 repository rather than being mislabeled as one of those sources.
 
 ## Selected sources
 
-- Official Fedora DNF supplies the base session, OpenSSH, GCR's shared SSH-agent
-  socket, Git LFS, desktop applications, Helix (`hx`), Node/npm, uv, Rust/Cargo,
-  `evtest`, and build prerequisites.
-- Flathub supplies required Zen, official Discord, Obsidian, the sole GPU
-  Screen Recorder provider, and the explicitly selected community-maintained
-  Sioyek PDF viewer. Vesktop is the only optional application alternative. No
-  native second copy of GPU Screen Recorder is selected.
-- Google Chrome uses Google's signed RPM and resulting official vendor repository
-  as a selected secondary browser.
-- Tailscale uses Tailscale's stable official vendor repository.
+- Official Fedora DNF supplies the base session, OpenSSH clients, GitHub CLI,
+  GCR, Git LFS, desktop applications, Helix, Node/npm, uv, Rust/Cargo, and build
+  prerequisites. An inbound OpenSSH server is not selected.
+- Flathub supplies Zen, Discord, Obsidian, the sole GPU Screen Recorder provider,
+  and Sioyek. Vesktop is the only optional application alternative.
+- Google Chrome uses Google's signed RPM repository. Visual Studio Code uses
+  Microsoft's signed RPM repository as a minimal scientific fallback, with only
+  Python, Jupyter, and Ruff selected directly from the extension marketplace.
+- GitHub CLI comes from Fedora; `gh-dash` is a reviewed community extension
+  managed by `gh` and authenticated through the system keyring.
+- Tailscale uses its stable official vendor repository.
 - Ghostty, Yazi, and keyd use reviewed community COPRs. LazyGit and Starship use
-  distinct upstream-documented third-party COPRs; DNF owns both.
-- Herdr uses a reviewed local execution of the official upstream installer and
-  its stable self-update channel. Pixi is selected through the same
-  download-inspect-execute discipline using its official installer and dedicated
-  `~/.pixi/bin` path.
-- Noctalia v5 provides clipboard history and closed-application persistence;
-  Fedora `wl-clipboard` supplies `wl-copy` and `wl-paste`.
-- npm and uv tools are rolling user tools. Cargo versions/tags remain explicit
-  because the clean-install commands record reviewed stable routes, not the
-  routine update policy. `naldo-update` updates ordinary registry binaries.
-  Tinymist and Markdown Oxide use official upstream tagged sources and remain
-  deliberate manual updates in [`MAINTENANCE.md`](../../MAINTENANCE.md).
+  upstream-documented third-party COPRs; DNF owns both.
+- Herdr and Tuicr use reviewed official installers and machine-local ownership
+  receipts. Tuicr is compared with a checksum-verified release. Pixi uses its
+  official installer and dedicated `~/.pixi/bin`; Conda is not selected beside it.
+- Noctalia owns clipboard history; Fedora `wl-clipboard` supplies CLI transfer.
+- npm and uv are rolling except for `typescript@6`, which retains the `tsserver`
+  API required by the selected LSP. Cargo tags/versions record reviewed routes;
+  tagged Tinymist and Markdown Oxide updates remain manual.
 - NVIDIA uses current RPM Fusion instructions on the desktop only.
 
 Fedora 44 package names and identities were audited for this release. Before a
@@ -124,8 +121,8 @@ profile used by the clean-install guide:
 The verifier checks only rows marked `all` or matching the selected profile,
 plus shared tracked user outputs. It checks RPM package presence and selected
 external RPM ownership, manifest-declared commands, desktop files, Flatpak IDs
-and packaged integration commands, official-installer ownership where defined,
-unit files, configured font families, and tracked user outputs. It performs no
+and packaged integration commands, official-installer receipts, selected GitHub
+CLI/VS Code extensions, units, configured fonts, and tracked user outputs. It performs no
 network request, transaction, authentication, mount, service activation, or
 private-key read.
 Missing applicable `session`/`feature` entries fail; optional/development entries

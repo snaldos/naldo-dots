@@ -113,9 +113,10 @@ Both paths preserve local locking, conflict-marker validation, credential
 scanning, commit, fetch/rebase/push behavior, and safe failure before push on a
 rebase conflict.
 
-The user timer is installed but remains disabled until explicitly enabled. Its
-tracked schedule uses a 10-minute user-manager startup delay, a 30-minute
-interval, and a 2-minute randomized delay.
+The user timer is installed but remains disabled until all three repositories,
+LFS, the mount guard, and silent GCR login-keyring unlock have passed manual and
+systemd tests. Its schedule uses a 10-minute user-manager startup delay, a
+30-minute interval, and a 2-minute randomized delay.
 
 ```bash
 sync-control enable
@@ -134,10 +135,11 @@ Noctalia config export. Operating-system maintenance is intentionally absent.
 ## Workstation maintenance
 
 `naldo-update` is deployed from the shared `automation` Stow package and must be
-invoked manually. It updates only already-managed local software, never runs
-repository synchronization, and does not read the Fedora clean-install
-manifests. See [`MAINTENANCE.md`](MAINTENANCE.md) for its provider order and the
-manual policy for Git-tagged Cargo tools.
+invoked manually. It updates only already-managed DNF/Flatpak software, VS Code
+and GitHub CLI extensions, npm/uv/Cargo tools, and receipt-owned Tuicr/Herdr. It
+never runs repository synchronization and does not read the clean-install
+manifests. See [`MAINTENANCE.md`](MAINTENANCE.md) for provider order, the
+TypeScript-6 compatibility boundary, and manual Pixi/tagged-Cargo updates.
 
 ## Zen Flatpak
 
@@ -167,9 +169,11 @@ changes it.
 ## Editor and private state
 
 Helix (`hx`) is the primary editor for Fish, Git, LazyGit, Yazi, Herdr, Pi, and
-text MIME handling. The tracked Git include contains behavior only; identity,
-signing, credentials, and trust stay in machine-local Git configuration.
-Neovim remains unconfigured and outside Stow.
+text MIME handling. JavaScript/TypeScript use TypeScript Language Server plus
+Prettier; Python uses BasedPyright/Ruff. Visual Studio Code is a secondary
+scientific fallback with only Python, Jupyter, and Ruff directly selected. The
+tracked Git include contains behavior only; identity, credentials, and trust
+stay machine-local. Neovim remains unconfigured and outside Stow.
 
 Noctalia-rendered themes, Niri selectors, Fish local overrides, Starship's active
 config, Helix's generated base theme, Zathura colors, sync paths, and Pi active
@@ -187,8 +191,8 @@ For either machine's fresh installation or an occasional Fedora audit, follow
 `bootstrap/fedora/CLEAN-INSTALL.md` from top to bottom. It is the single
 profile-aware execution path and derives software from the six provider
 manifests while linking deeper editor-tool, remote-access, and wallpaper
-references. After
-installing selected dependencies and running the user installer:
+references. After installing selected dependencies and running the user
+installer:
 
 ```bash
 ./bootstrap/fedora/verify.sh --profile desktop  # or laptop

@@ -22,6 +22,7 @@ diffutils	feature	cmp	-	-	Safe file comparison	all
 findutils	feature	find	-	-	Deployment inventory	all
 gawk	feature	awk	-	-	Script parsing	all
 git-core	feature	git	-	-	Deployment and synchronization	all
+gh	feature	gh	-	-	GitHub CLI for reviewed API workflows and extension management	all
 git-lfs	feature	git-lfs	-	-	Git LFS filters and transfer support for notes attachments and wallpapers	all
 grep	feature	grep	-	-	Validation parsing	all
 sed	feature	sed	-	-	Configuration diagnostics	all
@@ -34,6 +35,8 @@ jq	feature	jq	-	-	Niri IPC parsing	all
 fish	feature	fish	-	-	Interactive shell	all
 ripgrep	development	rg	-	-	Repository and document search	all
 curl	development	curl	-	-	Explicit source inspection	all
+gnupg2	feature	gpg	-	-	Vendor signing-key fingerprint inspection	all
+tar	feature	tar	-	-	Reviewed upstream release archive extraction	all
 sudo	development	sudo,sudoedit	-	-	Manual reviewed privileged operations	all
 dnf-plugins-core	feature	-	-	-	COPR and DNF repository commands	all
 rpm	feature	rpm	-	-	Installed-package verification and vendor signature checks	all
