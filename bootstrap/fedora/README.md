@@ -102,7 +102,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | canonical ordered fresh-install sequence |
-| `LAPTOP-SETUP.md` | laptop-only execution checklist after Fedora is installed |
+| `LAPTOP-SETUP.md` | complete laptop-only command-by-command execution path after Fedora is installed |
 | `EDITOR-TOOLS.md` | Helix responsibilities, installation commands and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

@@ -448,7 +448,9 @@ and closed-source persistence. Confirm both CLI commands, then test manually:
 Confirm PipeWire/WirePlumber, portals, PolicyKit, Secret Service, Zen, Firefox,
 Chrome, Discord, Obsidian, Thunderbird, Swappy, Ghostty, Yazi, GPU Screen
 Recorder as a standalone Flatpak and through Noctalia's portal-mode recorder,
-Bongo Cat input reactivity, and the real Zen/Swappy app IDs. Do not configure GPU
+Bongo Cat input reactivity, and the real Zen/Swappy app IDs. Verify an ordinary
+desktop/MIME Zen launch follows Niri's default layout, while the `Mod+Z` Zen
+choice alone floats and centers its newly created window. Do not configure GPU
 Screen Recorder global hotkeys or autostart during this check.
 Install Noctalia plugins and credentials only through their machine-local paths.
 
@@ -466,17 +468,19 @@ systemctl status tailscaled.service
 
 Never reuse an enrollment state or pre-authentication key from the erased system.
 
-## 18. Enable SSH server only when deliberately desired
+## 18. Keep inbound SSH disabled
+
+This setup selects OpenSSH client tools only. It does not install or enable an
+SSH server, open a firewall port, create `authorized_keys`, or enable Tailscale
+SSH. Confirm that no inbound service is active:
 
 ```bash
-sudo sshd -t
-sudo systemctl enable --now sshd.service
-systemctl status sshd.service
+test "$(systemctl is-active sshd.service 2>/dev/null || true)" = inactive
+test "$(tailscale debug prefs | jq -r '.RunSSH')" = false
 ```
 
-Do not automate firewall, authentication-policy, root-login, or Tailscale-SSH
-changes. Authorize inter-machine public keys manually with `ssh-copy-id` only
-after verifying host identity.
+A future inbound-access decision requires a separate threat-model and firewall
+review; it is not part of this desktop or laptop setup.
 
 ## 19. Test each synchronization task manually
 

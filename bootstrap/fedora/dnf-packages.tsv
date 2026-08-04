@@ -39,8 +39,7 @@ dnf-plugins-core	feature	-	-	-	COPR and DNF repository commands	all
 rpm	feature	rpm	-	-	Installed-package verification and vendor signature checks	all
 fontconfig	feature	fc-list,fc-match	-	-	Configured font-family discovery and verification	all
 acl	feature	getfacl	-	-	Bongo Cat input-device ACL verification	all
-openssh-clients	feature	ssh,scp,sftp,ssh-keygen,ssh-copy-id,ssh-add	-	-	OpenSSH client tools	all
-openssh-server	feature	sshd	-	system:sshd.service	Installed server; activation remains manual	all
+openssh-clients	feature	ssh,scp,sftp,ssh-keygen,ssh-copy-id,ssh-add	-	-	OpenSSH client tools; inbound sshd is not selected	all
 libnotify	optional	notify-send	-	-	Feature-local desktop diagnostics	all
 xdg-utils	feature	xdg-open	-	-	Desktop opener	all
 wl-clipboard	feature	wl-copy,wl-paste	-	-	Wayland CLI copy/paste and screenshot handoff; not history or persistence	all

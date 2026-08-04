@@ -41,25 +41,21 @@ Stow, copy, or synchronize `/var/lib/tailscale`, node keys, daemon state,
 tailnet credentials, or machine enrollment. `install-system.sh` does not manage
 any of them.
 
-## Fedora OpenSSH packages
+## Fedora OpenSSH client only
 
-Install the official packages `openssh-clients` and `openssh-server`. They
-provide `ssh`, `scp`, `sftp`, `ssh-keygen`, `ssh-copy-id`, `ssh-add`, `sshd`, and
-`sshd.service`. Installing the server does not mean it should listen yet.
-Enable it only on a machine that deliberately accepts inbound connections:
+Install only Fedora's official `openssh-clients` package. It provides `ssh`,
+`scp`, `sftp`, `ssh-keygen`, `ssh-copy-id`, and `ssh-add`. This setup does not
+select `openssh-server`, activate `sshd.service`, open a firewall port, create
+`authorized_keys`, or enable Tailscale SSH.
 
 ```bash
-sudo sshd -t
-sudo systemctl enable --now sshd.service
+sudo dnf install openssh-clients
 ssh -V
-systemctl status sshd.service
+test "$(systemctl is-active sshd.service 2>/dev/null || true)" = inactive
 ```
 
-The dotfiles do not open a firewall port, weaken Fedora defaults, enable root
-login, disable password authentication, change server ciphers, create
-`authorized_keys`, or enable Tailscale SSH. Normal OpenSSH public-key
-authentication over the Tailscale network is preferred. Tailscale SSH is an
-optional alternative, not a required replacement.
+A future inbound SSH decision requires a separate threat-model, host-key,
+authentication, and firewall review. It is not part of this workstation setup.
 
 ## Fresh device-specific keys
 
@@ -146,16 +142,9 @@ systemd-run --user --wait --collect \
 
 Do not configure `ForwardAgent`, a per-shell `ssh-agent`, or Tailscale SSH.
 
-## Authorizing desktop and laptop
+## Desktop-to-laptop connectivity boundary
 
-After confirming the target host identity and address over Tailscale, copy only
-the public key:
-
-```bash
-ssh-copy-id USER@VERIFIED_TAILSCALE_HOST
-ssh USER@VERIFIED_TAILSCALE_HOST
-```
-
-Inspect the host fingerprint through an independent trusted channel before
-accepting it. Do not commit `authorized_keys`; repeat authorization explicitly
-in the opposite direction only if needed.
+Tailscale supplies private network connectivity, but neither workstation accepts
+inbound SSH in this setup. Do not run `ssh-copy-id` between them, create
+`authorized_keys`, or turn on Tailscale SSH. Revisit those decisions explicitly
+only if a concrete inbound-access requirement appears.

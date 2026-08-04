@@ -18,11 +18,11 @@ pass() {
   printf 'ok %d - %s\n' "$checks" "$1"
 }
 
-for package in openssh-clients openssh-server gcr git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig evtest; do
+for package in openssh-clients gcr git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig evtest; do
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
-for obsolete in npm nodejs nodejs-npm typst ruff celluloid; do
+for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid; do
   ! awk -F '\t' -v package="$obsolete" '$1 == package { found=1 } END { exit !found }' "$DNF" ||
     fail "non-selected DNF provider remains: $obsolete"
 done
@@ -52,10 +52,10 @@ pass 'wl-clipboard supplies CLI copy/paste while Noctalia owns history and close
 
 awk -F '\t' '
   $1 == "openssh-clients" && $3 == "ssh,scp,sftp,ssh-keygen,ssh-copy-id,ssh-add" { client=1 }
-  $1 == "openssh-server" && $3 == "sshd" && $5 == "system:sshd.service" { server=1 }
-  END { exit !(client && server) }
-' "$DNF" || fail 'OpenSSH outputs are not authoritative in their package rows'
-pass 'OpenSSH clients server command and unit derive from their DNF rows'
+  $1 == "openssh-server" { server=1 }
+  END { exit !(client && !server) }
+' "$DNF" || fail 'OpenSSH client-only policy differs from the authoritative package row'
+pass 'OpenSSH client tools are selected while inbound sshd remains absent'
 
 ! awk -F '\t' '$1 == "tailscale" { found=1 } END { exit !found }' "$DNF" ||
   fail 'Tailscale was duplicated into the Fedora manifest'
