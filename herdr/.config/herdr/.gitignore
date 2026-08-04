@@ -2,3 +2,5 @@
 *
 !/.gitignore
 !/config.toml
+!/scripts/
+!/scripts/**

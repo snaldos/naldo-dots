@@ -125,28 +125,12 @@ prefix = "ctrl+a"
 # type = "pane"
 # command = "lazygit"
 [[keys.command]]
-key = "prefix+alt+g"
+key = "prefix+p"
 type = "popup"
-command = "lazygit"
-description = "run lazygit"
-width = "80%"
-height = "80%"
-
-[[keys.command]]
-key = "prefix+alt+t"
-type = "popup"
-command = "exec \"${SHELL:-sh}\""
-description = "open scratch terminal"
-width = "80%"
-height = "80%"
-
-[[keys.command]]
-key = "prefix+alt+s"
-type = "popup"
-command = "exec hx /tmp/helix-scratchpad.typ"
-description = "open Typst scratchpad"
-width = "80%"
-height = "80%"
+command = "$HOME/.config/herdr/scripts/popup-launcher"
+description = "open popup command switcher"
+width = "90%"
+height = "90%"
 
 # [worktrees]
 # directory = "~/.herdr/worktrees"

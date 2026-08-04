@@ -1,0 +1,37 @@
+#!/bin/sh
+
+choice=$(
+    printf '%s\n' \
+        "Lazygit" \
+        "TUICR" \
+        "GitHub dashboard" \
+        "Typst scratchpad" \
+        "Terminal" |
+        fzf \
+            --prompt="Open popup: " \
+            --layout=reverse \
+            --border \
+            --no-multi
+) || exit 0
+
+case "$choice" in
+    "Lazygit")
+        exec lazygit
+        ;;
+
+    "TUICR")
+        exec tuicr
+        ;;
+
+    "GitHub dashboard")
+        exec gh dash
+        ;;
+
+    "Typst scratchpad")
+        exec hx /tmp/helix-scratchpad.typ
+        ;;
+
+    "Terminal")
+        exec "${SHELL:-sh}"
+        ;;
+esac
