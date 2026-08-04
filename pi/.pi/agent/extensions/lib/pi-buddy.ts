@@ -26,9 +26,10 @@ type RpsChoice = "rock" | "paper" | "scissors";
 let previousRandomMode: PiBuddyMode | undefined;
 
 function randomMode(avoid?: PiBuddyMode): PiBuddyMode {
-  if (PI_BUDDY_MODES.length === 1) return PI_BUDDY_MODES[0]!;
-  let mode = PI_BUDDY_MODES[randomInt(PI_BUDDY_MODES.length)]!;
-  while (mode === avoid) mode = PI_BUDDY_MODES[randomInt(PI_BUDDY_MODES.length)]!;
+  const modeCount: number = PI_BUDDY_MODES.length;
+  if (modeCount === 1) return PI_BUDDY_MODES[0]!;
+  let mode = PI_BUDDY_MODES[randomInt(modeCount)]!;
+  while (mode === avoid) mode = PI_BUDDY_MODES[randomInt(modeCount)]!;
   return mode;
 }
 
@@ -142,7 +143,7 @@ class PiBuddyCard implements Component {
   private contentLines(width: number): string[] {
     const heading = (text: string, color: "accent" | "success" | "warning" = "accent") =>
       this.theme.fg(color, this.theme.bold(text));
-    const styledWrap = (text: string, color: "text" | "muted" | "success" = "text", bold = false) =>
+    const styledWrap = (text: string, color: "accent" | "text" | "muted" | "success" = "text", bold = false) =>
       wrapPlain(text, width).map((line) => this.theme.fg(color, bold ? this.theme.bold(line) : line));
 
     if (this.mode === "german") {

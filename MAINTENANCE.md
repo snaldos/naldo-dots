@@ -1,8 +1,10 @@
 # Workstation maintenance
 
 Run `naldo-update` manually from a terminal when there is time to review prompts
-and failures. It works on both profiles because
-each package manager updates only its locally installed packages. It never
+and failures. This is the one-command whole-workstation update; for Fedora RPMs
+alone, the corresponding command is `sudo dnf upgrade --refresh`. It works on
+both profiles because each package manager updates only its locally installed
+packages. It never
 synchronizes repositories,
 reboots, enables services, removes software, or installs a missing provider.
 
@@ -39,6 +41,14 @@ machine.
 
 Remove the constraint only after a real Helix LSP initialization succeeds with
 the replacement TypeScript server architecture—not merely when `tsc` exists.
+
+## uv Python tools
+
+`uv tool upgrade --all` maintains the installed BasedPyright, `ty`, and Ruff
+tool environments. It does not add a missing tool; provision missing selections
+from `bootstrap/fedora/uv-tools.tsv` through the clean-install procedure.
+BasedPyright remains Helix's global default, while projects may opt into `ty` in
+`.helix/languages.toml`. Do not enable both type checkers for one buffer.
 
 ## VS Code and GitHub CLI extensions
 

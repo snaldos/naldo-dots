@@ -13,6 +13,10 @@ disableOrganizeImports = true
 [language-server.basedpyright.config.basedpyright.analysis]
 typeCheckingMode = "standard"
 
+[language-server.ty]
+command = "ty"
+args = ["server"]
+
 [language-server.ruff]
 command = "ruff"
 args = ["server"]
@@ -63,6 +67,8 @@ args = ["--stdio"]
 [[language]]
 name = "python"
 language-servers = ["basedpyright", "ruff"]
+# A project can instead set this in its local .helix/languages.toml file:
+# language-servers = ["ty", "ruff"]
 formatter = { command = "ruff", args = ["format", "--stdin-filename", "%{buffer_name}", "-"] }
 auto-format = true
 

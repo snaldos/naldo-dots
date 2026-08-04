@@ -28,7 +28,7 @@
     "accent": "accent",
     "border": "outline",
     "borderAccent": "accent",
-    "borderMuted": "outlineVar",
+    "borderMuted": "outline",
 
     "success": "green",
     "error": "err",
@@ -36,7 +36,7 @@
 
     "text": "fg",
     "muted": "fgMuted",
-    "dim": "outline",
+    "dim": "fgMuted",
     "thinkingText": "fgMuted",
 
     "selectedBg": "bgAlt2",
@@ -60,7 +60,7 @@
 
     "mdCode": "tert",
     "mdCodeBlock": "fg",
-    "mdCodeBlockBorder": "outline",
+    "mdCodeBlockBorder": "fgMuted",
 
     "mdQuote": "fgMuted",
     "mdQuoteBorder": "accentAlt",

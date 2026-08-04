@@ -242,6 +242,14 @@ awk -F '\t' '
   $4 == "https://herdr.dev/install.sh" && $8 == "herdr update" { found=1 }
   END { exit !found }
 ' "$EXTERNAL" || fail 'Herdr does not use its official stable self-managed installer route'
+# The profile variable belongs to the documented command and must remain literal.
+# shellcheck disable=SC2016
+dotfiles_install_line="$(grep -n -m1 -F './install.sh --profile "$profile"' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" | cut -d: -f1)"
+herdr_integration_line="$(grep -n -m1 -F 'herdr integration install pi' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" | cut -d: -f1)"
+[[ -n "$dotfiles_install_line" && -n "$herdr_integration_line" &&
+  "$herdr_integration_line" -gt "$dotfiles_install_line" ]] ||
+  fail 'Herdr Pi integration is not materialized after dotfile deployment'
+pass 'Herdr Pi integration remains machine-local and is installed after deployment'
 awk -F '\t' '
   $1 == "pixi" && $2 == "feature" && $3 == "official-upstream-installer" &&
   $4 == "https://pixi.sh/install.sh" && $8 ~ /pixi self-update/ { found=1 }

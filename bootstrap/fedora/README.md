@@ -28,7 +28,7 @@ once for its chosen provider:
 | `dnf-packages.tsv` | official Fedora package, classification, executables, desktop files, units |
 | `flatpaks.tsv` | required/optional Flathub IDs, packaged integration commands, and exported desktop files |
 | `npm-packages.tsv` | user-prefix npm packages and exported commands |
-| `uv-tools.tsv` | user-level Python tools and active/inactive policy |
+| `uv-tools.tsv` | user-level Python tools and clean-provisioning activation policy |
 | `cargo-tools.tsv` | deliberately pinned stable Cargo commands and update/uninstall route |
 | `external-tools.tsv` | vendor/COPR providers, upstream installers/releases, CLI/editor extensions, RPM Fusion, and user fonts |
 
@@ -44,6 +44,10 @@ The verifier reads these six files directly. There is no second command,
 desktop-file, or service inventory to keep synchronized. Tracked user
 executables, the Yazi desktop entry, and synchronization units are discovered
 from their Stow sources.
+
+For `uv-tools.tsv`, `active` means install the tool on a clean machine; it does
+not mean every installed language server is attached globally in Helix. The
+Helix mapping remains authoritative for buffer-level activation.
 
 Classifications:
 

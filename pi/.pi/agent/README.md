@@ -100,19 +100,21 @@ The footer performs no process or account request while rendering. `extensions/l
 
 `themes/noctalia.json` is generated from `~/.config/noctalia/templates/pi-noctalia.json`. Durable changes belong in the template and are applied after `noctalia msg config-reload` with `noctalia msg templates-apply`.
 
-The revised mapping makes `dim` as readable as Material `on_surface_variant`, strengthens editor/code-block borders, raises user/custom/tool surfaces, and gives blockquotes a visible secondary accent. Important custom UI never uses nearly invisible gray.
+The mapping keeps `dim` as readable as Material `on_surface_variant`, strengthens
+editor/code-block borders, raises user/custom/tool surfaces, and gives
+blockquotes a visible secondary accent. Important custom UI text never uses the
+outline colors reserved for nonessential borders. Actual hex values are generated
+from the active Noctalia palette and therefore change with its color source.
 
-| Role | Theme token | Noctalia color |
+| Role | Theme token | Noctalia template variable |
 | --- | --- | --- |
-| Identity, frame, normal context | `accent` / `borderAccent` | `#7aa2f7` |
-| Primary information | `text` | terminal foreground `#c0caf5` |
-| Readable metadata | `muted` | `#9aa5ce` |
-| Normal allowance/success | `success` | `#9ece6a` |
-| Elevated context/allowance and approval | `warning` | `#bb9af7` |
-| Critical context/allowance, denied operations, and YOLO mode | `error` | `#f7768e` |
-| Progress-bar remainder only | `border` | `#586691` |
-
-Against the Noctalia background `#1a1b26`, all required text colors have at least 6.46:1 contrast; only nonessential borders use lower-contrast colors.
+| Identity, frame, normal context | `accent` / `borderAccent` | `accent` |
+| Primary information | `text` | `fg` |
+| Readable metadata and dim text | `muted` / `dim` | `fgMuted` |
+| Normal allowance/success | `success` | `green` |
+| Elevated context/allowance and approval | `warning` | `yellow` |
+| Critical context/allowance, denied operations, and YOLO mode | `error` | `err` |
+| Nonessential borders | `border` / `borderMuted` | `outline` |
 
 ## Commands and skills
 
@@ -263,7 +265,9 @@ tmp/
 logs/
 ```
 
-Pi state directories are `0700`; credential/database/trust/session files are `0600`. Do not print, copy, commit, or share their contents.
+Pi state directories are `0700`; credential/database/trust/session files are
+`0600` when present. `trust.json` is validly absent until the first saved project
+trust decision. Do not print, copy, commit, or share private-state contents.
 
 ## Project trust and reload
 
@@ -279,10 +283,12 @@ For `/home/naldo/projects/learn/learning`, project resources own `/start`, `/exe
 ```bash
 jq empty ~/.pi/agent/settings.json \
   ~/.pi/agent/keybindings.json \
-  ~/.pi/agent/themes/noctalia.json \
-  ~/.pi/agent/trust.json
+  ~/.pi/agent/themes/noctalia.json
+if test -e ~/.pi/agent/trust.json; then
+  jq empty ~/.pi/agent/trust.json
+fi
 
-node --test ~/.pi/agent/extensions/lib/{git-status,safety-classifier,safety-guard}.test.ts
+node --test ~/.pi/agent/extensions/lib/*.test.ts
 pi --no-approve --list-models
 fish -n ~/.config/fish/config.fish
 ghostty +validate-config --config-file=~/.config/ghostty/config.ghostty

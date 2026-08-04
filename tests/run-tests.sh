@@ -7,6 +7,7 @@ tests=(
   tests/repository-policy-test.sh
   tests/desktop-applications-test.sh
   tests/editor-tools-test.sh
+  tests/pi-compatibility-test.sh
   tests/fedora-cutover-test.sh
   tests/fedora-profile-test.sh
   tests/ghostty-shaders-test.sh

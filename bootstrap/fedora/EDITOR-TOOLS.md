@@ -10,7 +10,7 @@ sequence.
 
 | Files | Language intelligence | Formatting |
 |---|---|---|
-| Python | BasedPyright types/completion/navigation + Ruff lint/fixes/imports | Ruff |
+| Python | BasedPyright types/completion/navigation + Ruff lint/fixes/imports by default; ty + Ruff per project | Ruff |
 | Typst | Tinymist + Harper prose diagnostics | Typstyle |
 | Markdown | Markdown Oxide vault/PKM + Harper prose diagnostics | Prettier |
 | JavaScript, JSX, TypeScript, TSX | TypeScript Language Server | Prettier |
@@ -18,15 +18,16 @@ sequence.
 | TOML | Taplo LSP | Taplo |
 | JSON/JSONC, YAML, HTML, CSS | selected VS Code-derived language servers | Prettier |
 
-`ty` is an optional Python experiment and is not active beside BasedPyright. No
-Helix debug adapter is selected.
+Both BasedPyright and `ty` are installed. BasedPyright remains the global Python
+server; a project may select `ty` instead. They are never activated together.
+No Helix debug adapter is selected.
 
 ## Provider boundaries
 
 - Fedora owns Helix, Node/npm, uv, shfmt, and the compiler/build prerequisites.
 - User-prefix npm owns Pi, Codex, Prettier, and the selected web/shell language
   servers under `~/.npm-global`.
-- uv tool environments own BasedPyright and Ruff globally for Helix.
+- uv tool environments own BasedPyright, `ty`, and Ruff globally for Helix.
 - Cargo owns the pinned Typst, TOML, Markdown, and prose tools.
 - VS Code comes from Microsoft's signed RPM repository; its extension manager
   owns the selected Python, Jupyter, and Ruff extensions.
@@ -60,13 +61,20 @@ hx --health tsx
 
 ## Python and scientific environments
 
-BasedPyright owns type intelligence. Ruff owns lint diagnostics, code actions,
-import organization, and formatting. Project dependencies belong in a project
-lockfile rather than the global tool environments:
+BasedPyright owns type intelligence by default. Ruff owns lint diagnostics, code
+actions, import organization, and formatting. To evaluate `ty` in one project,
+create `.helix/languages.toml` there without changing the global default:
 
-```bash
-uv add --dev basedpyright ruff
+```toml
+[[language]]
+name = "python"
+language-servers = ["ty", "ruff"]
 ```
+
+Use only one type checker at a time. If a project runs these tools in CI, lock
+its selected checker and Ruff as development dependencies, for example
+`uv add --dev ty ruff` or `uv add --dev basedpyright ruff`; the global uv tool
+environments exist for editor use.
 
 Use Pixi when native, conda-forge, CUDA, or cross-platform dependencies justify
 it. Conda is not installed beside Pixi unless an external workflow requires the
@@ -99,6 +107,9 @@ JavaScript debugger is selected.
 ## Health check
 
 ```bash
+basedpyright --version
+ty --version
+ruff --version
 for language in bash json yaml toml python typst markdown html css \
   javascript typescript jsx tsx; do
   hx --health "$language"

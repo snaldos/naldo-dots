@@ -1,4 +1,4 @@
 # package	commands	classification	activation	intentional_role	profile
 basedpyright	basedpyright,basedpyright-langserver	feature	active	Primary Python type checker and Helix language server; import organization disabled in favor of Ruff	all
 ruff	ruff	feature	active	Python lint diagnostics code actions import organization and formatting	all
-ty	ty	optional	inactive	Experimental optional type checker; deliberately not configured as a second active Python server	all
+ty	ty	feature	active	Installed Python type checker and Helix language server available for project-local opt-in; BasedPyright remains the global default	all

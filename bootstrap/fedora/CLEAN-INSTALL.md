@@ -423,6 +423,10 @@ for tool in "${uv_tools[@]}"; do
 done
 ```
 
+BasedPyright remains Helix's global Python type checker. `ty` is also installed
+and can replace BasedPyright in a project's `.helix/languages.toml`; do not run
+both type checkers for the same buffer.
+
 ### Common locked Cargo tools
 
 ```bash
@@ -721,7 +725,8 @@ for language in bash json yaml toml python typst markdown html css \
   javascript typescript jsx tsx; do
   hx --health "$language"
 done
-for command in gh tuicr code thunderbird pixi taplo typescript-language-server tsc tsserver; do
+for command in gh tuicr code thunderbird pixi basedpyright basedpyright-langserver \
+  ruff ty taplo typescript-language-server tsc tsserver; do
   command -v "$command"
 done
 gh auth status
@@ -737,6 +742,49 @@ systemctl --user status \
   xdg-desktop-portal.service pipewire.service wireplumber.service \
   gcr-ssh-agent.socket
 ```
+
+### Common Pi, Herdr, and Codex machine-local setup
+
+Materialize Herdr's generated Pi integration only after the dotfiles are
+deployed. Codex CLI allowance access and Pi provider access then use distinct
+machine-local logins. Never copy these generated or credential files between
+machines:
+
+```bash
+herdr integration install pi
+herdr_status="$(herdr integration status)"
+grep -Eq '^pi: current \(v[0-9]+\)' <<<"$herdr_status"
+unset herdr_status
+codex login
+codex login status
+pi
+```
+
+Inside Pi:
+
+1. run `/login` and select **ChatGPT Plus/Pro (Codex)**;
+2. run `/model` and select `openai-codex/gpt-5.6-sol`;
+3. run `/settings` and set the thinking level to `max`;
+4. run `/doctor verbose` and require zero failures; and
+5. run `/quit`.
+
+Back in Bash, validate only configuration fields and file modes—not credential
+contents:
+
+```bash
+jq -e '
+  .defaultProvider == "openai-codex" and
+  .defaultModel == "gpt-5.6-sol" and
+  .defaultThinkingLevel == "max"
+' "$HOME/.pi/agent/settings.json"
+test "$(stat -c '%a' "$HOME/.pi/agent/settings.json")" = 600
+test "$(stat -c '%a' "$HOME/.pi/agent/auth.json")" = 600
+test "$(stat -c '%a' "$HOME/.codex/auth.json")" = 600
+pi --no-approve --list-models >/dev/null
+```
+
+`trust.json` is created only after a project trust decision and is validly absent
+on a fresh machine.
 
 ### Common manual checks
 
@@ -870,7 +918,10 @@ The machine is complete when:
 - GCR unlocks silently after login and systemd Git access succeeds;
 - `gh`, `gh-dash`, Tuicr, Thunderbird, VS Code, and the selected VS Code
   extensions are present;
-- Helix TypeScript/JavaScript LSP and Prettier formatting are healthy;
+- Herdr's generated Pi integration is current, Codex CLI and Pi have separate
+  working machine-local logins, and Pi doctor has zero failures;
+- Helix TypeScript/JavaScript LSP, BasedPyright, project-opt-in `ty`, Ruff, and
+  Prettier are healthy;
 - Niri, Noctalia, keyd/Bongo Cat, portals, Tailscale, and storage survive reboot;
 - `openssh-server` is absent and Tailscale SSH is false;
 - Notes and Wallpapers pass LFS checks;

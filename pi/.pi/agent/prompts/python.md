@@ -7,4 +7,4 @@ Work on this scientific Python or ML task:
 
 $@
 
-Load the `scientific-python` skill. Inspect the repository, environment, and exact failure or requirement first. Keep shapes, dtypes, devices, units, randomness, and reduction conventions explicit. Prefer the smallest readable implementation, a hand-computable case, focused assertions/tests, and the existing `uv` or `pixi` workflow. Run the smallest relevant checks and report verified versus untested behavior.
+Load the `scientific-python` skill. Inspect the repository, environment, and exact failure or requirement first. Keep shapes, dtypes, devices, units, randomness, and reduction conventions explicit. Prefer the smallest readable implementation, a hand-computable case, focused assertions/tests, and the existing `uv` or `pixi` workflow. Follow the project's selected BasedPyright or `ty` policy rather than treating both as simultaneous authorities. Run the smallest relevant checks and report verified versus untested behavior.

@@ -47,11 +47,21 @@ for row in rows("npm-packages.tsv"):
     assert role.strip()
     for command in commands.split(","):
         add(command, f"npm:{package}", role)
-for row in rows("uv-tools.tsv"):
+uv_rows = rows("uv-tools.tsv")
+for row in uv_rows:
     package, commands, _classification, _activation, role, _profile = row
     assert role.strip()
     for command in commands.split(","):
         add(command, f"uv:{package}", role)
+ty_rows = [row for row in uv_rows if row[0] == "ty"]
+assert ty_rows == [[
+    "ty",
+    "ty",
+    "feature",
+    "active",
+    "Installed Python type checker and Helix language server available for project-local opt-in; BasedPyright remains the global default",
+    "all",
+]], f"unexpected ty provider row: {ty_rows}"
 cargo_rows = rows("cargo-tools.tsv")
 for row in cargo_rows:
     package, commands, _classification, _source, install, _update, _uninstall, role, _profile = row
@@ -97,6 +107,7 @@ for command in helix_commands | {"basedpyright", "ty", "typst", "shellcheck"}:
 python_language = next(language for language in languages if language["name"] == "python")
 assert python_language["language-servers"] == ["basedpyright", "ruff"]
 assert servers["basedpyright"]["command"] == "basedpyright-langserver"
+assert servers["ty"] == {"command": "ty", "args": ["server"]}
 assert python_language["formatter"]["command"] == "ruff"
 assert servers["basedpyright"]["config"]["basedpyright"]["disableOrganizeImports"] is True
 assert "ty" not in server_names and "ty" not in formatter_commands
@@ -142,9 +153,11 @@ grep -Fq 'disableOrganizeImports = true' "$REPO_DIR/helix/.config/helix/language
   fail 'BasedPyright import organization is not disabled in favor of Ruff'
 grep -Fq 'language-servers = ["basedpyright", "ruff"]' "$REPO_DIR/helix/.config/helix/languages.toml" ||
   fail 'Python active server responsibilities changed unexpectedly'
-! grep -Eq 'language-servers = .*"ty"' "$REPO_DIR/helix/.config/helix/languages.toml" ||
-  fail 'experimental ty became an active Python server'
-pass 'BasedPyright Ruff and optional ty have non-conflicting roles'
+grep -Fq '# language-servers = ["ty", "ruff"]' "$REPO_DIR/helix/.config/helix/languages.toml" ||
+  fail 'project-local ty override is not documented beside the Python default'
+! grep -Eq '^[[:space:]]*language-servers = .*"ty"' "$REPO_DIR/helix/.config/helix/languages.toml" ||
+  fail 'ty became active globally beside BasedPyright'
+pass 'BasedPyright Ruff and installed project-opt-in ty have non-conflicting roles'
 
 awk -F '\t' '
   $1 == "typescript-language-server" && $2 == "typescript-language-server" && $3 == "feature" { server=1 }

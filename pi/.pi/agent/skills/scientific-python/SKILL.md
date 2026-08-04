@@ -13,7 +13,8 @@ Look for, in order:
 - `pixi.toml` / `pixi.lock`
 - `pyproject.toml` / `uv.lock`
 - an existing virtual environment and documented commands
-- test, lint, and type-check configuration
+- test, lint, and type-check configuration, including project-local
+  `.helix/languages.toml`, `[tool.basedpyright]`, or `[tool.ty]` policy
 
 Do not introduce a second environment manager without a concrete reason. Do not install into system Python.
 
@@ -78,7 +79,10 @@ pixi run test
 pixi run experiment --seed 0
 ```
 
-Use only commands supported by the existing project configuration.
+Use only commands supported by the existing project configuration. BasedPyright
+is the workstation editor default and `ty` is available for project-local
+opt-in; run the checker selected by the project (`uv run basedpyright` or
+`uv run ty check`) rather than treating both as simultaneous authorities.
 
 ## Completion Checklist
 

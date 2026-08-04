@@ -1,9 +1,10 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { existsSync } from "node:fs";
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { lstat, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { fetchCodexUsage } from "./codex-usage/client.ts";
+import { loadDoctorConfiguration, type JsonObject } from "./lib/doctor-config.ts";
 import { showReport } from "./lib/report.ts";
 
 type Status = "pass" | "warn" | "fail";
@@ -13,8 +14,6 @@ type Check = {
   detail: string;
   action?: string;
 };
-type JsonObject = Record<string, unknown>;
-
 const home = homedir();
 const root = resolve(home, ".pi/agent");
 const expectedPrompts = [
@@ -45,12 +44,6 @@ const expectedSkills = [
   "typst-math-authoring",
 ];
 
-function object(value: unknown): JsonObject | null {
-  return value !== null && typeof value === "object" && !Array.isArray(value)
-    ? (value as JsonObject)
-    : null;
-}
-
 function clean(value: string, maxLength = 500): string {
   return value
     .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
@@ -63,50 +56,30 @@ function firstLine(stdout: string, stderr: string): string {
   return clean(`${stdout}\n${stderr}`.split(/\r?\n/).find((line) => line.trim()) ?? "");
 }
 
-async function readJson(path: string): Promise<JsonObject> {
-  const parsed = JSON.parse(await readFile(path, "utf8"));
-  const value = object(parsed);
-  if (!value) throw new Error("top-level value is not an object");
-  return value;
-}
-
-async function configurationCheck(): Promise<{ check: Check; settings?: JsonObject }> {
-  const files = ["settings.json", "keybindings.json", "themes/noctalia.json", "trust.json"];
+async function configurationCheck(agentDir = root): Promise<{ check: Check; settings?: JsonObject }> {
   try {
-    const [settings, keybindings, theme] = await Promise.all(files.map((file) => readJson(join(root, file))));
-    const colors = object(theme.colors);
-    const compaction = object(settings.compaction);
-    const keybindingsValid = Object.values(keybindings).every(
-      (value) => typeof value === "string" || (Array.isArray(value) && value.every((key) => typeof key === "string")),
-    );
-    const valid = settings.defaultProjectTrust === "ask"
-      && settings.theme === "noctalia"
-      && settings.quietStartup === true
-      && settings.externalEditor === "hx"
-      && settings.enableAnalytics === false
-      && settings.enableInstallTelemetry === false
-      && typeof compaction?.reserveTokens === "number"
-      && typeof compaction?.keepRecentTokens === "number"
-      && theme.name === "noctalia"
-      && typeof colors?.accent === "string"
-      && colors?.dim === "fgMuted"
-      && colors?.mdCodeBlockBorder === "fgMuted"
-      && colors?.borderMuted === "outline"
-      && typeof colors?.thinkingXhigh === "string"
-      && keybindingsValid;
-
+    const configuration = await loadDoctorConfiguration(agentDir);
     return {
-      settings,
-      check: valid
-        ? { status: "pass", label: "Configuration", detail: "settings, keybindings, Noctalia theme, and trust JSON are valid" }
-        : { status: "fail", label: "Configuration", detail: "JSON parsed, but one or more required policy/theme fields are invalid", action: "Inspect ~/.pi/agent/settings.json and run jq on all four JSON files." },
+      settings: configuration.settings,
+      check: configuration.valid
+        ? {
+            status: "pass",
+            label: "Configuration",
+            detail: `settings, keybindings, and Noctalia theme are valid; trust store ${configuration.trustPresent ? "is valid" : "has not been created"}`,
+          }
+        : {
+            status: "fail",
+            label: "Configuration",
+            detail: "JSON parsed, but one or more required policy/theme fields are invalid",
+            action: "Inspect ~/.pi/agent/settings.json and validate the three required JSON files plus trust.json when it exists.",
+          },
     };
   } catch (error) {
     return {
       check: {
         status: "fail",
         label: "Configuration",
-        detail: `could not parse required JSON: ${clean(error instanceof Error ? error.message : String(error))}`,
+        detail: `could not parse configuration JSON: ${clean(error instanceof Error ? error.message : String(error))}`,
         action: "Fix the first JSON parse error, then run /reload.",
       },
     };
@@ -250,19 +223,28 @@ async function toolchainCheck(pi: ExtensionAPI): Promise<Check> {
     ["uv", "uv", ["--version"]],
     ["pixi", "pixi", ["--version"]],
     ["Helix", "hx", ["--version"]],
-    ["Neovim", "nvim", ["--version"]],
+    ["BasedPyright", "basedpyright", ["--version"]],
+    ["ty", "ty", ["--version"]],
+    ["Ruff", "ruff", ["--version"]],
     ["Ghostty", "ghostty", ["--version"]],
     ["Herdr", "herdr", ["--version"]],
     ["Poppler", "pdftotext", ["-v"]],
   ];
   const results = await Promise.all(specs.map(async ([label, command, args]) => ({ label, ...(await commandResult(pi, command, args)) })));
+  const optionalNeovim = await commandResult(pi, "nvim", ["--version"]);
   const missing = results.filter((result) => !result.ok).map((result) => result.label);
   const versions = results.filter((result) => result.ok).map((result) => {
     const normalized = result.line.replace(new RegExp(`^${result.label}\\s+`, "i"), "");
     return `${result.label} ${normalized}`;
   });
+  if (optionalNeovim.ok) versions.push(`Neovim ${optionalNeovim.line} (optional)`);
   return missing.length
-    ? { status: "warn", label: "Toolchain", detail: `${versions.join(" · ")}; unavailable: ${missing.join(", ")}`, action: "Install only tools needed by the active project; do not modify system Python." }
+    ? {
+        status: "warn",
+        label: "Toolchain",
+        detail: `${versions.join(" · ")}; unavailable: ${missing.join(", ")}`,
+        action: "Provision the missing selected tool from the Fedora manifests; do not modify system Python.",
+      }
     : { status: "pass", label: "Toolchain", detail: versions.join(" · ") };
 }
 

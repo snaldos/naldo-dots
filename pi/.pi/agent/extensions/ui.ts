@@ -669,7 +669,7 @@ export default function uiExtension(pi: ExtensionAPI) {
           render(width: number): string[] {
             const usage = ctx.getContextUsage();
             const contextPercent =
-              usage && ctx.model?.contextWindow
+              usage?.tokens !== null && usage?.tokens !== undefined && ctx.model?.contextWindow
                 ? (usage.tokens / ctx.model.contextWindow) * 100
                 : null;
             return renderStatusBar(theme, width, {
