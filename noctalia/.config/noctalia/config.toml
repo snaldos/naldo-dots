@@ -8,14 +8,7 @@ enabled = true
 
 [bar.default]
 background_opacity = 0.70
-center = [
-  "timer",
-  "cat",
-  "media",
-  "audio_visualizer",
-  "wallhaven",
-  "wallpaper",
-]
+center = ["media", "cat", "audio_visualizer", "wallhaven", "wallpaper"]
 end = [
   "tray",
   "network",
@@ -31,6 +24,7 @@ start = [
   "launcher",
   "clock",
   "notifications",
+  "timer",
   "clipboard",
   "recorder",
   "screenshot",
@@ -128,7 +122,18 @@ source = "wallpaper"
 wallpaper_scheme = "faithful"
 
 [theme.templates]
-builtin_ids = ["btop", "cava", "ghostty", "gtk3", "gtk4", "helix", "kcolorscheme", "niri", "qt", "starship"]
+builtin_ids = [
+  "btop",
+  "cava",
+  "ghostty",
+  "gtk3",
+  "gtk4",
+  "helix",
+  "kcolorscheme",
+  "niri",
+  "qt",
+  "starship",
+]
 community_ids = []
 
 [theme.templates.user.pi]
