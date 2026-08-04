@@ -18,7 +18,7 @@ pass() {
   printf 'ok %d - %s\n' "$checks" "$1"
 }
 
-for package in openssh-clients openssh-server nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig evtest; do
+for package in openssh-clients openssh-server gcr git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig evtest; do
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
@@ -26,7 +26,11 @@ for obsolete in npm nodejs nodejs-npm typst ruff celluloid; do
   ! awk -F '\t' -v package="$obsolete" '$1 == package { found=1 } END { exit !found }' "$DNF" ||
     fail "non-selected DNF provider remains: $obsolete"
 done
-pass 'Fedora manifest uses exact selected OpenSSH npm Rust build and Bongo Cat packages'
+awk -F '\t' '$1 == "gcr" && $2 == "feature" && $5 == "user:gcr-ssh-agent.socket" { found=1 } END { exit !found }' \
+  "$DNF" || fail 'GCR does not own the selected shared user SSH-agent socket'
+awk -F '\t' '$1 == "git-lfs" && $2 == "feature" && $3 == "git-lfs" { found=1 } END { exit !found }' \
+  "$DNF" || fail 'Git LFS is not a selected Fedora feature'
+pass 'Fedora manifest uses exact selected OpenSSH GCR LFS npm Rust build and Bongo Cat packages'
 
 awk -F '\t' '$1 == "wl-clipboard" && $2 == "feature" && $3 == "wl-copy,wl-paste" { found=1 } END { exit !found }' \
   "$DNF" || fail 'wl-clipboard does not own both CLI copy/paste commands'
@@ -125,6 +129,24 @@ for index in $(seq 1 20); do
 done
 pass 'clean-install runbook retains the ordered 20-step release sequence'
 
+laptop_guide="$REPO_DIR/bootstrap/fedora/LAPTOP-SETUP.md"
+[[ -f "$laptop_guide" ]] || fail 'laptop post-install checklist is missing'
+for requirement in \
+  'profile=laptop' \
+  'git@github.com:snaldos/naldo-dots.git' \
+  'git@github.com:snaldos/second-brain.git' \
+  'git@github.com:snaldos/Wallpapers.git' \
+  'WALLPAPERS_REQUIRED_MOUNT=' \
+  'gcr-ssh-agent.socket' \
+  'lfs install --local' \
+  'sync-all dotfiles' \
+  'sync-control enable'; do
+  grep -Fq "$requirement" "$laptop_guide" || fail "laptop checklist omits: $requirement"
+done
+! grep -Eq 'sudo dnf install (akmod-nvidia|xorg-x11-drv-nvidia)|UUID=.* /mnt/data ' "$laptop_guide" ||
+  fail 'laptop checklist includes a desktop-only NVIDIA or HDD action'
+pass 'laptop checklist covers shared repositories agent LFS synchronization and excludes desktop-only state'
+
 for scope in 'reusable, human-run Fedora clean-install guide' 'later clean installations' \
   'not a snapshot of every installed package' 'record of transitive' \
   'system-changing commands remain explicit steps for a human'; do
@@ -177,10 +199,14 @@ awk -F '\t' '
   END { exit !found }
 ' "$EXTERNAL" || fail 'Herdr does not use its official stable self-managed installer route'
 awk -F '\t' '
-  $1 == "pixi" && $2 == "development" && $3 == "official-upstream-installer" &&
+  $1 == "pixi" && $2 == "feature" && $3 == "official-upstream-installer" &&
   $4 == "https://pixi.sh/install.sh" && $8 ~ /pixi self-update/ { found=1 }
   END { exit !found }
-' "$EXTERNAL" || fail 'Pixi is not a development-only conditional official-installer tool'
+' "$EXTERNAL" || fail 'Pixi is not a selected official-installer feature'
+grep -Fq '"$HOME/.pixi/bin"' "$REPO_DIR/fish/.config/fish/config.fish" ||
+  fail 'Fish PATH does not include the selected official Pixi installation directory'
+grep -Fq 'PIXI_NO_PATH_UPDATE=1 sh "$pixi_installer"' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean-install guide does not keep Pixi shell changes under tracked Fish ownership'
 for wording in \
   'upstream-documented third-party COPRs' \
   'COPR is not an official Fedora package source' \

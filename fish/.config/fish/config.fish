@@ -35,6 +35,7 @@ end
 # Paths are process-global; Fish's generated universal state stays machine-local.
 fish_add_path --path \
     "$HOME/.local/bin" \
+    "$HOME/.pixi/bin" \
     "$HOME/.cargo/bin" \
     "$HOME/.ghcup/bin" \
     "$HOME/.npm-global/bin"

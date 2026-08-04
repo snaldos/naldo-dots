@@ -6,11 +6,12 @@ Both profiles expose one portable logical repository path:
 $HOME/Wallpapers
 ```
 
-Only the desktop maps that path onto its secondary HDD. Mount identity and paths
-are machine-local; no UUID, `/etc/fstab` entry, mount command, or physical
-repository path is stored in portable runtime configuration.
+Only the desktop maps that path onto its secondary HDD. The actual mount identity
+and paths are machine-local: no concrete UUID, active `/etc/fstab` file, or
+physical repository path is tracked. This runbook provides only a placeholder
+entry and reviewed commands.
 
-## Desktop: identify and mount the HDD manually
+## Desktop: identify, test, and persist the HDD mount
 
 1. Inspect model, serial, size, filesystem, label, and existing mounts without
    modifying anything:
@@ -31,15 +32,52 @@ repository path is stored in portable runtime configuration.
    findmnt --mountpoint /mnt/data
    ```
 
-4. Only after `findmnt` succeeds, create the parent directory with deliberate
-   ownership and clone the repository:
+4. After checking the mounted data and UUID, back up `/etc/fstab`, add one
+   UUID-based ext4 entry, validate it, reload the generated systemd mount unit,
+   and prove that an fstab-based remount works. Substitute only the UUID observed
+   from the verified mount:
+
+   ```bash
+   findmnt --mountpoint /mnt/data -o TARGET,SOURCE,FSTYPE,UUID,OPTIONS
+   backup="/etc/fstab.backup-before-mnt-data-$(date -u +%Y%m%dT%H%M%SZ)"
+   sudo install -o root -g root -m 0644 /etc/fstab "$backup"
+   sudoedit /etc/fstab
+   ```
+
+   Add exactly one machine-local line:
+
+   ```text
+   UUID=VERIFIED-HDD-UUID /mnt/data ext4 defaults,nofail,x-systemd.device-timeout=10s,x-systemd.mount-timeout=30s 0 2
+   ```
+
+   Then validate and test without formatting or recreating the filesystem:
+
+   ```bash
+   sudo findmnt --verify --verbose --tab-file /etc/fstab
+   sudo systemctl daemon-reload
+   sync
+   sudo umount /mnt/data
+   sudo mount /mnt/data
+   findmnt --mountpoint /mnt/data -o TARGET,SOURCE,FSTYPE,UUID,OPTIONS
+   systemctl status mnt-data.mount
+   ```
+
+   `nofail` and the bounded device/mount waits keep an absent or unhealthy
+   optional HDD from indefinitely blocking boot. The ext4 inode ownership and
+   permissions remain on the existing filesystem.
+
+5. Only after `findmnt` succeeds, create the parent directory with deliberate
+   ownership, clone the repository, and initialize its local LFS hook:
 
    ```bash
    sudo install -d -o "$USER" -g "$(id -gn)" -m 0755 /mnt/data/repos
    git clone GIT-WALLPAPERS-REMOTE /mnt/data/repos/Wallpapers
+   git -C /mnt/data/repos/Wallpapers lfs install --local
+   git -C /mnt/data/repos/Wallpapers lfs pull
+   git -C /mnt/data/repos/Wallpapers lfs fsck
    ```
 
-5. Confirm `$HOME/Wallpapers` does not already contain data, then create the
+6. Confirm `$HOME/Wallpapers` does not already contain data, then create the
    stable logical link:
 
    ```bash
@@ -70,6 +108,9 @@ The laptop has no `/mnt/data` assumption and no external mount:
 
 ```bash
 git clone GIT-WALLPAPERS-REMOTE "$HOME/Wallpapers"
+git -C "$HOME/Wallpapers" lfs install --local
+git -C "$HOME/Wallpapers" lfs pull
+git -C "$HOME/Wallpapers" lfs fsck
 ```
 
 Its machine-local configuration is:
@@ -90,6 +131,7 @@ Desktop:
 findmnt --mountpoint /mnt/data
 readlink -f "$HOME/Wallpapers"
 git -C "$HOME/Wallpapers" status --short --branch
+git -C "$HOME/Wallpapers" lfs fsck
 sync-all wallpapers
 ```
 
@@ -98,6 +140,7 @@ Laptop:
 ```bash
 test ! -L "$HOME/Wallpapers"
 git -C "$HOME/Wallpapers" status --short --branch
+git -C "$HOME/Wallpapers" lfs fsck
 sync-all wallpapers
 ```
 

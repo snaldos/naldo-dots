@@ -67,19 +67,22 @@ repository rather than being mislabeled as one of those sources.
 
 ## Selected sources
 
-- Official Fedora DNF supplies the base session, OpenSSH, desktop applications,
-  Helix (`hx`), Node/npm, uv, Rust/Cargo, `evtest`, and build prerequisites.
-- Flathub supplies required Zen, official Discord, Obsidian, and the sole GPU
-  Screen Recorder provider. Sioyek and Vesktop are the only optional application
-  alternatives. No native second copy of GPU Screen Recorder is selected.
+- Official Fedora DNF supplies the base session, OpenSSH, GCR's shared SSH-agent
+  socket, Git LFS, desktop applications, Helix (`hx`), Node/npm, uv, Rust/Cargo,
+  `evtest`, and build prerequisites.
+- Flathub supplies required Zen, official Discord, Obsidian, the sole GPU
+  Screen Recorder provider, and the explicitly selected community-maintained
+  Sioyek PDF viewer. Vesktop is the only optional application alternative. No
+  native second copy of GPU Screen Recorder is selected.
 - Google Chrome uses Google's signed RPM and resulting official vendor repository
   as a selected secondary browser.
 - Tailscale uses Tailscale's stable official vendor repository.
 - Ghostty, Yazi, and keyd use reviewed community COPRs. LazyGit and Starship use
   distinct upstream-documented third-party COPRs; DNF owns both.
 - Herdr uses a reviewed local execution of the official upstream installer and
-  its stable self-update channel. Pixi uses its official installer only when
-  development work actually needs it; it is not part of the current inventory.
+  its stable self-update channel. Pixi is selected through the same
+  download-inspect-execute discipline using its official installer and dedicated
+  `~/.pixi/bin` path.
 - Noctalia v5 provides clipboard history and closed-application persistence;
   Fedora `wl-clipboard` supplies `wl-copy` and `wl-paste`.
 - npm and uv tools are rolling user tools. Cargo versions/tags remain explicit
@@ -99,6 +102,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | canonical ordered fresh-install sequence |
+| `LAPTOP-SETUP.md` | laptop-only execution checklist after Fedora is installed |
 | `EDITOR-TOOLS.md` | Helix responsibilities, installation commands and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

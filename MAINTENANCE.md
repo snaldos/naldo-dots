@@ -85,13 +85,13 @@ deleted as an implied binary uninstall.
 
 ## Pixi
 
-Pixi is development-only and is not selected in the current inventory.
-For a future installation made through Pixi's reviewed official installer at
-`https://pixi.sh/install.sh`, use `pixi self-update`. Do not use that command for
-a package-manager-owned Pixi, and do not add unconditional Pixi behavior to
-`naldo-update` while Pixi is absent. The official installer places the binary at
-`~/.pixi/bin/pixi`; upstream documents `rm ~/.pixi/bin/pixi` as its Linux
-uninstall step.
+Pixi is selected through the reviewed official installer at
+`https://pixi.sh/install.sh`, which places the binary at
+`~/.pixi/bin/pixi`. For that installer-owned binary, use `pixi self-update`;
+do not use it for a package-manager-owned Pixi. Pixi self-update remains a
+separate deliberate maintenance action rather than an unconditional
+`naldo-update` step, because it replaces the environment manager itself.
+Upstream documents `rm ~/.pixi/bin/pixi` as its Linux uninstall step.
 
 ## JetBrainsMono Nerd Font
 

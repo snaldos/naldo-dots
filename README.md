@@ -86,9 +86,13 @@ keyd, or trigger devices. Read `system/keyd/README.md` for the stable device,
 
 Exactly three repositories are supported:
 
-- dotfiles;
-- second-brain notes;
-- wallpapers.
+- dotfiles through normal Git;
+- second-brain notes through normal Git plus narrow attachment-only LFS rules;
+- wallpapers with compressed image payloads in Git LFS.
+
+Fedora's `git-lfs` package supplies the filters. Notes and Wallpapers require a
+repository-local LFS pre-push hook and a successful `git lfs fsck` before the
+timer is enabled.
 
 Machine-local paths and enabled state live in the real mode-`0600` file
 `~/.config/naldo/sync/repositories.conf`. `install.sh` or the first `sync-all`
@@ -178,8 +182,10 @@ is never overwritten; `settings.default.json` seeds only a missing file and uses
 ## Fedora bootstrap and verification
 
 For a migration, later clean install, or occasional Fedora audit, start with
-`bootstrap/fedora/CLEAN-INSTALL.md`, then review its six profile-aware provider
-manifests plus the editor-tool, remote-access, and wallpaper runbooks. After
+`bootstrap/fedora/CLEAN-INSTALL.md`. After Fedora is installed on the laptop,
+`bootstrap/fedora/LAPTOP-SETUP.md` is the profile-specific execution checklist.
+Both derive software from the same six profile-aware provider manifests and
+link the editor-tool, remote-access, and wallpaper runbooks. After
 installing selected dependencies and running the user installer:
 
 ```bash

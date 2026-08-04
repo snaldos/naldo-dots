@@ -109,6 +109,43 @@ Never commit private keys, `id_*` device identity files, PEM keys,
 agent sockets, copied host keys, or private certificates. Public keys are not
 secret but remain machine-local by default.
 
+## One Fedora GCR agent for Fish and systemd
+
+Use the Fedora `gcr` package's socket-activated agent rather than starting an
+agent in Fish, Ghostty, or Pi. Its per-user socket is
+`$XDG_RUNTIME_DIR/gcr/ssh`. Enable it and persist only the socket environment,
+not key material:
+
+```bash
+systemctl --user enable --now gcr-ssh-agent.socket
+ssh_socket="$XDG_RUNTIME_DIR/gcr/ssh"
+test -S "$ssh_socket"
+
+install -d -m 0700 "$HOME/.config/environment.d"
+printf 'SSH_AUTH_SOCK=%s\n' "$ssh_socket" |
+  install -m 0600 /dev/stdin \
+    "$HOME/.config/environment.d/60-naldo-ssh-agent.conf"
+systemctl --user set-environment SSH_AUTH_SOCK="$ssh_socket"
+fish -c 'set -Ux SSH_AUTH_SOCK "$XDG_RUNTIME_DIR/gcr/ssh"'
+
+export SSH_AUTH_SOCK="$ssh_socket"  # current provisioning shell only
+ssh-add "$HOME/.ssh/id_ed25519"
+ssh-add -l
+ssh -T git@github.com
+```
+
+`environment.d` is read when the user manager starts; the Fish universal value
+is machine-local. Neither belongs in Git. New Fish/Ghostty/Pi processes and
+systemd user services then use the same socket. Validate the user-manager path
+without creating a persistent test unit:
+
+```bash
+systemd-run --user --wait --collect \
+  --unit=naldo-ssh-agent-check.service /usr/bin/ssh-add -l
+```
+
+Do not configure `ForwardAgent`, a per-shell `ssh-agent`, or Tailscale SSH.
+
 ## Authorizing desktop and laptop
 
 After confirming the target host identity and address over Tailscale, copy only

@@ -102,16 +102,19 @@ actual_flatpaks="$(awk -F '\t' '$1 !~ /^#/ && NF { print $1 }' "$FLATPAK_MANIFES
 expected_flatpaks="$(printf '%s\n' app.zen_browser.zen com.discordapp.Discord md.obsidian.Obsidian \
   com.dec05eba.gpu_screen_recorder com.github.ahrm.sioyek dev.vencord.Vesktop | sort)"
 [[ "$actual_flatpaks" == "$expected_flatpaks" ]] || fail 'Flatpak IDs differ from selected policy'
-for optional_id in com.github.ahrm.sioyek dev.vencord.Vesktop; do
-  awk -F '\t' -v id="$optional_id" '$1 == id && $2 == "optional" { found=1 } END { exit !found }' \
-    "$FLATPAK_MANIFEST" || fail "$optional_id is not optional"
-done
+awk -F '\t' '
+  $1 == "com.github.ahrm.sioyek" && $2 == "feature" && $3 == "flathub" &&
+  $4 == "com.github.ahrm.sioyek.desktop" && $NF == "all" { found=1 }
+  END { exit !found }
+' "$FLATPAK_MANIFEST" || fail 'Sioyek is not a selected Flathub PDF feature'
+awk -F '\t' '$1 == "dev.vencord.Vesktop" && $2 == "optional" { found=1 } END { exit !found }' \
+  "$FLATPAK_MANIFEST" || fail 'Vesktop is not optional'
 awk -F '\t' '
   $1 == "com.dec05eba.gpu_screen_recorder" && $2 == "feature" && $3 == "flathub" &&
   $4 == "com.dec05eba.gpu_screen_recorder.desktop" && $5 == "gpu-screen-recorder" && $NF == "all" { found=1 }
   END { exit !found }
 ' "$FLATPAK_MANIFEST" || fail 'GPU Screen Recorder lacks one Flathub application and packaged CLI provider'
-pass 'Flatpak policy contains four required applications, two named optional applications, and one recorder provider'
+pass 'Flatpak policy contains five required applications, one named optional application, and one recorder provider'
 
 grep -Fq '"noctalia/screen_recorder"' "$REPO_DIR/noctalia/.config/noctalia/config.toml" ||
   fail 'Noctalia Screen Recorder plugin is not selected'

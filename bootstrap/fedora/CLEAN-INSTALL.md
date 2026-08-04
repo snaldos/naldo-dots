@@ -8,7 +8,7 @@ change system state are intentionally confined to this documentation.
 |---|---|---|
 | installer profile | `desktop` | `laptop` |
 | graphics | Fedora Intel stack plus reviewed RPM Fusion NVIDIA packages | Fedora Intel stack only |
-| wallpaper storage | manually mounted HDD at `/mnt/data`, physical repo below it, logical symlink and required-mount guard | direct `$HOME/Wallpapers` SSD worktree, empty guard |
+| wallpaper storage | UUID-mounted HDD at `/mnt/data` with bounded boot failure, physical repo below it, logical symlink and required-mount guard | direct `$HOME/Wallpapers` SSD worktree, empty guard |
 | device SSH label | `naldo-fedora-desktop` | `naldo-fedora-laptop` |
 | keyd mapping | shared reviewed mapping | shared reviewed mapping |
 
@@ -59,9 +59,10 @@ sudo dnf install "${fedora_packages[@]}"
 ```
 
 Fedora 44 is the audited baseline. It provides Niri, Noctalia, Helix (`hx`),
-OpenSSH, Rust/Cargo, the requested desktop applications, and the package names
-listed in the manifest. It does not provide the selected Typst CLI/editor tools,
-Ghostty, Yazi, or keyd through official Fedora repositories.
+OpenSSH, GCR's shared SSH-agent socket, Git LFS, Rust/Cargo, the requested
+desktop applications, and the package names listed in the manifest. It does not
+provide the selected Typst CLI/editor tools, Ghostty, Yazi, or keyd through
+official Fedora repositories.
 
 ## 4. Review and enable only selected external sources
 
@@ -161,9 +162,26 @@ mv -f -- "$receipt_tmp" "$receipt_dir/herdr-official-installer"
 Upstream documents `herdr update` for direct installs but currently no dedicated
 Linux uninstaller.
 
-Pixi remains development-only and is not selected in this inventory. If it is
-needed later, download and inspect `https://pixi.sh/install.sh` locally; only an
-official-installer installation at `~/.pixi/bin/pixi` uses `pixi self-update`.
+Pixi is the selected scientific environment manager for native, CUDA, Conda, or
+cross-platform projects. Never pipe its installer to a shell. Download and
+inspect the complete official script, suppress its shell-file edit because Fish
+PATH is tracked, and verify the exact installer-owned location:
+
+```bash
+pixi_installer="$(mktemp "${TMPDIR:-/tmp}/pixi-install.XXXXXX.sh")"
+curl --proto '=https' --tlsv1.2 --fail --location \
+  --output "$pixi_installer" https://pixi.sh/install.sh
+sh -n "$pixi_installer"
+hx "$pixi_installer"
+PIXI_NO_PATH_UPDATE=1 sh "$pixi_installer"
+rm -f -- "$pixi_installer"
+
+pixi_path="$(readlink -f -- "$HOME/.pixi/bin/pixi")"
+[[ "$pixi_path" == "$(readlink -m -- "$HOME/.pixi/bin/pixi")" ]]
+"$pixi_path" --version
+```
+
+Only this official-installer installation uses `pixi self-update`.
 Do not introduce mise or a generic GitHub binary updater.
 
 JetBrainsMono Nerd Font is the reviewed official Nerd Fonts `v3.5.0` release.
@@ -188,9 +206,11 @@ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flat
 flatpak install --user flathub "${flatpak_ids[@]}"
 ```
 
-Sioyek (`com.github.ahrm.sioyek`) is optional and currently community-maintained
-and unverified. Vesktop (`dev.vencord.Vesktop`) is an optional non-default
-fallback only. Missing optional Flatpaks does not fail required verification.
+Sioyek (`com.github.ahrm.sioyek`) is explicitly selected as an additional PDF
+viewer despite being community-maintained and unverified by Flathub; inspect its
+current sandbox permissions before installation. Zathura remains the PDF
+default, while Okular and Sioyek remain additional handlers. Vesktop
+(`dev.vencord.Vesktop`) is the only optional non-default fallback.
 
 `com.dec05eba.gpu_screen_recorder` is the sole GPU Screen Recorder provider. The
 official Noctalia `noctalia/screen_recorder` plugin natively detects this Flatpak
@@ -265,22 +285,34 @@ ssh -T git@github.com
 Use a passphrase and a distinct GitHub device title. Never print or copy the
 private key from another machine by default.
 
+Configure the one Fedora GCR agent shared by Fish, Pi, Git, and systemd user
+services before cloning. Follow the complete machine-local procedure in
+`REMOTE-ACCESS.md`; enable `gcr-ssh-agent.socket`, persist only
+`SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh` through Fish and `environment.d`, load
+the key, and verify GitHub. Do not start an agent per shell or enable forwarding.
+
 ## 9. Clone dotfiles and notes
 
 ```bash
 git clone GIT-DOTFILES-REMOTE "$HOME/dotfiles"
 git clone GIT-NOTES-REMOTE "$HOME/Vaults/second-brain"
+git -C "$HOME/Vaults/second-brain" lfs install --local
+git -C "$HOME/Vaults/second-brain" lfs pull
+git -C "$HOME/Vaults/second-brain" lfs fsck
 ```
 
-Create machine-local Git identity/signing configuration separately. Do not put
-credentials in the dotfiles.
+Dotfiles uses normal Git. Notes keeps narrow LFS rules only for future binary
+attachments; it may currently report zero LFS payloads. Create machine-local Git
+identity/signing configuration separately. Do not put credentials in the
+dotfiles or restore previously removed credential files.
 
 ## 10. Desktop: mount the HDD and clone/symlink wallpapers
 
-Follow `WALLPAPERS.md`: identify the HDD with `lsblk`, mount the verified
-partition manually at `/mnt/data`, require `findmnt --mountpoint /mnt/data` to
-succeed, clone to `/mnt/data/repos/Wallpapers`, and link
-`$HOME/Wallpapers` to it. Initialize the private sync file once, then edit it:
+Follow `WALLPAPERS.md`: identify the HDD with `lsblk`, test-mount the verified
+partition at `/mnt/data`, add and validate its UUID-based `nofail` fstab entry,
+prove an fstab-based remount, clone to `/mnt/data/repos/Wallpapers`, initialize
+and verify its local LFS objects, and link `$HOME/Wallpapers` to it. Initialize
+the private sync file once, then edit it:
 
 ```bash
 "$HOME/dotfiles/automation/.local/libexec/naldo/init-sync-config" \
@@ -302,6 +334,9 @@ No dotfiles script creates or mounts this path.
 
 ```bash
 git clone GIT-WALLPAPERS-REMOTE "$HOME/Wallpapers"
+git -C "$HOME/Wallpapers" lfs install --local
+git -C "$HOME/Wallpapers" lfs pull
+git -C "$HOME/Wallpapers" lfs fsck
 "$HOME/dotfiles/automation/.local/libexec/naldo/init-sync-config" \
   --config "$HOME/.config/naldo/sync/repositories.conf" \
   --template "$HOME/dotfiles/automation/.config/naldo/sync/repositories.conf.example"
@@ -336,8 +371,8 @@ synchronization.
 ./bootstrap/fedora/verify.sh --profile laptop   # laptop
 ```
 
-Resolve required misses. Optional Sioyek, Vesktop, `ty`, and other optional rows
-may remain absent.
+Resolve required misses. Vesktop, `ty`, and other explicitly optional rows may
+remain absent. Pixi, Sioyek, GCR, and Git LFS are selected features and must pass.
 
 ## 14. Install the reviewed keyd configuration
 
@@ -395,6 +430,9 @@ hx --health toml
 hx --health python
 hx --health typst
 hx --health markdown
+pixi --version
+flatpak info com.github.ahrm.sioyek
+test "$(xdg-mime query default application/pdf)" = org.pwmt.zathura.desktop
 ```
 
 ### First-session clipboard test
@@ -443,10 +481,14 @@ after verifying host identity.
 ## 19. Test each synchronization task manually
 
 Inspect `~/.config/naldo/sync/repositories.conf`, verify the desktop mount guard
-where applicable, then run tasks one at a time. These commands can commit,
-rebase, and push:
+where applicable, ensure the user manager and a new Fish shell both expose the
+same GCR socket, and check required LFS objects. Then run tasks one at a time.
+These commands can commit, rebase, and push:
 
 ```bash
+test "$(systemctl --user show-environment | awk -F= '$1 == "SSH_AUTH_SOCK" { print substr($0, index($0, "=") + 1) }')" = "$XDG_RUNTIME_DIR/gcr/ssh"
+git -C "$HOME/Vaults/second-brain" lfs fsck
+git -C "$HOME/Wallpapers" lfs fsck
 sync-all dotfiles
 sync-all notes
 sync-all wallpapers
@@ -460,4 +502,11 @@ Only after all three tasks and recovery paths are confirmed:
 ```bash
 sync-control enable
 sync-control status
+systemctl --user start sync-all.service
+systemctl --user show sync-all.service -p Result -p ExecMainStatus
+sync-control logs
 ```
+
+If the user-manager run cannot reach GitHub, LFS, or the configured wallpaper
+mount, disable the timer immediately with `sync-control disable`, fix the actual
+cause, and repeat the manual tasks before re-enabling it.
