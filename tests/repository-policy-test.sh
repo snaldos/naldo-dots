@@ -66,20 +66,27 @@ grep -Fq '  "󰙨 Zen Browser"' "$launcher" || fail 'curated launcher lacks Zen'
 ! rg -n 'YAZI_CHOOSER|Files \(Yazi\)|Translator|Smassh|require_command (rlwrap|trans|smassh)' "$launcher" >/dev/null ||
   fail 'curated launcher retains an unselected application'
 zen_rules="$REPO_DIR/niri/.config/niri/conf.d/rules.kdl"
-[[ "$(grep -Fc 'match app-id=r#"^app\.zen_browser\.zen$"#' "$zen_rules")" == 2 ]] ||
-  fail 'normal and picture-in-picture Zen rules do not match the live app ID'
-grep -Fq 'exclude title="^Picture-in-Picture$"' "$zen_rules" ||
-  fail 'normal Zen floating rule does not exclude picture-in-picture'
-grep -Fq 'default-column-width { fixed 1200; }' "$zen_rules" ||
-  fail 'normal Zen floating width differs from launcher policy'
-grep -Fq 'default-window-height { fixed 900; }' "$zen_rules" ||
-  fail 'normal Zen floating height differs from launcher policy'
+[[ "$(grep -Fc 'match app-id=r#"^app\.zen_browser\.zen$"#' "$zen_rules")" == 1 ]] ||
+  fail 'Zen has a layout rule beyond picture-in-picture'
+grep -Fq 'match app-id=r#"^app\.zen_browser\.zen$"# title="^Picture-in-Picture$"' "$zen_rules" ||
+  fail 'picture-in-picture Zen rule does not match the live app ID'
+! grep -Fq 'exclude title="^Picture-in-Picture$"' "$zen_rules" ||
+  fail 'ordinary Zen still has a layout rule'
+! grep -Fq 'open-floating false' "$zen_rules" ||
+  fail 'ordinary Zen is still forced into a layout'
+grep -Fq 'ZEN_FLOAT_WIDTH=1080' "$launcher" ||
+  fail 'launcher Zen width differs from floating Ghostty'
+grep -Fq 'ZEN_FLOAT_HEIGHT=920' "$launcher" ||
+  fail 'launcher Zen height differs from floating Ghostty'
+for action in move-window-to-floating set-window-width set-window-height center-window; do
+  grep -Fq "$action --id" "$launcher" || fail "launcher does not target Zen with $action"
+done
 grep -Fq 'match app-id=r#"^app\.zen_browser\.zen$"#' "$REPO_DIR/niri/.config/niri/scripts/theme_launcher.sh" ||
   fail 'Zen opacity rule does not match the live app ID'
 # Literal source assertion; expansion belongs to the launcher at runtime.
 # shellcheck disable=SC2016
-grep -Fq 'spawn_app flatpak run "$ZEN_FLATPAK_ID"' "$REPO_DIR/niri/.config/niri/scripts/app_launcher.sh" ||
-  fail 'Niri does not launch Zen directly'
+grep -Fq 'spawn_app flatpak run "$ZEN_FLATPAK_ID" --new-window about:newtab' "$launcher" ||
+  fail 'Niri launcher does not request one direct new Zen window'
 while IFS= read -r -d '' script; do
   substantive="$(awk '!/^[[:space:]]*(#|$)/ { count++ } END { print count+0 }' "$script")"
   if ((substantive < 25)) && rg -q '^[[:space:]]*exec[[:space:]]' "$script"; then

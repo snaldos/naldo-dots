@@ -149,10 +149,12 @@ Desktop: app.zen_browser.zen.desktop
 Command: flatpak run app.zen_browser.zen
 ```
 
-The Niri application menu invokes that command directly; MIME associations use
-the Flatpak desktop file. On the selected installation, Niri reports the live
-Wayland app ID `app.zen_browser.zen`; desktop-file `StartupWMClass` metadata is
-not authoritative. Reconfirm the runtime identity after installation without
+MIME and ordinary desktop launches use the Flatpak desktop file and have no
+Zen-specific layout rule. The `Mod+Z` application menu requests one direct new
+Zen window, then floats, sizes, and centers only that newly focused window; it
+does not change pre-existing browser windows. Picture-in-Picture remains rule-based and
+floating. On the selected installation, Niri reports the live Wayland app ID
+`app.zen_browser.zen`; desktop-file `StartupWMClass` metadata is not authoritative. Reconfirm the runtime identity after installation without
 printing browser titles:
 
 ```bash

@@ -3,15 +3,9 @@
 // https://niri-wm.github.io/niri/Configuration:-Window-Rules
 // The installed Zen Flatpak's live Wayland app ID is `app.zen_browser.zen`;
 // desktop-file StartupWMClass metadata is not authoritative for Niri. Confirm
-// with `niri msg -j windows`, then adjust every tracked Zen regex if it changes.
-// New floating windows are centered by Niri within the working area.
-window-rule {
-    match app-id=r#"^app\.zen_browser\.zen$"#
-    exclude title="^Picture-in-Picture$"
-    open-floating true
-    default-column-width { fixed 1200; }
-    default-window-height { fixed 900; }
-}
+// with `niri msg -j windows`, then adjust the tracked Zen regex if it changes.
+// Ordinary Zen windows have no layout rule. Mod+Z moves only its newly focused
+// window to the same floating size as the launcher terminal and centers it.
 window-rule {
     match app-id=r#"^app\.zen_browser\.zen$"# title="^Picture-in-Picture$"
     open-floating true
