@@ -1,0 +1,9 @@
+# Keep Noctalia's generated built-in theme and override only compatibility and
+# low-contrast foreground mappings.
+inherits = "noctalia"
+
+"ui.background" = {}
+"comment" = { fg = "onSurfaceVariant", modifiers = ["italic"] }
+"constant.character" = "onSecondaryContainer"
+"constant.character.escape" = "onTertiaryContainer"
+"string.regexp" = { fg = "onTertiaryContainer" }

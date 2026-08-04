@@ -1,0 +1,15 @@
+// Laptop-specific Niri settings.
+output "eDP-1" {
+    // Full HD is 1920x1080 (16:9). Omitting the refresh rate selects the
+    // panel's highest refresh rate for this resolution.
+    mode "1920x1080"
+    scale 1
+    transform "normal"
+    position x=0 y=0
+}
+
+// Let Noctalia lock the session before requesting suspend. The laptop's logind
+// configuration must leave lid handling to the desktop session.
+switch-events {
+    lid-close { spawn "noctalia" "msg" "session" "lock-and-suspend"; }
+}

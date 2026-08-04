@@ -1,0 +1,9 @@
+# package	commands	classification	intentional_role	profile
+@earendil-works/pi-coding-agent	pi	development	Pi coding-agent runtime	all
+@openai/codex	codex	development	Official Codex CLI and Pi allowance integration	all
+prettier	prettier	feature	Formatter for Markdown JSON JSONC YAML HTML and CSS	all
+yaml-language-server	yaml-language-server	feature	YAML language server	all
+bash-language-server	bash-language-server	feature	Bash language server	all
+vscode-langservers-extracted	vscode-css-language-server,vscode-html-language-server,vscode-json-language-server	feature	Community npm extraction of VS Code CSS HTML and JSON language servers	all
+@taplo/cli	taplo	feature	Taplo TOML language-server CLI	all
+@bitwarden/cli	bw	optional	Backend for the optional Noctalia Bitwarden plugin	all

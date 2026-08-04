@@ -1,0 +1,25 @@
+# Credentials and machine-local Pi state
+/auth.json
+/settings.json
+/agent.db*
+/trust.json
+/sessions/
+
+# Installed packages and generated runtime material
+/git/
+/npm/
+/bin/
+/packages/
+/cache/
+/tmp/
+/logs/
+*.log
+/extensions/herdr-agent-state.ts
+
+# Rendered by Noctalia; the theme extension falls back to built-in dark.
+/themes/noctalia.json
+
+# Temporary/editor files
+.DS_Store
+*.swp
+*.swo

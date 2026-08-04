@@ -1,0 +1,6 @@
+shaders/active.ghostty
+shaders/generated/
+shaders/.shader-selection
+
+# Rendered locally from Noctalia's built-in Ghostty template.
+themes/noctalia

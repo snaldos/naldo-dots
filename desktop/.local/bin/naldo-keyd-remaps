@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Show the active keyd remaps in Noctalia's searchable dmenu."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def config_files() -> list[Path]:
+    config_dir = Path(os.environ.get("KEYD_CONFIG_DIR", "/etc/keyd"))
+    return sorted(path for path in config_dir.glob("*.conf") if path.is_file())
+
+
+def parse_config(path: Path) -> list[tuple[str, str, str, str, str]]:
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise RuntimeError(f"could not read {path}: {error}") from error
+
+    section = ""
+    context: list[str] = []
+    mappings: list[tuple[str, str, str, str, str]] = []
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            context = []
+            continue
+
+        if line.startswith("#"):
+            comment = line.removeprefix("#").strip()
+            if comment:
+                context.append(comment)
+            continue
+
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip()
+            context = []
+            continue
+
+        if "=" not in line or not section or section == "ids":
+            continue
+
+        key, value = (part.strip() for part in line.split("=", 1))
+        if key and value:
+            mappings.append((path.stem, section, key, value, " ".join(context)))
+
+    return mappings
+
+
+def format_mappings(
+    mappings: list[tuple[str, str, str, str, str]], *, show_file: bool
+) -> str:
+    entries: list[str] = []
+    for file_name, section, key, value, description in mappings:
+        prefix = f"{file_name} · " if show_file else ""
+        entry = f"{prefix}{section.upper()} · {key.upper()}  →  {value}"
+        if description:
+            entry += f"  —  {description}"
+        entries.append(entry)
+    return "\n".join(entries) + "\n"
+
+
+def main(arguments: list[str]) -> int:
+    if arguments not in ([], ["--print"]):
+        print(f"Usage: {Path(sys.argv[0]).name} [--print]", file=sys.stderr)
+        return 2
+
+    files = config_files()
+    if not files:
+        print("Error: no keyd configuration files found", file=sys.stderr)
+        return 1
+
+    try:
+        mappings = [mapping for path in files for mapping in parse_config(path)]
+    except RuntimeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+
+    if not mappings:
+        print("Error: no keyd remaps found", file=sys.stderr)
+        return 1
+
+    output = format_mappings(mappings, show_file=len(files) > 1)
+    if arguments == ["--print"]:
+        print(output, end="")
+        return 0
+
+    noctalia = os.environ.get("NOCTALIA", "noctalia")
+    if shutil.which(noctalia) is None:
+        print(f"Error: Noctalia is required: {noctalia}", file=sys.stderr)
+        return 1
+
+    subprocess.run(
+        [noctalia, "dmenu", "-p", "keyd remaps > "],
+        input=output,
+        text=True,
+        stdout=subprocess.DEVNULL,
+        check=False,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

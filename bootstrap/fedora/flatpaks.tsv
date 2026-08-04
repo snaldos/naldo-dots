@@ -1,0 +1,7 @@
+# id	classification	remote	desktop_file	integration_commands	purpose	profile
+app.zen_browser.zen	feature	flathub	app.zen_browser.zen.desktop	-	Verified Zen distribution and only default web browser	all
+com.discordapp.Discord	feature	flathub	com.discordapp.Discord.desktop	-	Verified official Discord client and default Discord URI handler	all
+md.obsidian.Obsidian	feature	flathub	md.obsidian.Obsidian.desktop	-	Verified Obsidian distribution and additional Markdown/Obsidian URI handler	all
+com.dec05eba.gpu_screen_recorder	feature	flathub	com.dec05eba.gpu_screen_recorder.desktop	gpu-screen-recorder	Official GPU Screen Recorder Flathub application and Noctalia recorder CLI backend	all
+com.github.ahrm.sioyek	optional	flathub	com.github.ahrm.sioyek.desktop	-	Community-maintained unverified optional research PDF viewer	all
+dev.vencord.Vesktop	optional	flathub	dev.vencord.Vesktop.desktop	-	Verified non-default fallback only when official Discord Linux media behavior is inadequate	all

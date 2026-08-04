@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+CREDENTIAL_GUARD="${SYNC_CREDENTIAL_GUARD:-$SCRIPT_DIR/git-secret-guard}"
+REMOTE="${SYNC_REMOTE:-origin}"
+BRANCH="${SYNC_BRANCH:-main}"
+LABEL="repository"
+REPOSITORY=""
+
+log() {
+  printf '[%s] %s\n' "$LABEL" "$*"
+}
+
+fail() {
+  log "ERROR: $*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<EOF
+Usage: ${0##*/} [OPTIONS] REPOSITORY
+
+Synchronize one ordinary Git repository by staging, validating, committing,
+fetching, rebasing, and pushing its configured branch.
+
+Options:
+  --label LABEL    Log and default commit-message label
+  --remote REMOTE  Git remote (default: $REMOTE)
+  --branch BRANCH  Local and remote branch (default: $BRANCH)
+  -h, --help       Show this help
+EOF
+}
+
+while (($# > 0)); do
+  case "$1" in
+  --label)
+    (($# >= 2)) || fail "--label requires a value"
+    LABEL="$2"
+    shift 2
+    ;;
+  --label=*)
+    LABEL="${1#*=}"
+    [[ -n "$LABEL" ]] || fail "--label requires a value"
+    shift
+    ;;
+  --remote)
+    (($# >= 2)) || fail "--remote requires a value"
+    REMOTE="$2"
+    shift 2
+    ;;
+  --remote=*)
+    REMOTE="${1#*=}"
+    [[ -n "$REMOTE" ]] || fail "--remote requires a value"
+    shift
+    ;;
+  --branch)
+    (($# >= 2)) || fail "--branch requires a value"
+    BRANCH="$2"
+    shift 2
+    ;;
+  --branch=*)
+    BRANCH="${1#*=}"
+    [[ -n "$BRANCH" ]] || fail "--branch requires a value"
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    fail "unknown option: $1"
+    ;;
+  *)
+    [[ -z "$REPOSITORY" ]] || fail "only one repository path is accepted"
+    REPOSITORY="$1"
+    shift
+    ;;
+  esac
+done
+
+if (($# > 0)); then
+  [[ -z "$REPOSITORY" && $# == 1 ]] || fail "only one repository path is accepted"
+  REPOSITORY="$1"
+fi
+[[ -n "$REPOSITORY" ]] || {
+  usage >&2
+  exit 2
+}
+[[ -d "$REPOSITORY" ]] || fail "repository path is missing: $REPOSITORY"
+REPOSITORY="$(cd -- "$REPOSITORY" && pwd -P)"
+
+for command_name in git flock date; do
+  command -v "$command_name" >/dev/null 2>&1 || fail "missing command: $command_name"
+done
+[[ -x "$CREDENTIAL_GUARD" ]] || fail "missing credential guard: $CREDENTIAL_GUARD"
+
+git -C "$REPOSITORY" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
+  fail "not a Git work tree: $REPOSITORY"
+git -C "$REPOSITORY" remote get-url "$REMOTE" >/dev/null 2>&1 ||
+  fail "missing Git remote: $REMOTE"
+git_directory="$(git -C "$REPOSITORY" rev-parse --absolute-git-dir)"
+
+exec 9>"$git_directory/naldo-sync.lock"
+flock -n 9 || fail "another synchronization is already running for $REPOSITORY"
+
+[[ ! -d "$git_directory/rebase-merge" ]] || fail "a rebase is already in progress"
+[[ ! -d "$git_directory/rebase-apply" ]] || fail "a rebase is already in progress"
+[[ ! -f "$git_directory/MERGE_HEAD" ]] || fail "a merge is already in progress"
+
+current_branch="$(git -C "$REPOSITORY" branch --show-current)"
+[[ "$current_branch" == "$BRANCH" ]] ||
+  fail "expected branch $BRANCH, found ${current_branch:-detached HEAD}"
+
+git -C "$REPOSITORY" add -A
+if ! git -C "$REPOSITORY" -c core.whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab \
+  diff --cached --check; then
+  fail "staged changes contain leftover conflict markers"
+fi
+if ! git -C "$REPOSITORY" diff --cached --check; then
+  log "WARNING: staged whitespace errors shown above will be synchronized unchanged" >&2
+fi
+
+log "checking repository index for credentials"
+"$CREDENTIAL_GUARD" "$REPOSITORY" || fail "credential check failed"
+
+host="${HOSTNAME:-}"
+[[ -n "$host" ]] || host="$(uname -n)"
+host="${host%%.*}"
+commit_message="${SYNC_COMMIT_MESSAGE:-sync(${LABEL}@${host}): $(date --iso-8601=seconds)}"
+if git -C "$REPOSITORY" diff --cached --quiet; then
+  log "no local changes to commit"
+else
+  git -C "$REPOSITORY" commit -m "$commit_message"
+fi
+[[ -z "$(git -C "$REPOSITORY" status --porcelain)" ]] ||
+  fail "working tree changed while synchronizing; run again"
+
+log "fetching $REMOTE"
+git -C "$REPOSITORY" fetch --prune "$REMOTE"
+if git -C "$REPOSITORY" show-ref --verify --quiet "refs/remotes/$REMOTE/$BRANCH"; then
+  log "rebasing onto $REMOTE/$BRANCH"
+  if ! git -C "$REPOSITORY" rebase "$REMOTE/$BRANCH"; then
+    fail "rebase stopped safely; resolve or abort it manually (nothing was pushed)"
+  fi
+fi
+
+log "pushing $BRANCH"
+git -C "$REPOSITORY" push --set-upstream "$REMOTE" "$BRANCH"
+log "sync complete"

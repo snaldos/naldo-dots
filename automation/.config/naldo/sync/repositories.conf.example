@@ -1,0 +1,16 @@
+# Machine-local repository synchronization settings.
+# Copy to ~/.config/naldo/sync/repositories.conf; install.sh does this only
+# when the active file is absent. Paths may be absolute or start with ~/.
+
+dotfiles_enabled=true
+dotfiles_path=~/dotfiles
+
+notes_enabled=true
+notes_path=~/Vaults/second-brain
+
+wallpapers_enabled=true
+wallpapers_path=~/Wallpapers
+
+# Leave empty unless this machine's physical wallpaper worktree requires a
+# mount. Configure the verified absolute mount point only in the private copy.
+WALLPAPERS_REQUIRED_MOUNT=

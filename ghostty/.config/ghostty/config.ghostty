@@ -1,0 +1,81 @@
+# Naldo's Ghostty config
+# Validate:
+# ghostty +validate-config --config-file ~/.config/ghostty/config.ghostty
+
+# -----------------------------------------------------------------------------
+# Font
+# -----------------------------------------------------------------------------
+
+font-family = JetBrainsMono Nerd Font
+font-size = 12
+
+# -----------------------------------------------------------------------------
+# Window
+# -----------------------------------------------------------------------------
+
+window-decoration = auto
+
+window-padding-x = 6
+window-padding-y = 6
+window-padding-balance = true
+window-padding-color = background
+
+# New windows, tabs and splits retain the current directory.
+window-inherit-working-directory = true
+tab-inherit-working-directory = true
+split-inherit-working-directory = true
+
+# -----------------------------------------------------------------------------
+# Transparency
+# -----------------------------------------------------------------------------
+
+# Ghostty supplies alpha; Niri supplies blur. Apply opacity to explicit cells
+# too; each cell's alpha controls how much Cosmos is visible behind it.
+background-opacity = 0.70
+background-opacity-cells = true
+
+# blur for linux is only supported for kde as of now
+background-blur = false
+
+# -----------------------------------------------------------------------------
+# Cursor
+# -----------------------------------------------------------------------------
+
+cursor-style = block
+cursor-style-blink = false
+
+# -----------------------------------------------------------------------------
+# Shell integration
+# -----------------------------------------------------------------------------
+
+# Ghostty detects Fish automatically.
+shell-integration = detect
+
+# Keep shell integration, but do not replace the block cursor with a bar.
+shell-integration-features = no-cursor
+
+# -----------------------------------------------------------------------------
+# Input and clipboard
+# -----------------------------------------------------------------------------
+
+mouse-hide-while-typing = true
+
+# Copy to both the primary selection and regular system clipboard.
+copy-on-select = clipboard
+
+# Forward Alt+Backspace in the form expected by Pi's terminal editor.
+keybind = alt+backspace=text:\x1b\x7f
+
+# -----------------------------------------------------------------------------
+# Shader
+# -----------------------------------------------------------------------------
+
+# The manager writes this optional machine-local shader chain.
+config-file = ?~/.config/ghostty/shaders/active.ghostty
+
+# -----------------------------------------------------------------------------
+# Theme
+# -----------------------------------------------------------------------------
+
+# install.sh seeds this machine-local theme before Noctalia first renders it.
+theme = noctalia

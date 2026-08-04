@@ -1,0 +1,86 @@
+# package	classification	executables	desktop_files	units	purpose	profile
+# desktop_files use application: or wayland: prefixes; units use user: or system: prefixes.
+# profile is exactly all, desktop, or laptop.
+gdm	session	-	-	system:gdm.service	Fedora Workstation login manager; presence only	all
+niri	session	niri	wayland:niri.desktop	user:niri.service	Compositor and package-provided GDM session	all
+noctalia	session	noctalia	application:dev.noctalia.Noctalia.desktop	-	Native desktop shell	all
+pipewire	session	pipewire	-	user:pipewire.service	Audio and Noctalia runtime	all
+wireplumber	session	wireplumber	-	user:wireplumber.service	PipeWire session policy	all
+xdg-desktop-portal	session	-	-	user:xdg-desktop-portal.service	Portal broker	all
+xdg-desktop-portal-gnome	session	-	-	-	GNOME portal backend	all
+xdg-desktop-portal-gtk	session	-	-	-	GTK portal backend	all
+gnome-keyring	feature	-	-	user:gnome-keyring-daemon.service	Secret Service	all
+polkit	session	-	-	system:polkit.service	Authority for Noctalia PolicyKit agent	all
+xwayland-satellite	session	xwayland-satellite	-	-	X11 compatibility under Niri	all
+NetworkManager	feature	nmcli	-	system:NetworkManager.service	Noctalia network backend	all
+bluez	feature	bluetoothctl	-	system:bluetooth.service	Bluetooth backend	all
+upower	feature	upower	-	system:upower.service	Power and battery backend	all
+bash	feature	bash,sh	-	-	Tracked shell scripts and hooks	all
+coreutils	feature	install,cp,mv,rm,mkdir,mktemp,chmod,cat,head,tail,dirname,date,cut,sort,test,base64,sha256sum,sleep,readlink,uname,env	-	-	Core script utilities	all
+diffutils	feature	cmp	-	-	Safe file comparison	all
+findutils	feature	find	-	-	Deployment inventory	all
+gawk	feature	awk	-	-	Script parsing	all
+git-core	feature	git	-	-	Deployment and synchronization	all
+grep	feature	grep	-	-	Validation parsing	all
+sed	feature	sed	-	-	Configuration diagnostics	all
+stow	feature	stow	-	-	User configuration deployment	all
+util-linux	feature	flock,findmnt,setsid	-	-	Locks wallpaper mount guard and detached openers	all
+systemd	feature	systemctl,systemd-analyze,journalctl,udevadm	-	-	User units and validation	all
+flatpak	feature	flatpak	-	-	Selected desktop applications	all
+python3	feature	python3	-	-	Desktop helpers and tests	all
+jq	feature	jq	-	-	Niri IPC parsing	all
+fish	feature	fish	-	-	Interactive shell	all
+ripgrep	development	rg	-	-	Repository and document search	all
+curl	development	curl	-	-	Explicit source inspection	all
+sudo	development	sudo,sudoedit	-	-	Manual reviewed privileged operations	all
+dnf-plugins-core	feature	-	-	-	COPR and DNF repository commands	all
+rpm	feature	rpm	-	-	Installed-package verification and vendor signature checks	all
+fontconfig	feature	fc-list,fc-match	-	-	Configured font-family discovery and verification	all
+acl	feature	getfacl	-	-	Bongo Cat input-device ACL verification	all
+openssh-clients	feature	ssh,scp,sftp,ssh-keygen,ssh-copy-id,ssh-add	-	-	OpenSSH client tools	all
+openssh-server	feature	sshd	-	system:sshd.service	Installed server; activation remains manual	all
+libnotify	optional	notify-send	-	-	Feature-local desktop diagnostics	all
+xdg-utils	feature	xdg-open	-	-	Desktop opener	all
+wl-clipboard	feature	wl-copy,wl-paste	-	-	Wayland CLI copy/paste and screenshot handoff; not history or persistence	all
+procps-ng	feature	pkill	-	-	Noctalia recorder process control and optional Orca toggle	all
+dbus-tools	feature	dbus-send	-	-	Zathura theme reload hook	all
+desktop-file-utils	development	desktop-file-validate	-	-	Desktop-entry validation	all
+ShellCheck	development	shellcheck	-	-	Shell static analysis	all
+helix	feature	hx	application:Helix.desktop	-	Default text and Markdown editor	all
+neovim	optional	nvim	-	-	Stock secondary editor	all
+shfmt	feature	shfmt	-	-	Bash formatter	all
+uv	development	uv	-	-	Python environments and user tools	all
+nodejs22	development	node	-	-	Fedora 44 Node.js 22 runtime for Pi and language servers	all
+nodejs22-npm	development	npm	-	-	Fedora 44 npm package for user-prefix tools	all
+rust	development	rustc	-	-	Rust compiler for locked Cargo tools	all
+cargo	development	cargo	-	-	Locked Rust tool installation	all
+gcc	development	gcc	-	-	Native build prerequisite	all
+gcc-c++	development	g++	-	-	C++ build prerequisite	all
+make	development	make	-	-	Native build prerequisite	all
+cmake	development	cmake	-	-	Native build prerequisite	all
+pkgconf-pkg-config	development	pkg-config	-	-	Native dependency discovery	all
+openssl-devel	development	-	-	-	Cargo build prerequisite	all
+difftastic	feature	difft	-	-	LazyGit structural diff	all
+git-delta	feature	delta	-	-	LazyGit pager	all
+poppler-utils	development	pdftotext	-	-	Scientific PDF extraction	all
+blender	feature	blender	application:blender.desktop	-	Installed 3D application	all
+firefox	feature	firefox	application:org.mozilla.firefox.desktop	-	Secondary browser	all
+inkscape	feature	inkscape	application:org.inkscape.Inkscape.desktop	-	SVG editor and additional handler	all
+obs-studio	feature	obs	application:com.obsproject.Studio.desktop	-	Recording and streaming application	all
+obs-studio-plugin-browser	feature	-	-	-	OBS browser source	all
+thunderbird	feature	thunderbird	application:net.thunderbird.Thunderbird.desktop	-	Mail calendar and message handler	all
+playerctl	feature	playerctl	-	-	Configured media-key actions	all
+orca	optional	orca	-	-	Configured optional screen-reader toggle	all
+imv	feature	imv	application:imv.desktop	-	Default image viewer	all
+mpv	feature	mpv	application:mpv.desktop	-	Default audio and video player	all
+mpv-mpris	feature	-	-	-	mpv desktop media integration	all
+swappy	feature	swappy	application:swappy.desktop	-	Screenshot annotation	all
+zathura	feature	zathura	application:org.pwmt.zathura.desktop	-	Default PDF viewer	all
+zathura-pdf-poppler	feature	-	-	-	Zathura PDF backend	all
+okular	feature	okular	application:org.kde.okular.desktop,application:okularApplication_pdf.desktop	-	Installed secondary PDF application	all
+ImageMagick	feature	magick	-	-	Fish image conversion helper	all
+ddcutil	feature	ddcutil	-	-	External-monitor brightness	all
+btop	feature	btop	-	-	Noctalia template target	all
+cava	feature	cava	-	-	Noctalia visualizer and template	all
+eza	optional	eza	-	-	Fish listing enhancement	all
+evtest	feature	evtest	-	-	Noctalia Bongo Cat input reader	all

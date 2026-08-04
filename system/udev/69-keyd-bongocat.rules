@@ -1,0 +1,1 @@
+KERNEL=="event*", SUBSYSTEM=="input", ATTRS{name}=="keyd virtual keyboard", SYMLINK+="input/by-id/keyd-virtual-kbd", TAG+="uaccess"

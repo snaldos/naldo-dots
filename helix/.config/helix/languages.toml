@@ -1,0 +1,117 @@
+# Every external command used below has one preferred provider in
+# bootstrap/fedora/{commands,npm-packages,uv-tools,cargo-tools}.tsv.
+
+[language-server.basedpyright]
+command = "basedpyright-langserver"
+args = ["--stdio"]
+
+# BasedPyright owns types, completions, navigation, and type diagnostics. Ruff
+# owns import organization, lint fixes, and formatting.
+[language-server.basedpyright.config.basedpyright]
+disableOrganizeImports = true
+
+[language-server.basedpyright.config.basedpyright.analysis]
+typeCheckingMode = "standard"
+
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+
+[language-server.tinymist]
+command = "tinymist"
+
+[language-server.harper-ls]
+command = "harper-ls"
+args = ["--stdio"]
+
+[language-server.harper-ls.config.harper-ls]
+dialect = "American"
+
+[language-server.markdown-oxide]
+command = "markdown-oxide"
+
+[language-server.bash-language-server]
+command = "bash-language-server"
+args = ["start"]
+
+[language-server.taplo]
+command = "taplo"
+args = ["lsp", "stdio"]
+
+[language-server.yaml-language-server]
+command = "yaml-language-server"
+args = ["--stdio"]
+
+[language-server.vscode-json-language-server]
+command = "vscode-json-language-server"
+args = ["--stdio"]
+
+[language-server.vscode-html-language-server]
+command = "vscode-html-language-server"
+args = ["--stdio"]
+
+[language-server.vscode-css-language-server]
+command = "vscode-css-language-server"
+args = ["--stdio"]
+
+[[language]]
+name = "python"
+language-servers = ["basedpyright", "ruff"]
+formatter = { command = "ruff", args = ["format", "--stdin-filename", "%{buffer_name}", "-"] }
+auto-format = true
+
+[[language]]
+name = "typst"
+language-servers = ["tinymist", "harper-ls"]
+formatter = { command = "typstyle" }
+auto-format = true
+soft-wrap = { enable = true }
+
+# Markdown Oxide supplies vault/PKM semantics, Harper supplies prose diagnostics,
+# and Prettier performs formatting; none duplicates another server's role.
+[[language]]
+name = "markdown"
+language-servers = ["markdown-oxide", "harper-ls"]
+formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
+soft-wrap = { enable = true }
+
+[[language]]
+name = "bash"
+language-servers = ["bash-language-server"]
+formatter = { command = "shfmt", args = ["-i", "2"] }
+auto-format = true
+
+[[language]]
+name = "toml"
+language-servers = ["taplo"]
+auto-format = true
+
+[[language]]
+name = "json"
+language-servers = ["vscode-json-language-server"]
+formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
+auto-format = true
+
+[[language]]
+name = "jsonc"
+language-servers = ["vscode-json-language-server"]
+formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
+auto-format = true
+
+[[language]]
+name = "yaml"
+language-servers = ["yaml-language-server"]
+formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
+auto-format = true
+
+[[language]]
+name = "html"
+language-servers = ["vscode-html-language-server"]
+formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
+auto-format = true
+
+[[language]]
+name = "css"
+language-servers = ["vscode-css-language-server"]
+formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
+auto-format = true

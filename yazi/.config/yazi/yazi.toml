@@ -1,0 +1,44 @@
+# ~/.config/yazi/yazi.toml
+
+[opener]
+edit = [
+  { run = "hx -- %s", desc = "Helix", block = true, for = "unix" },
+]
+
+zathura = [
+  { run = "zathura %s", desc = "Zathura", orphan = true, for = "unix" },
+]
+
+sioyek = [
+  { run = "flatpak run com.github.ahrm.sioyek %s", desc = "Sioyek (optional Flatpak)", orphan = true, for = "unix" },
+]
+
+okular = [
+  { run = "okular %s", desc = "Okular", orphan = true, for = "unix" },
+]
+
+mpv = [
+  { run = "mpv %s", desc = "MPV", orphan = true, for = "unix" },
+]
+
+imv = [
+  { run = "imv %s", desc = "IMV", orphan = true, for = "unix" },
+]
+
+swappy = [
+  { run = "swappy -f %s1", desc = "Swappy: annotate", orphan = true, for = "unix" },
+]
+
+inkscape = [
+  { run = "inkscape %s", desc = "Inkscape: compose and edit", orphan = true, for = "unix" },
+]
+
+[open]
+prepend_rules = [
+  { mime = "application/pdf", use = [ "zathura", "sioyek", "okular", "reveal" ] },
+  { mime = "video/*", use = [ "mpv", "reveal" ] },
+  { mime = "audio/*", use = [ "mpv", "reveal" ] },
+  { mime = "image/png", use = [ "imv", "swappy", "inkscape", "reveal" ] },
+  { mime = "image/jpeg", use = [ "imv", "swappy", "inkscape", "reveal" ] },
+  { mime = "image/*", use = [ "imv", "inkscape", "reveal" ] },
+]

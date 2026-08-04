@@ -1,0 +1,205 @@
+[audio]
+enable_overdrive = true
+enable_sounds = true
+
+[backdrop]
+# Niri places this blurred and tinted layer behind its overview.
+enabled = true
+
+[bar.default]
+background_opacity = 0.70
+center = [
+  "timer",
+  "cat",
+  "media",
+  "audio_visualizer",
+  "wallhaven",
+  "wallpaper",
+]
+end = [
+  "tray",
+  "network",
+  "bluetooth",
+  "volume",
+  "brightness",
+  "battery",
+  "sysmon",
+  "session",
+]
+start = [
+  "workspaces",
+  "launcher",
+  "clock",
+  "notifications",
+  "clipboard",
+  "recorder",
+  "screenshot",
+]
+
+[brightness]
+enable_ddcutil = true
+
+[calendar]
+enabled = true
+
+[calendar.account.personal_google]
+name = "Personal Calendar"
+type = "google"
+
+[idle]
+behavior_order = ["lock", "screen-off", "lock-and-suspend"]
+
+[idle.behavior.lock]
+action = "lock"
+enabled = true
+timeout = 600
+
+[idle.behavior.lock-and-suspend]
+action = "lock_and_suspend"
+enabled = true
+timeout = 900
+
+[idle.behavior.screen-off]
+action = "screen_off"
+enabled = true
+timeout = 660
+
+[keybinds]
+down = ["down", "ctrl+n"]
+up = ["up", "ctrl+p"]
+
+[location]
+auto_locate = true
+
+[nightlight]
+enabled = true
+
+[plugin_settings."noctalia/screen_recorder"]
+# The selected Flatpak CLI supports Noctalia's portal path without a native
+# wrapper, global hotkey, or KMS capability setup.
+video_source = "portal"
+
+[plugin_settings."noctalia/notes"]
+notes_dir = "~/Vaults/second-brain/00 - Inbox"
+
+[plugin_settings."noctalia/wallhaven"]
+# Keep api_key in machine-local credentials.toml; see credentials.toml.example.
+download_dir = "~/Wallpapers/dark/default"
+
+[plugins]
+enabled = [
+  "noctalia/screen_recorder",
+  "noctalia/bongocat",
+  "noctalia/kaomoji",
+  "noctalia/translator",
+  "noctalia/notes",
+  "noctalia/wallhaven",
+  "noctalia/timer",
+  "noctalia/bitwarden",
+]
+
+[shell]
+# Noctalia v5 owns history and keeps the current selection after its source
+# exits.
+clipboard_enabled = true
+clipboard_keep_from_closed_apps = true
+clipboard_auto_paste = "off"
+niri_overview_type_to_launch_enabled = true
+polkit_agent = true
+screen_time_enabled = true
+settings_show_advanced = true
+
+[shell.panel]
+clipboard_placement = "attached"
+launcher_placement = "attached"
+
+[shell.screenshot]
+directory = "~/Pictures/Screenshots"
+save_to_file = false
+
+[system.monitor]
+gpu_poll_seconds = 5
+
+[theme]
+builtin = "Nord"
+community_palette = "Nord Aurora"
+mode = "dark"
+source = "wallpaper"
+wallpaper_scheme = "faithful"
+
+[theme.templates]
+builtin_ids = ["btop", "cava", "ghostty", "gtk3", "gtk4", "helix", "kcolorscheme", "niri", "qt", "starship"]
+community_ids = []
+
+[theme.templates.user.pi]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/pi-noctalia.json"
+output_path = "~/.pi/agent/themes/noctalia.json"
+
+[theme.templates.user.yazi_flavor]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/yazi-noctalia.toml"
+output_path = "$XDG_CONFIG_HOME/yazi/flavors/noctalia.yazi/flavor.toml"
+
+[theme.templates.user.yazi_selector]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/yazi-theme.toml"
+output_path = "$XDG_CONFIG_HOME/yazi/theme.toml"
+
+[theme.templates.user.yazi_syntax]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/yazi-noctalia.tmTheme"
+output_path = "$XDG_CONFIG_HOME/yazi/flavors/noctalia.yazi/tmtheme.xml"
+
+[theme.templates.user.zathura]
+input_path = "$XDG_CONFIG_HOME/noctalia/templates/zathura-noctalia.conf"
+output_path = "$XDG_CONFIG_HOME/zathura/noctaliarc"
+post_hook = "bash \"$HOME/.config/noctalia/hooks/reload-zathura-theme.sh\""
+
+[wallpaper]
+directory = "~/Wallpapers"
+directory_dark = "~/Wallpapers/dark"
+directory_light = "~/Wallpapers/light"
+
+[widget.audio_visualizer]
+anchor = true
+bands = 128
+centered = false
+color_1 = "primary"
+color_2 = "secondary"
+mirrored = true
+show_when_idle = true
+# width = 2048 local override in order to fit screen's width
+
+[widget.battery]
+show_label = false
+
+[widget.brightness]
+show_label = false
+
+[widget.cat]
+# Official Bongo Cat requires an explicit input. install-system.sh owns this
+# stable keyd uinput symlink and grants the active local session uaccess.
+input_devices = ["/dev/input/by-id/keyd-virtual-kbd"]
+type = "noctalia/bongocat:cat"
+
+[widget.cpu]
+show_label = false
+
+[widget.media]
+album_art_only = true
+
+[widget.network]
+show_label = false
+
+[widget.recorder]
+type = "noctalia/screen_recorder:recorder"
+
+[widget.sysmon]
+display = "none"
+show_label = false
+
+[widget.timer]
+type = "noctalia/timer:bar"
+
+[widget.volume]
+show_label = false
+
+[widget.wallhaven]
+type = "noctalia/wallhaven:wallhaven"

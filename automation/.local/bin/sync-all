@@ -1,0 +1,292 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_FILE="${NALDO_SYNC_CONFIG:-$CONFIG_HOME/naldo/sync/repositories.conf}"
+RESOLVED_SCRIPT="$(readlink -f -- "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$RESOLVED_SCRIPT")" && pwd -P)"
+LOCAL_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)"
+PACKAGE_ROOT="$(cd -- "$LOCAL_ROOT/.." && pwd -P)"
+GENERIC_SYNC="${NALDO_GENERIC_SYNC:-$LOCAL_ROOT/libexec/naldo/sync-git-repo}"
+INIT_SYNC_CONFIG="${NALDO_INIT_SYNC_CONFIG:-$LOCAL_ROOT/libexec/naldo/init-sync-config}"
+CONFIG_TEMPLATE="${NALDO_SYNC_CONFIG_TEMPLATE:-$CONFIG_HOME/naldo/sync/repositories.conf.example}"
+if [[ ! -f "$CONFIG_TEMPLATE" && -f "$PACKAGE_ROOT/.config/naldo/sync/repositories.conf.example" ]]; then
+  CONFIG_TEMPLATE="$PACKAGE_ROOT/.config/naldo/sync/repositories.conf.example"
+fi
+
+all_tasks=(dotfiles notes wallpapers)
+declare -A task_labels=(
+  [dotfiles]="dotfiles"
+  [notes]="notes"
+  [wallpapers]="wallpapers"
+)
+declare -A task_enabled=()
+declare -A task_repositories=()
+declare -A failure_contexts=()
+wallpapers_required_mount=""
+
+log() {
+  printf '[sync-all] %s\n' "$*"
+}
+
+fail() {
+  log "ERROR: $*" >&2
+  exit 1
+}
+
+expand_home_path() {
+  local path="$1"
+
+  if [[ "$path" == "~" ]]; then
+    printf '%s\n' "$HOME"
+  elif [[ "${path:0:1}" == "~" && "${path:1:1}" == "/" ]]; then
+    printf '%s/%s\n' "$HOME" "${path:2}"
+  else
+    printf '%s\n' "$path"
+  fi
+}
+
+load_configuration() {
+  local line key value task field line_number=0
+  declare -A seen=()
+
+  [[ -f "$CONFIG_FILE" && ! -L "$CONFIG_FILE" ]] ||
+    fail "missing real machine-local configuration: $CONFIG_FILE (run install.sh first)"
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    ((line_number += 1))
+    line="${line%$'\r'}"
+    [[ -n "$line" && "$line" != \#* ]] || continue
+    [[ "$line" == *=* ]] || fail "$CONFIG_FILE:$line_number: expected key=value"
+    key="${line%%=*}"
+    value="${line#*=}"
+    [[ -n "$key" ]] || fail "$CONFIG_FILE:$line_number: empty key"
+    [[ -z "${seen[$key]:-}" ]] || fail "$CONFIG_FILE:$line_number: duplicate key: $key"
+    seen["$key"]=1
+
+    case "$key" in
+    WALLPAPERS_REQUIRED_MOUNT)
+      wallpapers_required_mount="$(expand_home_path "$value")"
+      ;;
+    dotfiles_enabled|dotfiles_path|notes_enabled|notes_path|wallpapers_enabled|wallpapers_path)
+      task="${key%%_*}"
+      field="${key#*_}"
+      if [[ "$field" == "enabled" ]]; then
+        [[ "$value" == "true" || "$value" == "false" ]] ||
+          fail "$CONFIG_FILE:$line_number: $key must be true or false"
+        task_enabled["$task"]="$value"
+      else
+        [[ -n "$value" ]] || fail "$CONFIG_FILE:$line_number: $key must not be empty"
+        task_repositories["$task"]="$(expand_home_path "$value")"
+      fi
+      ;;
+    *)
+      fail "$CONFIG_FILE:$line_number: unknown key: $key"
+      ;;
+    esac
+  done <"$CONFIG_FILE"
+
+  for task in "${all_tasks[@]}"; do
+    [[ -n "${task_enabled[$task]:-}" ]] || fail "missing ${task}_enabled in $CONFIG_FILE"
+    [[ -n "${task_repositories[$task]:-}" ]] || fail "missing ${task}_path in $CONFIG_FILE"
+  done
+  [[ -z "$wallpapers_required_mount" || "$wallpapers_required_mount" == /* ]] ||
+    fail "$CONFIG_FILE: WALLPAPERS_REQUIRED_MOUNT must be empty or an absolute path"
+}
+
+verify_wallpaper_mount_guard() {
+  local repository="$1" mount_real repository_real
+
+  [[ -n "$wallpapers_required_mount" ]] || return 0
+  command -v findmnt >/dev/null 2>&1 || {
+    log "ERROR: wallpaper mount guard requires findmnt"
+    return 1
+  }
+  if ! findmnt --mountpoint "$wallpapers_required_mount" >/dev/null 2>&1; then
+    log "ERROR: required wallpaper mount is not mounted: $wallpapers_required_mount"
+    return 1
+  fi
+
+  # A configured guard must protect the physical worktree, not an unrelated
+  # mounted path. Resolve the stable ~/Wallpapers symlink only after the mount
+  # itself has been proven present.
+  if [[ -d "$repository" ]]; then
+    mount_real="$(readlink -f -- "$wallpapers_required_mount")"
+    repository_real="$(readlink -f -- "$repository")"
+    case "$repository_real" in
+    "$mount_real"/*) ;;
+    *)
+      log "ERROR: wallpaper repository is outside required mount: $repository_real"
+      return 1
+      ;;
+    esac
+  fi
+}
+
+failure_context() {
+  local task="$1" code="$2" repo
+  local output line
+  repo="${task_repositories[$task]}"
+
+  printf 'exit status: %s\n' "$code"
+  printf 'repository path: %s\n' "$repo"
+
+  if ! git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'repository: unavailable (missing or not a Git work tree)\n'
+    return
+  fi
+
+  if output="$(git -C "$repo" \
+    -c core.whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab \
+    --no-pager diff --cached --check 2>&1)"; then
+    if output="$(git -C "$repo" --no-pager diff --cached --check 2>&1)"; then
+      printf 'staged validation: passed\n'
+    elif [[ -n "$output" ]]; then
+      printf 'staged whitespace warnings (non-blocking):\n'
+      while IFS= read -r line; do printf '  %s\n' "$line"; done <<<"$output"
+    else
+      printf 'staged whitespace warning without diagnostic output\n'
+    fi
+  elif [[ -n "$output" ]]; then
+    printf 'staged conflict-marker errors:\n'
+    while IFS= read -r line; do printf '  %s\n' "$line"; done <<<"$output"
+  else
+    printf 'staged conflict-marker validation failed without diagnostic output\n'
+  fi
+
+  if output="$(git -C "$repo" status --short 2>&1)"; then
+    if [[ -n "$output" ]]; then
+      printf 'Git status after failure:\n'
+      while IFS= read -r line; do printf '  %s\n' "$line"; done <<<"$output"
+    else
+      printf 'Git status after failure: clean\n'
+    fi
+  else
+    printf 'Git status unavailable: %s\n' "$output"
+  fi
+}
+
+log_failure_context() {
+  local context="$1" line
+  while IFS= read -r line; do log "  $line"; done <<<"$context"
+}
+
+notify_failure() {
+  local message="$1"
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send --urgency=critical "Synchronization failed" \
+      "$message
+
+Inspect the run: sync-control logs" || true
+  fi
+}
+
+notify_success() {
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send "Synchronization complete" \
+      "All enabled requested sync tasks finished successfully.
+
+Check status: sync-control status
+Inspect logs: sync-control logs" || true
+  fi
+}
+
+run_task() {
+  local task="$1" repo
+  repo="${task_repositories[$task]}"
+
+  if [[ "$task" == "wallpapers" ]]; then
+    verify_wallpaper_mount_guard "$repo" || return 1
+  fi
+
+  [[ -d "$repo" ]] || {
+    log "ERROR: enabled ${task_labels[$task]} repository is missing: $repo"
+    return 1
+  }
+
+  case "$task" in
+  dotfiles)
+    [[ -x "$repo/sync.sh" ]] || {
+      log "ERROR: missing dotfiles synchronizer: $repo/sync.sh"
+      return 1
+    }
+    "$repo/sync.sh"
+    ;;
+  notes|wallpapers)
+    [[ -x "$GENERIC_SYNC" ]] || {
+      log "ERROR: missing generic Git synchronizer: $GENERIC_SYNC"
+      return 1
+    }
+    "$GENERIC_SYNC" --label "$task" "$repo"
+    ;;
+  esac
+}
+
+if [[ "${1:-}" == "--list-tasks" ]]; then
+  (($# == 1)) || fail "--list-tasks accepts no arguments"
+  printf '%s\n' "${all_tasks[@]}"
+  exit 0
+fi
+
+if [[ ! -e "$CONFIG_FILE" && ! -L "$CONFIG_FILE" ]]; then
+  [[ -x "$INIT_SYNC_CONFIG" ]] || fail "missing sync configuration initializer: $INIT_SYNC_CONFIG"
+  "$INIT_SYNC_CONFIG" --config "$CONFIG_FILE" --template "$CONFIG_TEMPLATE"
+fi
+load_configuration
+if (($# == 0)); then
+  tasks=("${all_tasks[@]}")
+else
+  tasks=("$@")
+fi
+for task in "${tasks[@]}"; do
+  [[ -n "${task_labels[$task]:-}" ]] || {
+    printf 'Unknown sync task: %s\nValid tasks: %s\n' "$task" "${all_tasks[*]}" >&2
+    exit 2
+  }
+done
+
+mkdir -p "$RUNTIME_DIR"
+exec 9>"$RUNTIME_DIR/naldo-sync-all.lock"
+if ! flock -n 9; then
+  log "another synchronization run is already active"
+  exit 0
+fi
+
+started="$(date --iso-8601=seconds)"
+failed_tasks=()
+log "started at $started"
+for task in "${tasks[@]}"; do
+  if [[ "${task_enabled[$task]}" == "false" ]]; then
+    log "skipping ${task_labels[$task]} (disabled in $CONFIG_FILE)"
+    continue
+  fi
+
+  log "running ${task_labels[$task]}"
+  if run_task "$task"; then
+    log "${task_labels[$task]} complete"
+  else
+    code=$?
+    log "ERROR: ${task_labels[$task]} exited with status $code"
+    failed_tasks+=("$task")
+    failure_contexts["$task"]="$(failure_context "$task" "$code")"
+  fi
+done
+
+if ((${#failed_tasks[@]} > 0)); then
+  failed_labels=()
+  for task in "${failed_tasks[@]}"; do failed_labels+=("${task_labels[$task]}"); done
+  message="Failed tasks: ${failed_labels[*]}"
+  log "$message"
+  log "Failure details:"
+  for task in "${failed_tasks[@]}"; do
+    log "${task_labels[$task]}:"
+    log_failure_context "${failure_contexts[$task]}"
+  done
+  notify_failure "$message"
+  exit 1
+fi
+
+log "all enabled requested tasks completed"
+notify_success

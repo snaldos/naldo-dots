@@ -1,0 +1,4 @@
+# Noctalia renders the selector and flavor files locally.
+/theme.toml
+/flavors/noctalia.yazi/flavor.toml
+/flavors/noctalia.yazi/tmtheme.xml

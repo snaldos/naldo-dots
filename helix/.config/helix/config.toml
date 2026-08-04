@@ -1,0 +1,5 @@
+theme = "noctalia-overrides"
+
+[editor.file-picker]
+hidden = false
+git-ignore = true

@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+section() {
+  printf '\n== %s ==\n' "$1"
+}
+
+skip() {
+  printf 'SKIP: %s\n' "$1"
+}
+
+section 'DNF packages'
+if command -v sudo >/dev/null 2>&1 && command -v dnf >/dev/null 2>&1; then
+  sudo dnf upgrade --refresh
+else
+  skip 'sudo or dnf is unavailable'
+fi
+
+section 'Flatpak applications'
+if command -v flatpak >/dev/null 2>&1; then
+  flatpak update --user
+else
+  skip 'flatpak is unavailable'
+fi
+
+section 'global npm packages'
+if command -v npm >/dev/null 2>&1; then
+  npm update --global
+else
+  skip 'npm is unavailable'
+fi
+
+section 'uv tools'
+if command -v uv >/dev/null 2>&1; then
+  uv tool upgrade --all
+else
+  skip 'uv is unavailable'
+fi
+
+section 'Cargo registry binaries'
+if command -v cargo >/dev/null 2>&1 && command -v cargo-install-update >/dev/null 2>&1; then
+  cargo install-update -a
+else
+  skip 'cargo or cargo-install-update is unavailable'
+fi
+
+section 'Herdr official installer'
+herdr_receipt="${XDG_DATA_HOME:-$HOME/.local/share}/naldo/provider-receipts/herdr-official-installer"
+if command -v herdr >/dev/null 2>&1 && [[ -f "$herdr_receipt" && ! -L "$herdr_receipt" && -O "$herdr_receipt" ]]; then
+  herdr_path="$(readlink -f -- "$(command -v herdr)")"
+  expected_herdr_path="$(readlink -m -- "$HOME/.local/bin/herdr")"
+  mapfile -t herdr_receipt_lines <"$herdr_receipt"
+  if [[ "$herdr_path" == "$expected_herdr_path" && "${#herdr_receipt_lines[@]}" == 2 &&
+    "${herdr_receipt_lines[0]-}" == 'source=https://herdr.dev/install.sh' &&
+    "${herdr_receipt_lines[1]-}" == "binary=$herdr_path" ]]; then
+    herdr_channel="$(herdr channel show)"
+    if [[ "$herdr_channel" == stable ]]; then
+      printf '%s\n' 'NOTE: a protocol-changing update may require restarting the active Herdr session; follow the interactive prompt.'
+      herdr update
+    else
+      skip "installer-managed Herdr is on the $herdr_channel channel, not the selected stable channel"
+    fi
+  else
+    skip 'Herdr does not have a valid official-installer receipt for ~/.local/bin/herdr'
+  fi
+else
+  skip 'official-installer-managed Herdr is unavailable'
+fi
+
+printf '\nAll available update providers completed.\n'

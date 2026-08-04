@@ -1,0 +1,92 @@
+// Window rules let you adjust behavior for individual windows.
+// Find more information on the wiki:
+// https://niri-wm.github.io/niri/Configuration:-Window-Rules
+// The installed Zen Flatpak's live Wayland app ID is `app.zen_browser.zen`;
+// desktop-file StartupWMClass metadata is not authoritative for Niri. Confirm
+// with `niri msg -j windows`, then adjust every tracked Zen regex if it changes.
+// New floating windows are centered by Niri within the working area.
+window-rule {
+    match app-id=r#"^app\.zen_browser\.zen$"#
+    exclude title="^Picture-in-Picture$"
+    open-floating true
+    default-column-width { fixed 1200; }
+    default-window-height { fixed 900; }
+}
+window-rule {
+    match app-id=r#"^app\.zen_browser\.zen$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+// Example: block out two password managers from screen capture.
+// (This example rule is commented out with a "/-" in front.)
+/-window-rule {
+match app-id=r#"^org\.keepassxc\.KeePassXC$"#
+match app-id=r#"^org\.gnome\.World\.Secrets$"#
+block-out-from "screen-capture"
+// Use this instead if you want them visible on third-party screenshot tools.
+// block-out-from "screencast"
+}
+// Rounded corners and realistic blur for all windows.
+window-rule {
+    geometry-corner-radius 20
+    clip-to-geometry true
+    background-effect {
+        blur true
+        xray false
+    }
+}
+// Shared desktop menus use this Ghostty app ID for command output.
+window-rule {
+    match app-id="com.mitchellh.ghostty.float"
+    open-floating true
+    default-column-width {
+        fixed 1080
+    }
+    default-window-height {
+        fixed 920
+    }
+}
+// Keep Swappy's screenshot annotation window separate from the tiled layout.
+window-rule {
+    match app-id="me.jtheoof.swappy"
+    open-floating true
+}
+// Identify the movable Herdr notes window by app ID. The launcher chooses an
+// empty dynamic workspace only for the window's initial placement.
+window-rule {
+    match app-id="com.mitchellh.ghostty.notes"
+    open-focused true
+}
+// Float Noctalia's settings window at a comfortable fixed size.
+window-rule {
+    match app-id="dev.noctalia.Noctalia"
+    open-floating true
+    default-column-width {
+        fixed 1080
+    }
+    default-window-height {
+        fixed 920
+    }
+}
+// Put Noctalia's blurred and tinted backdrop layer in Niri's overview.
+layer-rule {
+    match namespace="^noctalia-backdrop"
+    place-within-backdrop true
+}
+// Noctalia advertises blur regions for these shell surfaces itself.
+layer-rule {
+    match namespace="^noctalia-(bar-[^\"]+|notification|dock|panel|attached-panel|osd)$"
+    background-effect {
+        xray false
+    }
+}
+layer-rule {
+    match namespace="noctalia-window-switcher"
+    background-effect {
+        blur true
+        xray false
+    }
+}
+debug {
+    // Permit notification actions and window activation initiated by Noctalia.
+    honor-xdg-activation-with-invalid-serial
+}

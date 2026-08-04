@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
+  "name": "noctalia",
+  "vars": {
+    "bg": "{{colors.terminal_background.default.hex}}",
+    "bgAlt": "{{colors.terminal_background.default.hex | auto_lightness: 5}}",
+    "bgAlt2": "{{colors.terminal_background.default.hex | auto_lightness: 10}}",
+
+    "fg": "{{colors.terminal_foreground.default.hex}}",
+    "fgMuted": "{{colors.on_surface_variant.default.hex}}",
+
+    "accent": "{{colors.primary.default.hex}}",
+    "accentStrong": "{{colors.primary_fixed.default.hex}}",
+    "accentAlt": "{{colors.secondary.default.hex}}",
+    "accentAltStrong": "{{colors.secondary_fixed.default.hex}}",
+    "tert": "{{colors.tertiary.default.hex}}",
+    "green": "{{colors.terminal_normal_green.default.hex}}",
+    "yellow": "{{colors.terminal_normal_yellow.default.hex}}",
+    "cyan": "{{colors.terminal_normal_cyan.default.hex}}",
+    "err": "{{colors.error.default.hex}}",
+
+    "outline": "{{colors.outline.default.hex}}",
+    "outlineVar": "{{colors.outline_variant.default.hex}}",
+    "errorCont": "{{colors.error_container.default.hex | auto_lightness: -12}}"
+  },
+
+  "colors": {
+    "accent": "accent",
+    "border": "outline",
+    "borderAccent": "accent",
+    "borderMuted": "outlineVar",
+
+    "success": "green",
+    "error": "err",
+    "warning": "yellow",
+
+    "text": "fg",
+    "muted": "fgMuted",
+    "dim": "outline",
+    "thinkingText": "fgMuted",
+
+    "selectedBg": "bgAlt2",
+
+    "userMessageBg": "bgAlt2",
+    "userMessageText": "fg",
+
+    "customMessageBg": "bgAlt",
+    "customMessageText": "fg",
+    "customMessageLabel": "accent",
+
+    "toolPendingBg": "bgAlt",
+    "toolSuccessBg": "bgAlt2",
+    "toolErrorBg": "errorCont",
+    "toolTitle": "fg",
+    "toolOutput": "fg",
+
+    "mdHeading": "accent",
+    "mdLink": "accentAlt",
+    "mdLinkUrl": "fgMuted",
+
+    "mdCode": "tert",
+    "mdCodeBlock": "fg",
+    "mdCodeBlockBorder": "outline",
+
+    "mdQuote": "fgMuted",
+    "mdQuoteBorder": "accentAlt",
+    "mdHr": "outline",
+    "mdListBullet": "tert",
+
+    "toolDiffAdded": "green",
+    "toolDiffRemoved": "err",
+    "toolDiffContext": "fgMuted",
+
+    "syntaxComment": "fgMuted",
+    "syntaxKeyword": "accentAlt",
+    "syntaxFunction": "accent",
+    "syntaxVariable": "fg",
+    "syntaxString": "green",
+    "syntaxNumber": "yellow",
+    "syntaxType": "cyan",
+    "syntaxOperator": "accentAlt",
+    "syntaxPunctuation": "fgMuted",
+
+    "thinkingOff": "outlineVar",
+    "thinkingMinimal": "outline",
+    "thinkingLow": "accent",
+    "thinkingMedium": "accentAlt",
+    "thinkingHigh": "tert",
+    "thinkingXhigh": "accentAltStrong",
+    "thinkingMax": "accentStrong",
+
+    "bashMode": "green"
+  },
+
+  "export": {
+    "pageBg": "bg",
+    "cardBg": "bgAlt",
+    "infoBg": "bgAlt2"
+  }
+}

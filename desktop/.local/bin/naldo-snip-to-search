@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case $# in
+0)
+  NOCTALIA_IPC=("${NOCTALIA:-noctalia}" "${NOCTALIA_IPC_SUBCOMMAND:-msg}")
+  ;;
+2)
+  NOCTALIA_IPC=("$1" "$2")
+  ;;
+*)
+  printf 'Usage: %s [NOCTALIA NOCTALIA_IPC_SUBCOMMAND]\n' "${0##*/}" >&2
+  exit 2
+  ;;
+esac
+
+old_hash=""
+
+if wl-paste --list-types 2>/dev/null | grep -q '^image/png$'; then
+  old_hash="$(
+    wl-paste --type image/png 2>/dev/null |
+      sha256sum |
+      cut -d' ' -f1
+  )"
+fi
+
+"${NOCTALIA_IPC[@]}" screenshot-region
+
+new_hash=""
+
+for _ in {1..400}; do
+  if wl-paste --list-types 2>/dev/null | grep -q '^image/png$'; then
+    new_hash="$(
+      wl-paste --type image/png 2>/dev/null |
+        sha256sum |
+        cut -d' ' -f1
+    )"
+
+    if [[ -n "$new_hash" && "$new_hash" != "$old_hash" ]]; then
+      break
+    fi
+  fi
+
+  sleep 0.05
+done
+
+if [[ -z "$new_hash" || "$new_hash" == "$old_hash" ]]; then
+  notify-send "Lens search failed" "No new image found in clipboard"
+  exit 1
+fi
+
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+IMG=""
+HTML=""
+
+cleanup() {
+  [[ -z "$IMG" ]] || rm -f -- "$IMG"
+  [[ -z "$HTML" ]] || rm -f -- "$HTML"
+}
+trap cleanup EXIT
+
+IMG="$(mktemp --tmpdir="$RUNTIME_DIR" --suffix=.png naldo-lens-image.XXXXXX)"
+HTML="$(mktemp --tmpdir="$RUNTIME_DIR" --suffix=.html naldo-lens-upload.XXXXXX)"
+wl-paste --type image/png >"$IMG"
+image_base64="$(base64 --wrap=0 "$IMG")"
+
+# Submit from the browser so Lens receives the image and the browser's Google
+# session together. A curl upload produced a result URL tied to curl's cookies,
+# which opened as an empty Lens page in the browser.
+{
+  cat <<'HTML_HEAD'
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <title>Opening Google Lens…</title>
+</head>
+<body>
+  <p id="status">Opening Google Lens…</p>
+  <form id="lens-form" method="post" enctype="multipart/form-data" action="https://lens.google.com/upload">
+    <input id="lens-image" type="file" name="encoded_image" hidden>
+  </form>
+  <script>
+    try {
+      const encoded =
+HTML_HEAD
+  printf '        "%s";\n' "$image_base64"
+  cat <<'HTML_TAIL'
+      const binary = atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index++) {
+        bytes[index] = binary.charCodeAt(index);
+      }
+
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([bytes], "screenshot.png", { type: "image/png" }));
+      document.getElementById("lens-image").files = transfer.files;
+      document.getElementById("lens-form").submit();
+    } catch (error) {
+      document.getElementById("status").textContent = "Could not submit the screenshot to Google Lens.";
+      console.error(error);
+    }
+  </script>
+</body>
+</html>
+HTML_TAIL
+} >"$HTML"
+
+if ! xdg-open "$HTML"; then
+  notify-send "Lens search failed" "Could not open Google Lens"
+  exit 1
+fi
+
+# xdg-open may return as soon as it hands the file to an existing browser.
+# Keep the private, mode-0600 upload page around long enough to be loaded.
+sleep 30

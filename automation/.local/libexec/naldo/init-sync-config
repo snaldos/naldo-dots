@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_FILE="${NALDO_SYNC_CONFIG:-$CONFIG_HOME/naldo/sync/repositories.conf}"
+TEMPLATE="${NALDO_SYNC_CONFIG_TEMPLATE:-$CONFIG_HOME/naldo/sync/repositories.conf.example}"
+
+fail() {
+  printf 'init-sync-config: ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Usage: init-sync-config [--config FILE] [--template FILE]
+
+Initialize the machine-local repository synchronization configuration only when
+it is absent. Existing contents are never replaced.
+EOF
+}
+
+while (($# > 0)); do
+  case "$1" in
+  --config)
+    (($# >= 2)) || fail "--config requires a path"
+    CONFIG_FILE="$2"
+    shift 2
+    ;;
+  --config=*)
+    CONFIG_FILE="${1#*=}"
+    [[ -n "$CONFIG_FILE" ]] || fail "--config requires a path"
+    shift
+    ;;
+  --template)
+    (($# >= 2)) || fail "--template requires a path"
+    TEMPLATE="$2"
+    shift 2
+    ;;
+  --template=*)
+    TEMPLATE="${1#*=}"
+    [[ -n "$TEMPLATE" ]] || fail "--template requires a path"
+    shift
+    ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    fail "unknown option: $1"
+    ;;
+  esac
+done
+
+[[ -f "$TEMPLATE" && ! -L "$TEMPLATE" ]] || fail "template is not a real regular file: $TEMPLATE"
+
+config_dir="${CONFIG_FILE%/*}"
+[[ "$config_dir" != "$CONFIG_FILE" ]] || fail "configuration path must include a directory: $CONFIG_FILE"
+[[ ! -L "$config_dir" ]] || fail "configuration directory must be real: $config_dir"
+[[ ! -e "$config_dir" || -d "$config_dir" ]] || fail "configuration parent is not a directory: $config_dir"
+install -d -m 700 "$config_dir"
+
+[[ ! -L "$CONFIG_FILE" ]] || fail "machine-local configuration must be a real file: $CONFIG_FILE"
+[[ ! -e "$CONFIG_FILE" || -f "$CONFIG_FILE" ]] || fail "configuration path is not a regular file: $CONFIG_FILE"
+
+if [[ -e "$CONFIG_FILE" ]]; then
+  chmod 600 "$CONFIG_FILE"
+  printf 'Preserved machine-local sync configuration: %s\n' "$CONFIG_FILE"
+  exit 0
+fi
+
+install -m 600 "$TEMPLATE" "$CONFIG_FILE"
+printf 'Initialized machine-local sync configuration: %s\n' "$CONFIG_FILE"

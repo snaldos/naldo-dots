@@ -1,0 +1,23 @@
+// This config is in the KDL format: https://kdl.dev
+// "/-" comments out the following node.
+// Check the wiki for a full description of the configuration:
+// https://niri-wm.github.io/niri/Configuration:-Introduction
+
+// Shared portable settings are grouped by concern. Includes are positional,
+// and Niri does not glob conf.d, so keep their order explicit here.
+include "conf.d/input.kdl"
+include "conf.d/layout.kdl"
+include "conf.d/session.kdl"
+include "conf.d/appearance.kdl"
+include "conf.d/rules.kdl"
+include "conf.d/keybindings.kdl"
+
+// Output settings are machine-specific and selected from
+// profiles/desktop.kdl or profiles/laptop.kdl.
+// The installer generates machine.kdl from the shared desktop/laptop profile.
+// The Zen Flatpak theme launcher owns the second machine-local include.
+// The Noctalia theme launcher owns the third machine-local include.
+// Keep these last so generated theme settings can override the portable base.
+include optional=true "machine.kdl"
+include optional=true "zen-theme.kdl"
+include optional=true "noctalia.kdl"

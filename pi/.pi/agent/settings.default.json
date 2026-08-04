@@ -1,0 +1,38 @@
+{
+  "quietStartup": true,
+  "externalEditor": "hx",
+  "collapseChangelog": true,
+  "enableInstallTelemetry": false,
+  "enableAnalytics": false,
+  "defaultProjectTrust": "ask",
+  "editorPaddingX": 1,
+  "outputPad": 1,
+  "autocompleteMaxVisible": 8,
+  "showHardwareCursor": true,
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 65536,
+    "keepRecentTokens": 40000
+  },
+  "branchSummary": {
+    "reserveTokens": 32768,
+    "skipPrompt": false
+  },
+  "retry": {
+    "enabled": true,
+    "maxRetries": 3,
+    "baseDelayMs": 2000,
+    "provider": {
+      "timeoutMs": 900000,
+      "maxRetries": 0,
+      "maxRetryDelayMs": 60000
+    }
+  },
+  "httpIdleTimeoutMs": 600000,
+  "terminal": {
+    "showImages": false,
+    "imageWidthCells": 64
+  },
+  "enableSkillCommands": true,
+  "hideThinkingBlock": false
+}
