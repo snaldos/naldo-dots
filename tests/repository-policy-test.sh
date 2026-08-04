@@ -70,10 +70,17 @@ zen_rules="$REPO_DIR/niri/.config/niri/conf.d/rules.kdl"
 ! rg -n 'com[.]mitchellh[.]ghostty[.]float|ZEN_FLOAT|app_launcher|launch-terminal' \
   "$REPO_DIR/niri" "$REPO_DIR/desktop" >/dev/null ||
   fail 'obsolete Ghostty/Zen floating launcher machinery remains'
+scripts_menu="$REPO_DIR/desktop/.local/bin/naldo-scripts-menu"
 # The variables belong to the scripts-menu source and must remain literal here.
 # shellcheck disable=SC2016
-grep -Fq '"$TERMINAL" --wait-after-command -e "$@" &' "$REPO_DIR/desktop/.local/bin/naldo-scripts-menu" ||
+grep -Fq '"$TERMINAL" --wait-after-command -e "$@" &' "$scripts_menu" ||
   fail 'scripts menu does not use an ordinary terminal window'
+grep -Fq '󰚰 System maintenance' "$scripts_menu" ||
+  fail 'scripts menu does not expose system maintenance'
+# The updater variable belongs literally to the scripts-menu source.
+# shellcheck disable=SC2016
+grep -Fq 'run_terminal "$NALDO_UPDATE"' "$scripts_menu" ||
+  fail 'scripts menu does not run naldo-update in a reviewable terminal'
 grep -Fq 'match app-id=r#"^app\.zen_browser\.zen$"#' "$REPO_DIR/niri/.config/niri/scripts/theme_launcher.sh" ||
   fail 'Zen opacity rule does not match the live app ID'
 while IFS= read -r -d '' script; do
@@ -84,13 +91,16 @@ while IFS= read -r -d '' script; do
 done < <(find "$REPO_DIR" -path "$REPO_DIR/.git" -prune -o -type f -perm /111 -print0)
 pass 'Mod+T and Mod+Z open ordinary tiled windows without floating identities or wrappers'
 
+# The Home variable belongs literally to the Herdr configuration assertion.
+# shellcheck disable=SC2016
 for assertion in \
   'fish/.config/fish/config.fish:set -gx EDITOR hx' \
   'fish/.config/fish/config.fish:set -gx VISUAL hx' \
   'git/.config/git/naldo.conf:editor = hx' \
   'lazygit/.config/lazygit/config.yml:editPreset: "helix (hx)"' \
   'yazi/.config/yazi/yazi.toml:run = "hx -- %s"' \
-  'herdr/.config/herdr/config.toml:exec hx /tmp/helix-scratchpad.typ' \
+  'herdr/.config/herdr/config.toml:command = "$HOME/.config/herdr/scripts/popup-launcher"' \
+  'herdr/.config/herdr/scripts/popup-launcher:exec hx /tmp/helix-scratchpad.typ' \
   'pi/.pi/agent/settings.default.json:"externalEditor": "hx"'; do
   file="${assertion%%:*}"
   text="${assertion#*:}"

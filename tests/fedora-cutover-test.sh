@@ -191,6 +191,20 @@ assert "/mnt/data" not in laptop
 PY
 pass 'one clean-install guide contains isolated desktop and laptop branches without a duplicated runbook'
 
+# The Bash version variable belongs literally to the documented command.
+# shellcheck disable=SC2016
+[[ "$(grep -Fc 'test -n "$BASH_VERSION"' "$clean_guide")" -ge 4 ]] ||
+  fail 'clean-install guide does not verify Bash in every new login shell'
+grep -Fq './deploy-links.sh --dry-run' "$clean_guide" ||
+  fail 'clean-install guide does not preflight Stow deployment'
+grep -Fq 'stow_conflict=.config/helix/config.toml' "$clean_guide" ||
+  fail 'clean-install guide does not show targeted conflict preservation'
+grep -Fq 'command -v tsserver' "$clean_guide" ||
+  fail 'clean-install guide does not check tsserver without launching it'
+! grep -Eq '^[[:space:]]*tsserver([[:space:]]|$)' "$clean_guide" ||
+  fail 'clean-install guide launches the long-running tsserver protocol process'
+pass 'clean install enters Bash explicitly, preserves only Stow conflicts, and checks tsserver safely'
+
 for scope in 'reusable, human-run Fedora clean-install guide' 'later clean installations' \
   'not a snapshot of every installed package' 'record of transitive' \
   'system-changing commands remain explicit steps for a human'; do

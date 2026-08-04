@@ -1,7 +1,10 @@
 # Fedora Workstation clean installation
 
 This is the only installation sequence for both machines. Run it from top to
-bottom in a Bash shell, one code block at a time. Choose one profile in step 2,
+bottom in a Bash shell, one code block at a time. Every time you open a new
+terminal for this guide—including after logging into Niri—run `bash` before any
+other command. A code fence labelled `bash` provides syntax highlighting; it
+does not switch your current shell. Choose one profile in step 2,
 run every **Common** block, and run only the matching **Desktop only** or
 **Laptop only** blocks. Stop on any unexpected provider, signature, device,
 mount, service, or validation result.
@@ -36,14 +39,18 @@ Open a terminal, enter Bash, update Fedora, and reboot:
 
 ```bash
 bash
+test -n "$BASH_VERSION"
 sudo dnf upgrade --refresh
 sudo systemctl reboot
 ```
 
-After login, open Bash again. This runbook was audited for Fedora 44; if the
-release differs, stop and review package/provider changes first.
+After login, open a terminal and enter Bash again. This runbook was audited for
+Fedora 44; if the release differs, stop and review package/provider changes
+first.
 
 ```bash
+bash
+test -n "$BASH_VERSION"
 cat /etc/fedora-release
 test "$(rpm -E %fedora)" = 44
 ```
@@ -449,8 +456,14 @@ export PATH="$HOME/.npm-global/bin:$HOME/.cargo/bin:$HOME/.local/bin:$HOME/.pixi
 taplo --version
 typescript-language-server --version
 tsc --version
-tsserver --help >/dev/null 2>&1 || true
+command -v tsserver
 ```
+
+`tsserver` is a long-running editor protocol server, not a version-check
+command. Do not run `tsserver` or `tsserver --help` interactively: it can wait
+indefinitely for protocol input. If it is started accidentally, press `Ctrl-C`.
+`command -v tsserver` verifies that the executable is available without
+launching it.
 
 ## 9. Configure GitHub CLI, VS Code, and Thunderbird
 
@@ -636,9 +649,49 @@ esac
 
 ### Common
 
+Existing real parent directories such as `~/.config`, `~/.local`, and `~/.pi`
+are normal and must not be deleted. Deployment intentionally stops if a regular
+file already occupies a path that Stow needs to manage. Do not recursively
+remove `~/.config`, glob away its contents, or use `stow --adopt`: it contains
+machine-local and private state created in earlier steps.
+
+Run the tests and the non-mutating deployment preflight first:
+
 ```bash
 cd "$HOME/dotfiles"
 ./tests/run-tests.sh
+./deploy-links.sh --dry-run
+```
+
+If the dry run succeeds, continue below. If it reports a conflict such as
+`existing target .config/helix/config.toml`, inspect and move only that exact
+reported target into a private backup. Replace the example value below, repeat
+for each reported conflict, and rerun the dry run until it succeeds:
+
+```bash
+stow_conflict=.config/helix/config.toml  # replace with the exact reported path
+stow_backup="${stow_backup:-$HOME/pre-stow-backup-$(date -u +%Y%m%dT%H%M%SZ)}"
+case "$stow_conflict" in
+  .config/*|.local/*|.pi/*) ;;
+  *) printf 'unexpected conflict path: %s\n' "$stow_conflict" >&2; exit 2 ;;
+esac
+if [[ ! -e "$HOME/$stow_conflict" && ! -L "$HOME/$stow_conflict" ]]; then
+  printf 'conflict target is absent: %s\n' "$HOME/$stow_conflict" >&2
+  exit 2
+fi
+ls -ld -- "$HOME/$stow_conflict"
+install -d -m 0700 "$stow_backup/$(dirname -- "$stow_conflict")"
+mv -- "$HOME/$stow_conflict" "$stow_backup/$stow_conflict"
+printf 'preserved conflict under %s\n' "$stow_backup"
+./deploy-links.sh --dry-run
+```
+
+If preflight reports a symlinked target parent rather than a regular-file
+conflict, stop and inspect it with `readlink -f`; do not remove the symlink's
+destination. The deployment requires real target directories. Once the dry run
+passes, deploy and verify:
+
+```bash
 ./install.sh --profile "$profile"
 case "$profile" in
   desktop) ./bootstrap/fedora/verify.sh --profile desktop ;;
@@ -697,6 +750,8 @@ Log out. In GDM choose the package-provided **Niri** session. Open Ghostty, ente
 Bash, restore the profile, and return to the repository:
 
 ```bash
+bash
+test -n "$BASH_VERSION"
 profile=laptop  # use profile=desktop only on the desktop
 case "$profile" in desktop|laptop) ;; *) exit 2 ;; esac
 cd "$HOME/dotfiles"
@@ -832,9 +887,11 @@ test "$(systemctl --user is-active sync-all.timer 2>/dev/null || true)" = inacti
 sudo systemctl reboot
 ```
 
-After logging into Niri, open Bash and restore the profile:
+After logging into Niri, open Ghostty, enter Bash, and restore the profile:
 
 ```bash
+bash
+test -n "$BASH_VERSION"
 profile=laptop  # use profile=desktop only on the desktop
 case "$profile" in desktop|laptop) ;; *) exit 2 ;; esac
 cd "$HOME/dotfiles"

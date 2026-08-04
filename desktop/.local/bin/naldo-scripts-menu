@@ -10,6 +10,7 @@ set -Eeuo pipefail
 TERMINAL="${NALDO_TERMINAL:-ghostty}"
 SYNC_CONTROL="${SYNC_CONTROL:-$HOME/.local/bin/sync-control}"
 SYNC_ALL="${SYNC_ALL:-$HOME/.local/bin/sync-all}"
+NALDO_UPDATE="${NALDO_UPDATE:-$HOME/.local/bin/naldo-update}"
 NOCTALIA="${NOCTALIA:-noctalia}"
 
 notify() {
@@ -161,6 +162,7 @@ main() {
   local choice
   local -a items=(
     "󰒋 Repository synchronization"
+    "󰚰 System maintenance"
     "🌙 Export Noctalia config"
   )
 
@@ -176,11 +178,16 @@ main() {
     notify "Scripts" "Missing executable: $SYNC_CONTROL"
     return 1
   }
+  [[ -x "$NALDO_UPDATE" ]] || {
+    notify "Scripts" "Missing executable: $NALDO_UPDATE"
+    return 1
+  }
 
   choice="$(choose_menu 'Scripts > ' "${items[@]}")"
   [[ -z "$choice" ]] && return 0
   case "$choice" in
   "󰒋 Repository synchronization") choose_sync ;;
+  "󰚰 System maintenance") run_terminal "$NALDO_UPDATE" ;;
   "🌙 Export Noctalia config") export_noctalia ;;
   esac
 }
