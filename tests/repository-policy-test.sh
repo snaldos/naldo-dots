@@ -51,49 +51,38 @@ fi
   fail 'unused runtime distribution detection remains'
 pass 'runtime has one Fedora-era command contract without distribution branches'
 
-[[ ! -e "$REPO_DIR/desktop/.local/bin/launch-zen" ]] || fail 'fixed-command Zen wrapper remains'
-grep -Fq 'ZEN_FLATPAK_ID="app.zen_browser.zen"' "$REPO_DIR/niri/.config/niri/scripts/app_launcher.sh" ||
-  fail 'Niri has the wrong Zen Flatpak ID'
-launcher="$REPO_DIR/niri/.config/niri/scripts/app_launcher.sh"
-menu_count="$(awk '
-  /^menu_items=\($/ { in_menu=1; next }
-  in_menu && /^\)$/ { print count+0; exit }
-  in_menu && /"/ { count++ }
-' "$launcher")"
-[[ "$menu_count" == 2 ]] || fail 'curated launcher does not contain exactly two entries'
-grep -Fq '  " Terminal"' "$launcher" || fail 'curated launcher lacks floating Ghostty'
-grep -Fq '  "󰙨 Zen Browser"' "$launcher" || fail 'curated launcher lacks Zen'
-! rg -n 'YAZI_CHOOSER|Files \(Yazi\)|Translator|Smassh|require_command (rlwrap|trans|smassh)' "$launcher" >/dev/null ||
-  fail 'curated launcher retains an unselected application'
-zen_rules="$REPO_DIR/niri/.config/niri/conf.d/rules.kdl"
-[[ "$(grep -Fc 'match app-id=r#"^app\.zen_browser\.zen$"#' "$zen_rules")" == 1 ]] ||
-  fail 'Zen has a layout rule beyond picture-in-picture'
-grep -Fq 'match app-id=r#"^app\.zen_browser\.zen$"# title="^Picture-in-Picture$"' "$zen_rules" ||
-  fail 'picture-in-picture Zen rule does not match the live app ID'
-! grep -Fq 'exclude title="^Picture-in-Picture$"' "$zen_rules" ||
-  fail 'ordinary Zen still has a layout rule'
-! grep -Fq 'open-floating false' "$zen_rules" ||
-  fail 'ordinary Zen is still forced into a layout'
-grep -Fq 'ZEN_FLOAT_WIDTH=1080' "$launcher" ||
-  fail 'launcher Zen width differs from floating Ghostty'
-grep -Fq 'ZEN_FLOAT_HEIGHT=920' "$launcher" ||
-  fail 'launcher Zen height differs from floating Ghostty'
-for action in move-window-to-floating set-window-width set-window-height center-window; do
-  grep -Fq "$action --id" "$launcher" || fail "launcher does not target Zen with $action"
+for obsolete_launcher in \
+  "$REPO_DIR/desktop/.local/bin/launch-zen" \
+  "$REPO_DIR/desktop/.local/libexec/naldo/launch-terminal" \
+  "$REPO_DIR/niri/.config/niri/scripts/app_launcher.sh"; do
+  [[ ! -e "$obsolete_launcher" ]] || fail "obsolete launcher remains: ${obsolete_launcher#"$REPO_DIR/"}"
 done
+keybindings="$REPO_DIR/niri/.config/niri/conf.d/keybindings.kdl"
+grep -Fq 'Mod+T hotkey-overlay-title="Open a Terminal: Ghostty" {' "$keybindings" ||
+  fail 'Mod+T is not the direct Ghostty binding'
+grep -Fq '        spawn "ghostty"' "$keybindings" || fail 'Mod+T does not spawn ordinary Ghostty'
+grep -Fq 'Mod+Z hotkey-overlay-title="Open a Browser: Zen" {' "$keybindings" ||
+  fail 'Mod+Z is not the direct Zen binding'
+grep -Fq 'spawn "flatpak" "run" "app.zen_browser.zen" "--new-window" "about:newtab"' "$keybindings" ||
+  fail 'Mod+Z does not directly request a new Zen window'
+zen_rules="$REPO_DIR/niri/.config/niri/conf.d/rules.kdl"
+! grep -Fq 'app.zen_browser.zen' "$zen_rules" || fail 'Zen retains a static Niri window rule'
+! rg -n 'com[.]mitchellh[.]ghostty[.]float|ZEN_FLOAT|app_launcher|launch-terminal' \
+  "$REPO_DIR/niri" "$REPO_DIR/desktop" >/dev/null ||
+  fail 'obsolete Ghostty/Zen floating launcher machinery remains'
+# The variables belong to the scripts-menu source and must remain literal here.
+# shellcheck disable=SC2016
+grep -Fq '"$TERMINAL" --wait-after-command -e "$@" &' "$REPO_DIR/desktop/.local/bin/naldo-scripts-menu" ||
+  fail 'scripts menu does not use an ordinary terminal window'
 grep -Fq 'match app-id=r#"^app\.zen_browser\.zen$"#' "$REPO_DIR/niri/.config/niri/scripts/theme_launcher.sh" ||
   fail 'Zen opacity rule does not match the live app ID'
-# Literal source assertion; expansion belongs to the launcher at runtime.
-# shellcheck disable=SC2016
-grep -Fq 'spawn_app flatpak run "$ZEN_FLATPAK_ID" --new-window about:newtab' "$launcher" ||
-  fail 'Niri launcher does not request one direct new Zen window'
 while IFS= read -r -d '' script; do
   substantive="$(awk '!/^[[:space:]]*(#|$)/ { count++ } END { print count+0 }' "$script")"
   if ((substantive < 25)) && rg -q '^[[:space:]]*exec[[:space:]]' "$script"; then
     fail "fixed-command forwarding wrapper remains: ${script#"$REPO_DIR/"}"
   fi
 done < <(find "$REPO_DIR" -path "$REPO_DIR/.git" -prune -o -type f -perm /111 -print0)
-pass 'Zen is direct and no trivial fixed-command forwarding wrapper remains'
+pass 'Mod+T and Mod+Z open ordinary tiled windows without floating identities or wrappers'
 
 for assertion in \
   'fish/.config/fish/config.fish:set -gx EDITOR hx' \

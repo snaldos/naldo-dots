@@ -34,8 +34,8 @@ it before deployment.
 
 TOML merge precedence, dotted keys, and arrays of tables matter. JSON validity
 does not make a file safe to track. Never replace a maintained source with a
-generated export without a reviewed diff. Neovim remains stock and has no
-tracked package or plugin manager.
+generated export without a reviewed diff. Neovim is optional; when installed it
+remains stock and has no tracked package or plugin manager.
 
 ## Theme chain
 
@@ -74,7 +74,7 @@ color fragment. Never point a rendering hook at a tracked seed or symlink.
 
 `yazi --debug` may report missing optional openers while exiting successfully.
 Inspect diagnostics. imv, Swappy, Inkscape, and Okular come from Fedora; Sioyek
-is an optional community-maintained unverified Flatpak.
+is the selected community-maintained, unverified Flatpak alternative.
 
 ### Pi
 
@@ -85,8 +85,9 @@ and Herdr-managed generated state never belong in the Stow source.
 
 ### Zen
 
-Only the Flatpak `app.zen_browser.zen` is supported. The Niri menu launches it
-directly with `flatpak run`; MIME handling uses
-`app.zen_browser.zen.desktop`. Inspect Niri's
-actual app ID after installation rather than inferring it from the Flatpak ID.
-Browser profiles and histories remain private.
+Only the Flatpak `app.zen_browser.zen` is supported. Niri binds `Mod+Z` directly
+to `flatpak run app.zen_browser.zen --new-window about:newtab`; MIME handling
+uses `app.zen_browser.zen.desktop`. Zen and ordinary Ghostty windows have no
+special floating identity or rule. Inspect Niri's actual app ID after
+installation rather than inferring it from the Flatpak ID. Browser profiles and
+histories remain private.

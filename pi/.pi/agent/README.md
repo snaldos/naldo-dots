@@ -27,7 +27,7 @@ Global extensions do not inspect learning-roadmap files. The learning repository
 At 88 columns and wider, startup uses a centered Claude-inspired dashboard with two-cell outer margins:
 
 ```text
-  ╭─ π 0.80.7 ───────────────────────────────────────────────────────╮
+  ╭─ π <version> ────────────────────────────────────────────────────╮
   │                          │                                      │
   │   Welcome back, Naldo!   │ DEUTSCH  Der Beweis beginnt mit ... │
   │                          │ ENGLISH  The proof begins with ...   │
@@ -190,7 +190,8 @@ Opaque card IDs and idempotency keys remain only in memory. They are never rende
 
 - This is ChatGPT/Codex subscription allowance, not OpenAI API billing.
 - It reflects the local Codex CLI login, which can differ from Pi's login.
-- Pi 0.80.7 has no dedicated subscription-allowance API.
+- Pi has no dedicated subscription-allowance API; the integration therefore
+  uses the installed Codex app-server protocol.
 - The Codex app-server is maintained by OpenAI but currently experimental, so schema, timeout, stale, and unavailable states remain explicit.
 - There is no dashboard scraping, credential parsing, secret logging, or on-disk cache.
 - The consume method is never called from startup, status rendering, normal `/usage`, tests, or without deliberate interactive confirmation.
@@ -240,7 +241,8 @@ Herdr uses `host_cursor = "native"`, while its forced hidden-cursor reveal remai
 - Auto-compaction: 65,536-token response reserve and 40,000 recent tokens.
 - Project trust default: `ask`.
 - Helix: `Ctrl+G` via Fedora's `hx`; Fish also exports it through `EDITOR` and `VISUAL`.
-- Neovim remains installed with stock defaults and no dotfile-managed configuration.
+- Neovim is not selected by default; if installed, it keeps stock defaults and
+  no dotfile-managed configuration.
 - Fish exports `PI_CACHE_RETENTION=long`.
 - Ghostty forwards `Alt+Backspace` for Pi's editor.
 - Inline terminal image previews are hidden to avoid invisible reserved rows under post-processing shaders; images remain available to the model (`images.blockImages` stays false).

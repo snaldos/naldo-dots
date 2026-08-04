@@ -17,7 +17,7 @@ NetworkManager	feature	nmcli	-	system:NetworkManager.service	Noctalia network ba
 bluez	feature	bluetoothctl	-	system:bluetooth.service	Bluetooth backend	all
 upower	feature	upower	-	system:upower.service	Power and battery backend	all
 bash	feature	bash,sh	-	-	Tracked shell scripts and hooks	all
-coreutils	feature	install,cp,mv,rm,mkdir,mktemp,chmod,cat,head,tail,dirname,date,cut,sort,test,base64,sha256sum,sleep,readlink,uname,env	-	-	Core script utilities	all
+coreutils	feature	install,cp,mv,rm,mkdir,mktemp,chmod,cat,head,tail,dirname,date,cut,sort,test,base64,sha256sum,sleep,readlink,uname,env,id,stat,sync,ln,nl	-	-	Core script and clean-install utilities	all
 diffutils	feature	cmp	-	-	Safe file comparison	all
 findutils	feature	find	-	-	Deployment inventory	all
 gawk	feature	awk	-	-	Script parsing	all
@@ -27,8 +27,8 @@ git-lfs	feature	git-lfs	-	-	Git LFS filters and transfer support for notes attac
 grep	feature	grep	-	-	Validation parsing	all
 sed	feature	sed	-	-	Configuration diagnostics	all
 stow	feature	stow	-	-	User configuration deployment	all
-util-linux	feature	flock,findmnt,setsid	-	-	Locks wallpaper mount guard and detached openers	all
-systemd	feature	systemctl,systemd-analyze,journalctl,udevadm	-	-	User units and validation	all
+util-linux	feature	flock,findmnt,setsid,lsblk,mount,umount,chsh	-	-	Locks storage inspection mount tests login shell selection and detached openers	all
+systemd	feature	systemctl,systemd-analyze,journalctl,udevadm,systemd-run,hostnamectl	-	-	User units transient checks host naming and validation	all
 flatpak	feature	flatpak	-	-	Selected desktop applications	all
 python3	feature	python3	-	-	Desktop helpers and tests	all
 jq	feature	jq	-	-	Niri IPC parsing	all
@@ -40,11 +40,11 @@ tar	feature	tar	-	-	Reviewed upstream release archive extraction	all
 sudo	development	sudo,sudoedit	-	-	Manual reviewed privileged operations	all
 dnf-plugins-core	feature	-	-	-	COPR and DNF repository commands	all
 rpm	feature	rpm	-	-	Installed-package verification and vendor signature checks	all
-fontconfig	feature	fc-list,fc-match	-	-	Configured font-family discovery and verification	all
+fontconfig	feature	fc-list,fc-match,fc-cache	-	-	Configured font installation discovery and verification	all
 acl	feature	getfacl	-	-	Bongo Cat input-device ACL verification	all
 openssh-clients	feature	ssh,scp,sftp,ssh-keygen,ssh-copy-id,ssh-add	-	-	OpenSSH client tools; inbound sshd is not selected	all
 libnotify	optional	notify-send	-	-	Feature-local desktop diagnostics	all
-xdg-utils	feature	xdg-open	-	-	Desktop opener	all
+xdg-utils	feature	xdg-open,xdg-mime	-	-	Desktop opener and MIME-default verification	all
 wl-clipboard	feature	wl-copy,wl-paste	-	-	Wayland CLI copy/paste and screenshot handoff; not history or persistence	all
 procps-ng	feature	pkill	-	-	Noctalia recorder process control and optional Orca toggle	all
 dbus-tools	feature	dbus-send	-	-	Zathura theme reload hook	all

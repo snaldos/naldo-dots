@@ -60,10 +60,11 @@ not host wrappers. The final profile is exactly `all`, `desktop`, or `laptop`.
 Source terminology is literal: official Fedora repository,
 upstream-documented third-party COPR, reviewed community COPR, official vendor
 repository, official upstream installer/release/tagged source, reviewed GitHub
-CLI extension, official VS Code extension, and Flathub application. COPR is Fedora-hosted build
-infrastructure; no individual COPR is an official Fedora package source. The
-existing desktop-only RPM Fusion row remains an explicitly reviewed third-party
-repository rather than being mislabeled as one of those sources.
+CLI extension, official VS Code extension, and Flathub application. COPR is
+Fedora-hosted build infrastructure; no individual COPR is an official Fedora
+package source. The existing desktop-only RPM Fusion row remains an explicitly
+reviewed third-party repository rather than being mislabeled as one of those
+sources.
 
 ## Selected sources
 
@@ -99,7 +100,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
-| `EDITOR-TOOLS.md` | Helix responsibilities, installation commands and health checks |
+| `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |
 | `verify.sh` | read-only installed package/output report |
@@ -122,9 +123,9 @@ The verifier checks only rows marked `all` or matching the selected profile,
 plus shared tracked user outputs. It checks RPM package presence and selected
 external RPM ownership, manifest-declared commands, desktop files, Flatpak IDs
 and packaged integration commands, official-installer receipts, selected GitHub
-CLI/VS Code extensions, units, configured fonts, and tracked user outputs. It performs no
-network request, transaction, authentication, mount, service activation, or
-private-key read.
+CLI/VS Code extensions, units, configured fonts, and tracked user outputs. It
+performs no network request, transaction, authentication, mount, service
+activation, or private-key read.
 Missing applicable `session`/`feature` entries fail; optional/development entries
 are reported only.
 
@@ -140,4 +141,5 @@ sudo ./install-system.sh
 
 This installs only `/etc/keyd/default.conf` and the exact udev rule creating the
 stable keyd virtual-keyboard symlink with `uaccess`. Read
-`system/keyd/README.md` before the separate, explicit udev/keyd activation.
+[`../../system/keyd/README.md`](../../system/keyd/README.md) before the separate,
+explicit udev/keyd activation.

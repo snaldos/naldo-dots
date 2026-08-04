@@ -126,6 +126,9 @@ assert servers["typescript-language-server"]["command"] == "typescript-language-
 assert providers["typescript-language-server"][0] == "npm:typescript-language-server"
 assert providers["tsc"][0] == "npm:typescript@6"
 assert providers["tsserver"][0] == "npm:typescript@6"
+prettier_role = providers["prettier"][1]
+for file_kind in ["JavaScript", "JSX", "TypeScript", "TSX"]:
+    assert file_kind in prettier_role, f"Prettier role omits {file_kind}"
 
 # npm and uv are rolling user tools except for the active TypeScript major
 # compatibility boundary; Cargo installs retain reviewed explicit versions/tags.
@@ -194,10 +197,19 @@ pass 'Tinymist uses only the tinymist-cli package from the locked v0.15.2 upstre
 ! rg -n '@[0-9]+([.][0-9]+)+' "$REPO_DIR/bootstrap/fedora/npm-packages.tsv" \
   "$REPO_DIR/bootstrap/fedora/uv-tools.tsv" >/dev/null ||
   fail 'rolling npm or uv inventory retains a stale snapshot version'
-for language in bash json yaml toml python typst markdown javascript typescript jsx tsx; do
-  grep -Fq "hx --health $language" "$REPO_DIR/bootstrap/fedora/EDITOR-TOOLS.md" ||
+health_loop="$(awk '
+  /^for language in / { capture=1 }
+  capture { print }
+  capture && /; do$/ { exit }
+' "$REPO_DIR/bootstrap/fedora/EDITOR-TOOLS.md" | tr '\n' ' ')"
+for language in bash json yaml toml python typst markdown html css javascript typescript jsx tsx; do
+  grep -Eq "(^|[[:space:]])${language}([[:space:]]|;|$)" <<<"$health_loop" ||
     fail "missing documented Helix health check: $language"
 done
+# The variable belongs to the documented loop and must remain literal here.
+# shellcheck disable=SC2016
+grep -Fq 'hx --health "$language"' "$REPO_DIR/bootstrap/fedora/EDITOR-TOOLS.md" ||
+  fail 'documented Helix health loop does not invoke hx'
 pass 'rolling provider metadata and all required health checks are current'
 
 printf '1..%d\n' "$checks"

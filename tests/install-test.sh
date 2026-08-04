@@ -69,11 +69,14 @@ grep -Fq 'profiles/desktop.kdl' "$HOME_TEST/.config/niri/machine.kdl" ||
   fail 'installer did not perform exactly one user-unit inventory reload'
 ! grep -Eq '(^| )(enable|start|restart)( |$)' "$SYSTEMCTL_TEST_LOG" ||
   fail 'installer activated a user service or timer'
-[[ ! -e "$HOME_TEST/.local/bin/launch-zen" ]] || fail 'obsolete fixed-command Zen wrapper was deployed'
-# Literal source assertion; expansion belongs to the launcher at runtime.
-# shellcheck disable=SC2016
-grep -Fq 'spawn_app flatpak run "$ZEN_FLATPAK_ID"' \
-  "$HOME_TEST/.config/niri/scripts/app_launcher.sh" || fail 'Zen launch is not direct'
+for obsolete_launcher in \
+  "$HOME_TEST/.local/bin/launch-zen" \
+  "$HOME_TEST/.local/libexec/naldo/launch-terminal" \
+  "$HOME_TEST/.config/niri/scripts/app_launcher.sh"; do
+  [[ ! -e "$obsolete_launcher" ]] || fail "obsolete launcher was deployed: $obsolete_launcher"
+done
+grep -Fq 'spawn "flatpak" "run" "app.zen_browser.zen" "--new-window" "about:newtab"' \
+  "$HOME_TEST/.config/niri/conf.d/keybindings.kdl" || fail 'Mod+Z Zen launch is not direct'
 pass 'fresh home receives no-folding links, local state, explicit desktop profile, and disabled timer inventory'
 
 [[ -f "$HOME_TEST/.config/ghostty/themes/noctalia" &&

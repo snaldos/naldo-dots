@@ -30,7 +30,21 @@ awk -F '\t' '$1 == "gcr" && $2 == "feature" && $5 == "user:gcr-ssh-agent.socket"
   "$DNF" || fail 'GCR does not own the selected shared user SSH-agent socket'
 awk -F '\t' '$1 == "git-lfs" && $2 == "feature" && $3 == "git-lfs" { found=1 } END { exit !found }' \
   "$DNF" || fail 'Git LFS is not a selected Fedora feature'
-pass 'Fedora manifest uses exact selected OpenSSH GCR LFS npm Rust build and Bongo Cat packages'
+for ownership in \
+  coreutils:id coreutils:stat coreutils:sync coreutils:ln coreutils:nl \
+  util-linux:lsblk util-linux:mount util-linux:umount util-linux:chsh \
+  systemd:systemd-run systemd:hostnamectl fontconfig:fc-cache xdg-utils:xdg-mime; do
+  package="${ownership%%:*}"
+  command="${ownership#*:}"
+  awk -F '\t' -v package="$package" -v command="$command" '
+    $1 == package {
+      count=split($3, commands, ",")
+      for (i=1; i<=count; i++) if (commands[i] == command) found=1
+    }
+    END { exit !found }
+  ' "$DNF" || fail "clean-install command $command is not owned by $package"
+done
+pass 'Fedora manifest owns selected SSH GCR LFS development and clean-install commands'
 
 awk -F '\t' '$1 == "wl-clipboard" && $2 == "feature" && $3 == "wl-copy,wl-paste" { found=1 } END { exit !found }' \
   "$DNF" || fail 'wl-clipboard does not own both CLI copy/paste commands'

@@ -1,10 +1,10 @@
 # Helix and scientific editor tooling
 
-Helix (`hx`) is the primary editor. Visual Studio Code is a minimal scientific
-fallback with only Python, Jupyter, and Ruff selected directly. Provider rows in
-`dnf-packages.tsv`, `npm-packages.tsv`, `uv-tools.tsv`, and `cargo-tools.tsv`
-own installation; `helix/.config/helix/languages.toml` owns active LSP and
-formatter responsibilities.
+Helix (`hx`) is the primary editor. VS Code is a minimal scientific fallback.
+The canonical installation commands are in
+[`CLEAN-INSTALL.md`](CLEAN-INSTALL.md); this document records ownership,
+compatibility constraints, and health checks without duplicating the setup
+sequence.
 
 ## Active responsibilities
 
@@ -18,37 +18,35 @@ formatter responsibilities.
 | TOML | Taplo LSP | Taplo |
 | JSON/JSONC, YAML, HTML, CSS | selected VS Code-derived language servers | Prettier |
 
-`ty` remains an optional Python experiment and is not active beside
-BasedPyright. No Helix debug adapter is selected; VS Code covers occasional
-interactive Python/JavaScript debugging without adding another Helix provider.
+`ty` is an optional Python experiment and is not active beside BasedPyright. No
+Helix debug adapter is selected.
 
-## User npm prefix
+## Provider boundaries
 
-Fedora supplies Node/npm. Install selected npm tools without root:
+- Fedora owns Helix, Node/npm, uv, shfmt, and the compiler/build prerequisites.
+- User-prefix npm owns Pi, Codex, Prettier, and the selected web/shell language
+  servers under `~/.npm-global`.
+- uv tool environments own BasedPyright and Ruff globally for Helix.
+- Cargo owns the pinned Typst, TOML, Markdown, and prose tools.
+- VS Code comes from Microsoft's signed RPM repository; its extension manager
+  owns the selected Python, Jupyter, and Ruff extensions.
 
-```bash
-mkdir -p "$HOME/.npm-global"
-npm config set prefix "$HOME/.npm-global"
-mapfile -t npm_tools < <(awk -F '\t' -v profile="$profile" '
-  $1 !~ /^#/ && NF && $3 != "optional" && ($NF == "all" || $NF == profile) {
-    print $1
-  }
-' bootstrap/fedora/npm-packages.tsv)
-npm install --global "${npm_tools[@]}"
-```
+Every active command has one row in `dnf-packages.tsv`, `npm-packages.tsv`,
+`uv-tools.tsv`, or `cargo-tools.tsv`. The active Helix mapping is
+`helix/.config/helix/languages.toml`.
 
-Never run `sudo npm install -g`. `vscode-langservers-extracted` is a community
-npm repackaging used only for JSON, HTML, and CSS language servers.
+Never run global npm installation through sudo. The selected prefix is
+`~/.npm-global`, which Fish adds to `PATH`.
 
-### TypeScript compatibility boundary
+## TypeScript compatibility boundary
 
-`typescript-language-server 5.3.0` still starts the `tsserver` API. TypeScript 7
-removed that executable, so the selected runtime is `typescript@6`. This is an
-active compatibility requirement, not a stale snapshot. `naldo-update` updates
-other outdated global npm packages normally and reifies TypeScript only within
-major version 6 while it is already installed.
+The selected TypeScript Language Server still starts the `tsserver` API.
+TypeScript 7 removed that executable, so `typescript@6` remains required.
+`naldo-update` updates other global npm packages normally and reifies the latest
+major-6 TypeScript only when TypeScript is already installed.
 
-Verify both provider and real LSP availability:
+Remove this constraint only after a real Helix LSP initialization succeeds with
+the replacement server architecture—not merely when `tsc` exists.
 
 ```bash
 typescript-language-server --version
@@ -60,82 +58,53 @@ hx --health typescript
 hx --health tsx
 ```
 
-## Python tools through uv
+## Python and scientific environments
 
-Global tools let Helix launch them outside any project:
-
-```bash
-mapfile -t uv_tools < <(awk -F '\t' -v profile="$profile" '
-  $1 !~ /^#/ && NF && $3 != "optional" && $4 == "active" &&
-    ($NF == "all" || $NF == profile) { print $1 }
-' bootstrap/fedora/uv-tools.tsv)
-for tool in "${uv_tools[@]}"; do
-  uv tool install "$tool"
-done
-```
-
-Projects should declare their own reproducible development dependencies:
+BasedPyright owns type intelligence. Ruff owns lint diagnostics, code actions,
+import organization, and formatting. Project dependencies belong in a project
+lockfile rather than the global tool environments:
 
 ```bash
 uv add --dev basedpyright ruff
-# or use a Pixi environment when native/conda/CUDA dependencies justify it
 ```
 
-Do not install Conda beside Pixi by default. Pixi already resolves conda-forge
-packages, native dependencies, lockfiles, tasks, and PyPI packages. Add Conda
-only for an external workflow that genuinely requires the `conda` executable or
-a non-Pixi-compatible provider.
+Use Pixi when native, conda-forge, CUDA, or cross-platform dependencies justify
+it. Conda is not installed beside Pixi unless an external workflow requires the
+`conda` executable or a provider Pixi cannot support.
 
-## Locked Cargo tools
+## Cargo tools
 
-Print reviewed install commands from the manifest:
+Cargo rows contain reviewed, locked installation commands. Routine registry
+updates use `cargo install-update -a`. Tinymist and Markdown Oxide come from
+reviewed upstream tags and therefore remain deliberate manual updates.
 
-```bash
-awk -F '\t' -v profile="$profile" '
-  $1 !~ /^#/ && NF && ($NF == "all" || $NF == profile) { print $5 }
-' bootstrap/fedora/cargo-tools.tsv
-```
-
-Run each printed command deliberately. Cargo pins record known installation
-routes; routine registry updates use `cargo install-update -a`. Tinymist and
-Markdown Oxide come from reviewed upstream tags and remain manual updates.
 Taplo must remain the Cargo `taplo-cli` build with its `lsp` feature; the npm
-package with the same name does not supply the required LSP build.
+package with the same name does not provide the required LSP build.
 
-## Minimal Visual Studio Code fallback
+## Minimal VS Code fallback
 
-Visual Studio Code comes from Microsoft's signed RPM repository. Install only
-these direct selections:
+Exactly these extensions are selected directly:
+
+```text
+ms-python.python
+ms-toolsai.jupyter
+charliermarsh.ruff
+```
+
+VS Code may install dependencies such as debugpy, Pylance, Python Environments,
+and Jupyter renderers. They are provider-managed dependency closure, not
+additional selections. No settings profile, extension pack, or separate
+JavaScript debugger is selected.
+
+## Health check
 
 ```bash
-for extension in ms-python.python ms-toolsai.jupyter charliermarsh.ruff; do
-  code --install-extension "$extension"
+for language in bash json yaml toml python typst markdown html css \
+  javascript typescript jsx tsx; do
+  hx --health "$language"
 done
 ```
 
-VS Code may install extension dependencies such as debugpy, Pylance, Python
-Environments, and Jupyter renderers. Those are dependency closure, not separate
-selections. Do not copy a settings profile or add an extension pack unless a
-real workflow requires it.
-
-## Complete health check
-
-```bash
-hx --health bash
-hx --health json
-hx --health yaml
-hx --health toml
-hx --health python
-hx --health typst
-hx --health markdown
-hx --health html
-hx --health css
-hx --health javascript
-hx --health typescript
-hx --health jsx
-hx --health tsx
-```
-
-A missing optional debug adapter does not invalidate LSP, parser, or formatter
-health. Investigate only red entries corresponding to selected responsibilities
-in the table above.
+A missing unselected debug adapter does not invalidate LSP, parser, or formatter
+health. Investigate red entries only when they correspond to a responsibility in
+the table above.

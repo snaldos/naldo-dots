@@ -2,27 +2,12 @@
 
 set -Eeuo pipefail
 
-case $# in
-0)
-  terminal="${NALDO_TERMINAL:-ghostty}"
-  terminal_float_app_id="${NALDO_TERMINAL_FLOAT_APP_ID:-com.mitchellh.ghostty.float}"
-  ;;
-2)
-  terminal="$1"
-  terminal_float_app_id="$2"
-  ;;
-*)
-  printf 'Usage: %s [TERMINAL TERMINAL_FLOAT_APP_ID]\n' "${0##*/}" >&2
+(($# == 0)) || {
+  printf 'Usage: %s\n' "${0##*/}" >&2
   exit 2
-  ;;
-esac
+}
 
-LAUNCH_TERMINAL="${LAUNCH_TERMINAL:-$HOME/.local/libexec/naldo/launch-terminal}"
-TERMINAL_FLOAT=(
-  "$LAUNCH_TERMINAL"
-  --terminal "$terminal"
-  --app-id "$terminal_float_app_id"
-)
+TERMINAL="${NALDO_TERMINAL:-ghostty}"
 SYNC_CONTROL="${SYNC_CONTROL:-$HOME/.local/bin/sync-control}"
 SYNC_ALL="${SYNC_ALL:-$HOME/.local/bin/sync-all}"
 NOCTALIA="${NOCTALIA:-noctalia}"
@@ -43,11 +28,11 @@ choose_menu() {
 }
 
 run_terminal() {
-  "${TERMINAL_FLOAT[@]}" --hold -- "$@" &
+  "$TERMINAL" --wait-after-command -e "$@" &
 }
 
 run_shell() {
-  "${TERMINAL_FLOAT[@]}" --hold -- bash -lc "$1" &
+  "$TERMINAL" --wait-after-command -e bash -lc "$1" &
 }
 
 run_control() {
@@ -183,8 +168,8 @@ main() {
     printf 'Noctalia is required: %s\n' "$NOCTALIA" >&2
     return 1
   }
-  [[ -x "$LAUNCH_TERMINAL" ]] || {
-    notify "Scripts" "Missing executable: $LAUNCH_TERMINAL"
+  command -v "$TERMINAL" >/dev/null 2>&1 || {
+    notify "Scripts" "Missing terminal: $TERMINAL"
     return 1
   }
   [[ -x "$SYNC_CONTROL" ]] || {

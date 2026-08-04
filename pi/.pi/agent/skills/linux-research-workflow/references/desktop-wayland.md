@@ -106,6 +106,6 @@ printing browser titles:
 niri msg -j windows | jq -r '.[].app_id' | sort -u
 ```
 
-Adjust both the picture-in-picture rule and generated opacity rule only from
-that evidence. Never inspect browser profile databases, cookies, history, or
-sessions.
+Adjust the generated opacity rule only from that evidence. Zen and Ghostty have
+no dedicated floating app IDs or rules; `Mod+Z` and `Mod+T` open ordinary tiled
+windows. Never inspect browser profile databases, cookies, history, or sessions.

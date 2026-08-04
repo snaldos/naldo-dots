@@ -1,206 +1,103 @@
 # Dotfiles
 
-Linux-oriented workstation configuration targeting Fedora Workstation and a
-GDM → Niri → Noctalia session. Portable user files are explicit GNU Stow
-packages whose contents mirror paths under `$HOME`.
+Fedora Workstation configuration for a GDM → Niri → Noctalia session, deployed
+as explicit GNU Stow packages under `$HOME`.
 
-![Niri desktop with Helix, Pi, and the Noctalia control center](assets/screenshots/desktop-overview.png)
+![Niri desktop with Helix, Pi, and Noctalia](assets/screenshots/desktop-overview.png)
 
-## Boundaries
+## Start here
+
+| Task | Entry point |
+|---|---|
+| Install a fresh desktop or laptop | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
+| Review selected providers | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md) |
+| Deploy an existing checkout | `./install.sh --profile desktop` or `./install.sh --profile laptop` |
+| Install the root-owned keyd integration | [`system/keyd/README.md`](system/keyd/README.md) |
+| Update installed software | [`MAINTENANCE.md`](MAINTENANCE.md) |
+| Inspect the Pi configuration | [`pi/.pi/agent/README.md`](pi/.pi/agent/README.md) |
+
+For a clean Fedora installation, follow the complete guide from the beginning
+rather than running the user installer first.
+
+## Architecture
 
 Responsibilities are deliberately separate:
 
-1. `install.sh` deploys **user configuration only** to `$HOME` with GNU Stow.
-2. `install-system.sh` installs only reviewed root-owned keyd mapping and
-   Noctalia input-device rule from `system/`.
-3. `naldo-update` manually updates software already managed by available local
-   providers; it has no package inventory.
-4. `bootstrap/fedora/` is a reusable human-run clean-install guide and curated
-   selected-software inventory, not a complete system snapshot or reconciler.
+- `bootstrap/fedora/` is the provider inventory and human-run installation
+  sequence. It is not a machine reconciler.
+- `install.sh` deploys user configuration only. It does not use sudo or install
+  software.
+- `install-system.sh` installs only the reviewed keyd configuration and its
+  narrow udev rule.
+- `automation/` owns repository synchronization and the manual `naldo-update`
+  command; updates and synchronization remain separate operations.
+- `tests/` validates deployment, provider ownership, profile isolation, desktop
+  policy, synchronization safety, and Pi extensions.
 
-Neither installer configures the login manager, base GNOME desktop, boot loader,
-initramfs, graphics drivers, repositories, mirrors, or operating-system updates.
+The repository does not own GDM, the base GNOME installation, boot or graphics
+setup, package-repository activation, disk mounts, credentials, or account
+enrollment.
 
-## User installation
+## Deployment model
 
-Install prerequisites first using the reviewed Fedora manifests, then run:
+Deployment requires exactly one `desktop` or `laptop` profile. The choice writes
+a machine-local Niri selector for the corresponding tracked hardware fragment;
+there is no additional profile layer.
 
-```bash
-./install.sh --profile desktop
-./install.sh --profile laptop
-```
-
-The profile is mandatory: it selects one of the two real Niri hardware
-configurations without another profile layer.
-
-`install.sh` requires Git, GNU Stow, locking, systemd user tools, and Helix. It
-serializes against synchronization, runs the complete Stow preflight, and
-restows every declared package with `--no-folding`. It initializes missing
-machine-local Niri, Noctalia, Fish, Helix, Starship, Zathura, Pi, Git-include,
-and repository-sync files while preserving existing private/generated content.
-It never invokes sudo or a package manager.
-
-Fedora provides Helix as `hx`. All durable consumers use that command, and the
-installer requires native `hx` before changing the target home.
-
-### Stow safety
-
-Declared Stow packages are:
+Stow packages mirror their paths under `$HOME`:
 
 ```text
 ghostty fish starship herdr helix zathura yazi niri lazygit noctalia
 xdg-desktop-portal pi desktop automation git
 ```
 
-`assets`, `bootstrap`, `system`, and `tests` are explicitly non-Stow. Deployment
-simulates the complete `--no-folding --restow` transaction first. Any existing
-regular-file conflict, symlinked target parent, ignored state in a package
-source, or Stow error aborts without automatic adoption or file conversion.
+`assets`, `bootstrap`, `system`, and `tests` are not Stow packages. Before any
+change, deployment simulates the complete `--no-folding --restow` transaction.
+Regular-file conflicts, symlinked target parents, and Stow errors stop the
+transaction; files are never adopted automatically.
 
-```bash
-./deploy-links.sh --dry-run
-./deploy-links.sh
-./tests/deploy-links-test.sh
-```
-
-Target directories remain real, tracked files are individual links, and private
-or generated files remain physically outside package sources.
-
-## Root-owned keyd/Noctalia input integration
-
-The shared keyd mapping and exact Bongo Cat udev rule are tracked under
-`system/keyd/` and `system/udev/`:
-
-```bash
-./install-system.sh --dry-run
-sudo ./install-system.sh
-```
-
-The installer requires keyd, validates both sources, and writes only
-`/etc/keyd/default.conf` and
-`/etc/udev/rules.d/69-keyd-bongocat.rules`. It does not reload udev, restart
-keyd, or trigger devices. Read `system/keyd/README.md` for the stable device,
-`uaccess`, explicit activation, verification, panic sequence, and TTY recovery.
+Tracked files contain portable behavior. Machine-local or private state includes
+profile selectors, generated themes, application state, Git identity and trust,
+credentials, SSH/GCR state, Tailscale identity, mount identity, repository paths,
+and synchronization enablement. Installers initialize only missing safe defaults
+and preserve existing private or generated files.
 
 ## Repository synchronization
 
-Exactly three repositories are supported:
+`sync-all` supports exactly dotfiles, second-brain Notes, and Wallpapers. Paths
+and enabled state live in the mode-`0600` machine-local file
+`~/.config/naldo/sync/repositories.conf`.
 
-- dotfiles through normal Git;
-- second-brain notes through normal Git plus narrow attachment-only LFS rules;
-- wallpapers with compressed image payloads in Git LFS.
+Notes use narrow attachment-only Git LFS rules; Wallpapers store image payloads
+in Git LFS. The laptop keeps `~/Wallpapers` as its worktree. The desktop links
+that path to `/mnt/data/repos/Wallpapers` and requires `/mnt/data` to be a real
+mount before synchronization can touch it. See
+[`bootstrap/fedora/WALLPAPERS.md`](bootstrap/fedora/WALLPAPERS.md).
 
-Fedora's `git-lfs` package supplies the filters. Notes and Wallpapers require a
-repository-local LFS pre-push hook and a successful `git lfs fsck` before the
-timer is enabled.
+The timer remains disabled until all repositories, LFS checks, the applicable
+mount guard, silent GCR access, and a systemd-managed run pass the clean-install
+procedure. Synchronization can commit, fetch, rebase, and push.
 
-Machine-local paths and enabled state live in the real mode-`0600` file
-`~/.config/naldo/sync/repositories.conf`. `install.sh` or the first `sync-all`
-run copies the tracked example only when this active file is absent. An enabled
-missing repository fails visibly; a disabled task is logged as skipped.
+## Tool policy
 
-Both profiles use `$HOME/Wallpapers`. The laptop clones directly there and leaves
-`WALLPAPERS_REQUIRED_MOUNT` empty. The desktop links that logical path to
-`/mnt/data/repos/Wallpapers` and sets `WALLPAPERS_REQUIRED_MOUNT=/mnt/data`.
-Before wallpaper synchronization, `sync-all` proves the guard is an actual mount
-with `findmnt` and that the resolved worktree is below it. It never creates or
-mounts `/mnt/data`; see `bootstrap/fedora/WALLPAPERS.md`.
+Helix (`hx`) is primary. JavaScript and TypeScript use TypeScript Language Server
+plus Prettier; Python uses BasedPyright and Ruff. VS Code is a minimal scientific
+fallback with Python, Jupyter, and Ruff selected directly. See
+[`bootstrap/fedora/EDITOR-TOOLS.md`](bootstrap/fedora/EDITOR-TOOLS.md).
 
-`sync.sh` remains dotfiles-specific because it reconciles Stow links and reloads
-changed user-unit inventory. Notes and wallpapers use the generic
-`~/.local/libexec/naldo/sync-git-repo` and need no workstation-specific script.
-Both paths preserve local locking, conflict-marker validation, credential
-scanning, commit, fetch/rebase/push behavior, and safe failure before push on a
-rebase conflict.
+Application providers come from the six Fedora manifests; defaults come from
+`desktop/.config/mimeapps.list`. Remote identity, GCR, GitHub CLI, and client-only
+SSH policy are documented in
+[`bootstrap/fedora/REMOTE-ACCESS.md`](bootstrap/fedora/REMOTE-ACCESS.md).
 
-The user timer is installed but remains disabled until all three repositories,
-LFS, the mount guard, and silent GCR login-keyring unlock have passed manual and
-systemd tests. Its schedule uses a 10-minute user-manager startup delay, a
-30-minute interval, and a 2-minute randomized delay.
+## Validation
 
 ```bash
-sync-control enable
-sync-control pause
-sync-control resume
-sync-control interval 6h
-sync-control run
-sync-control status
-sync-control logs
-sync-control disable
-```
-
-The Noctalia scripts menu exposes only repository synchronization and a local
-Noctalia config export. Operating-system maintenance is intentionally absent.
-
-## Workstation maintenance
-
-`naldo-update` is deployed from the shared `automation` Stow package and must be
-invoked manually. It updates only already-managed DNF/Flatpak software, VS Code
-and GitHub CLI extensions, npm/uv/Cargo tools, and receipt-owned Tuicr/Herdr. It
-never runs repository synchronization and does not read the clean-install
-manifests. See [`MAINTENANCE.md`](MAINTENANCE.md) for provider order, the
-TypeScript-6 compatibility boundary, and manual Pixi/tagged-Cargo updates.
-
-## Zen Flatpak
-
-Zen has one supported identity:
-
-```text
-Flatpak: app.zen_browser.zen
-Desktop: app.zen_browser.zen.desktop
-Command: flatpak run app.zen_browser.zen
-```
-
-MIME and ordinary desktop launches use the Flatpak desktop file and have no
-Zen-specific layout rule. The `Mod+Z` application menu requests one direct new
-Zen window, then floats, sizes, and centers only that newly focused window; it
-does not change pre-existing browser windows. Picture-in-Picture remains rule-based and
-floating. On the selected installation, Niri reports the live Wayland app ID
-`app.zen_browser.zen`; desktop-file `StartupWMClass` metadata is not authoritative. Reconfirm the runtime identity after installation without
-printing browser titles:
-
-```bash
-niri msg -j windows | jq -r '.[].app_id' | sort -u
-```
-
-The matching Niri rules document where to update that evidence if upstream
-changes it.
-
-## Editor and private state
-
-Helix (`hx`) is the primary editor for Fish, Git, LazyGit, Yazi, Herdr, Pi, and
-text MIME handling. JavaScript/TypeScript use TypeScript Language Server plus
-Prettier; Python uses BasedPyright/Ruff. Visual Studio Code is a secondary
-scientific fallback with only Python, Jupyter, and Ruff directly selected. The
-tracked Git include contains behavior only; identity, credentials, and trust
-stay machine-local. Neovim remains unconfigured and outside Stow.
-
-Noctalia-rendered themes, Niri selectors, Fish local overrides, Starship's active
-config, Helix's generated base theme, Zathura colors, sync paths, and Pi active
-settings are real machine-local files. The installer seeds safe Ghostty and
-Helix themes plus an empty Zathura color include; Niri skips its optional
-Noctalia include and Yazi uses defaults until the local shell renders them. Pi credentials, sessions, trust, DBs,
-logs, installed packages, and Herdr-managed generated integration state are
-ignored and absent from package sources. Existing `~/.pi/agent/settings.json`
-is never overwritten; `settings.default.json` seeds only a missing file and uses
-`hx` for a fresh Fedora account.
-
-## Fedora bootstrap and verification
-
-For either machine's fresh installation or an occasional Fedora audit, follow
-`bootstrap/fedora/CLEAN-INSTALL.md` from top to bottom. It is the single
-profile-aware execution path and derives software from the six provider
-manifests while linking deeper editor-tool, remote-access, and wallpaper
-references. After installing selected dependencies and running the user
-installer:
-
-```bash
-./bootstrap/fedora/verify.sh --profile desktop  # or laptop
 ./tests/run-tests.sh
+./bootstrap/fedora/verify.sh --profile desktop
+# or: ./bootstrap/fedora/verify.sh --profile laptop
 ```
 
-The verifier reports missing RPM/provider ownership, commands, desktop/session
-files, Flatpak IDs and packaged integration commands, configured font families,
-tracked user outputs, and units. Results
-use `session`, `feature`, `optional`, or `development` classification. It
-performs no network or package operation.
+The verifier reports selected packages and provider ownership, commands, desktop
+files, Flatpaks, editor tools, fonts, tracked outputs, and units without making
+changes.

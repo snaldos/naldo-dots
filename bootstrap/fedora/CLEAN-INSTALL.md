@@ -669,8 +669,8 @@ chsh -s "$fish_path"
 
 ### Common
 
-Read `system/keyd/README.md` and memorize keyd’s
-`Backspace+Escape+Enter` panic sequence first:
+Read [`../../system/keyd/README.md`](../../system/keyd/README.md) and memorize
+keyd’s `Backspace+Escape+Enter` panic sequence first:
 
 ```bash
 ./install-system.sh --dry-run
@@ -748,10 +748,8 @@ systemctl --user status \
 6. verify Thunderbird opens mail/calendar links;
 7. verify VS Code can select a Pixi/uv project interpreter and open a notebook;
 8. test the Noctalia recorder in portal mode;
-9. confirm ordinary Zen follows Niri’s default layout;
-10. use `Mod+Z` → Zen Browser and confirm only the new window floats centered at
-    `1080×920`; and
-11. confirm Picture-in-Picture remains floating.
+9. press `Mod+T` and `Mod+Z`; confirm ordinary Ghostty and new Zen windows both
+   open in Niri’s default tiled layout.
 
 ## 17. Enroll Tailscale and keep inbound SSH disabled
 
@@ -882,4 +880,4 @@ The machine is complete when:
 For maintenance use [`../../MAINTENANCE.md`](../../MAINTENANCE.md). For detailed
 recovery and trust boundaries use [`EDITOR-TOOLS.md`](EDITOR-TOOLS.md),
 [`REMOTE-ACCESS.md`](REMOTE-ACCESS.md), [`WALLPAPERS.md`](WALLPAPERS.md), and
-`system/keyd/README.md`.
+[`../../system/keyd/README.md`](../../system/keyd/README.md).

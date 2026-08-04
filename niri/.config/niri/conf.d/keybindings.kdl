@@ -84,8 +84,8 @@ binds {
     Mod+Shift+T repeat=false hotkey-overlay-title="Themes: Open launcher" {
         spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/theme_launcher.sh\""
     }
-    Mod+Z repeat=false hotkey-overlay-title="Apps: Open curated launcher" {
-        spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/app_launcher.sh\""
+    Mod+Z hotkey-overlay-title="Open a Browser: Zen" {
+        spawn "flatpak" "run" "app.zen_browser.zen" "--new-window" "about:newtab"
     }
     Mod+N repeat=false hotkey-overlay-title="Notes: Toggle movable Herdr vault window" {
         spawn-sh "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/niri/scripts/notes_window.sh\""

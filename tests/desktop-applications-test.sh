@@ -7,7 +7,6 @@ FLATPAK_MANIFEST="$REPO_DIR/bootstrap/fedora/flatpaks.tsv"
 EXTERNAL_MANIFEST="$REPO_DIR/bootstrap/fedora/external-tools.tsv"
 MIMEAPPS="$REPO_DIR/desktop/.config/mimeapps.list"
 ANNOTATOR="$REPO_DIR/desktop/.local/bin/naldo-annotated-snip"
-APP_LAUNCHER="$REPO_DIR/niri/.config/niri/scripts/app_launcher.sh"
 workspace="$(mktemp -d "${TMPDIR:-/tmp}/desktop-applications-test.XXXXXX")"
 checks=0
 trap 'rm -rf -- "$workspace"' EXIT
@@ -208,68 +207,19 @@ grep -Fq 'sudo dnf install /tmp/google-chrome-stable_current_x86_64.rpm' \
   "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" || fail 'Chrome reviewed local-RPM installation is absent from the clean-install guide'
 awk -F '\t' '$1 == "firefox" && $2 == "feature" && $4 == "application:org.mozilla.firefox.desktop" { found=1 } END { exit !found }' \
   "$DNF_MANIFEST" || fail 'Firefox is not a selected secondary browser'
-! rg -n 'launch-zen' "$REPO_DIR/desktop" "$REPO_DIR/niri" "$REPO_DIR/bootstrap/fedora" >/dev/null ||
-  fail 'fixed-command Zen forwarding wrapper remains'
-# Literal source assertion; expansion belongs to the launcher at runtime.
-# shellcheck disable=SC2016
-grep -Fq 'spawn_app flatpak run "$ZEN_FLATPAK_ID" --new-window about:newtab' "$APP_LAUNCHER" ||
-  fail 'Zen Flatpak launcher does not request a direct new window'
+keybindings="$REPO_DIR/niri/.config/niri/conf.d/keybindings.kdl"
+grep -Fq 'spawn "flatpak" "run" "app.zen_browser.zen" "--new-window" "about:newtab"' "$keybindings" ||
+  fail 'Mod+Z does not directly request a new Zen window'
+grep -Fq 'spawn "ghostty"' "$keybindings" || fail 'Mod+T does not directly spawn Ghostty'
+! grep -Fq 'app.zen_browser.zen' "$REPO_DIR/niri/.config/niri/conf.d/rules.kdl" ||
+  fail 'Zen retains a dedicated layout rule'
+! rg -n 'com[.]mitchellh[.]ghostty[.]float|ZEN_FLOAT|app_launcher|launch-terminal' \
+  "$REPO_DIR/desktop" "$REPO_DIR/niri" >/dev/null ||
+  fail 'Ghostty or Zen retains special floating-launch behavior'
+pass 'Mod+T and Mod+Z directly open ordinary tiled Ghostty and Zen windows'
 
-zen_bin="$workspace/zen-bin"
-zen_state="$workspace/zen.state"
-zen_actions="$workspace/zen.actions"
-mkdir -p "$zen_bin"
-cat >"$zen_bin/noctalia" <<'EOF'
-#!/usr/bin/env bash
-printf '%s\n' '󰙨 Zen Browser'
-EOF
-cat >"$zen_bin/flatpak" <<'EOF'
-#!/usr/bin/env bash
-[[ "$1" == info && "$2" == app.zen_browser.zen ]]
-EOF
-cat >"$zen_bin/niri" <<'EOF'
-#!/usr/bin/env bash
-set -e
-if [[ "$1" == msg && "$2" == -j && "$3" == focused-window ]]; then
-  if [[ -e "$ZEN_TEST_STATE" ]]; then
-    printf '%s\n' '{"id":57,"app_id":"app.zen_browser.zen","is_floating":false}'
-  else
-    printf '%s\n' '{"id":41,"app_id":"app.zen_browser.zen","is_floating":false}'
-  fi
-  exit 0
-fi
-if [[ "$1" == msg && "$2" == action ]]; then
-  printf '%s\n' "$*" >>"$ZEN_TEST_ACTIONS"
-  if [[ "$3" == spawn ]]; then
-    : >"$ZEN_TEST_STATE"
-  fi
-  exit 0
-fi
-exit 2
-EOF
-cat >"$zen_bin/launch-terminal" <<'EOF'
-#!/usr/bin/env bash
-exit 0
-EOF
-chmod 0755 "$zen_bin"/*
-PATH="$zen_bin:/usr/bin" \
-NOCTALIA="$zen_bin/noctalia" \
-NIRI="$zen_bin/niri" \
-LAUNCH_TERMINAL="$zen_bin/launch-terminal" \
-ZEN_TEST_STATE="$zen_state" \
-ZEN_TEST_ACTIONS="$zen_actions" \
-  "$APP_LAUNCHER"
-for expected_action in \
-  'msg action spawn -- flatpak run app.zen_browser.zen --new-window about:newtab' \
-  'msg action move-window-to-floating --id 57' \
-  'msg action set-window-width --id 57 1080' \
-  'msg action set-window-height --id 57 920' \
-  'msg action center-window --id 57'; do
-  grep -Fxq "$expected_action" "$zen_actions" ||
-    fail "launcher omitted targeted Zen action: $expected_action"
-done
-! grep -Eq -- '--id 41($| )' "$zen_actions" ||
-  fail 'launcher changed a pre-existing ordinary Zen window'
-pass 'Zen remains default while only the Mod+Z-created window is floated sized and centered'
+! rg -n 'Zen Flatpak|StartupWMClass|Mod[+]Z|ZEN_FLOAT' "$REPO_DIR/README.md" >/dev/null ||
+  fail 'root README contains Zen implementation details'
+pass 'root README leaves Zen implementation details to focused configuration'
 
 printf '1..%d\n' "$checks"

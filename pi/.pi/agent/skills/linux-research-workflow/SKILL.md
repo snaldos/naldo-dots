@@ -13,8 +13,8 @@ Fedora release and application versions:
 
 - Fedora Workstation login through GDM into the package-provided Niri session
 - Niri running through `niri-session`/`niri.service`, with native Noctalia as the shell
-- Fish, Ghostty, Starship, Helix (`hx`), stock Neovim, Yazi, Zen as
-  `app.zen_browser.zen`, and Herdr
+- Fish, Ghostty, Starship, Helix (`hx`), Yazi, Zen as
+  `app.zen_browser.zen`, and Herdr; Neovim is only an optional stock fallback
 - portable user configuration in `~/dotfiles`, deployed by GNU Stow with
   `--no-folding`
 - explicit `install.sh --profile desktop|laptop` selection rendered into Niri's machine-local selector
@@ -72,7 +72,7 @@ unexpected target.
 - Pi executes Bash; interactive shell configuration targets Fish.
 - Fedora's Helix executable is `hx`; committed runtime configuration and the
   user installer require that native command directly.
-- Neovim remains stock and has no Stow package.
+- Neovim is optional; when present it remains stock and has no Stow package.
 - Prefer application validators over generic parsing.
 - Do not run repository synchronizers merely to validate them: they can commit,
   rebase, and push.

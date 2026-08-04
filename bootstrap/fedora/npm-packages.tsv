@@ -1,7 +1,7 @@
 # package	commands	classification	intentional_role	profile
 @earendil-works/pi-coding-agent	pi	development	Pi coding-agent runtime	all
 @openai/codex	codex	development	Official Codex CLI and Pi allowance integration	all
-prettier	prettier	feature	Formatter for Markdown JSON JSONC YAML HTML and CSS	all
+prettier	prettier	feature	Formatter for Markdown JSON JSONC YAML HTML CSS JavaScript JSX TypeScript and TSX	all
 yaml-language-server	yaml-language-server	feature	YAML language server	all
 bash-language-server	bash-language-server	feature	Bash language server	all
 typescript-language-server	typescript-language-server	feature	JavaScript TypeScript JSX and TSX language server	all

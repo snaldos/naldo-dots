@@ -6,8 +6,9 @@ Both profiles expose one portable logical repository path:
 $HOME/Wallpapers
 ```
 
-Only the desktop maps that path onto its secondary HDD. The actual mount identity
-and paths are machine-local: no concrete UUID, active `/etc/fstab` file, or
+Only the desktop maps that path onto its secondary HDD. The actual mount
+identity and paths are machine-local: no concrete UUID, active `/etc/fstab`
+file, or
 physical repository path is tracked. This runbook provides only a placeholder
 entry and reviewed commands.
 

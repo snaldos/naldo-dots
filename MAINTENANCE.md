@@ -2,7 +2,8 @@
 
 Run `naldo-update` manually from a terminal when there is time to review prompts
 and failures. It works on both profiles because
-each package manager updates only its locally installed packages. It never synchronizes repositories,
+each package manager updates only its locally installed packages. It never
+synchronizes repositories,
 reboots, enables services, removes software, or installs a missing provider.
 
 Provider order:
@@ -77,8 +78,8 @@ configuration is separate.
 
 `22.1.1` is the version of the **cargo-update program**, not the Fedora Cargo
 toolchain. The package exports both
-`cargo-install-update` and `cargo-install-update-config`; Cargo exposes the first as the
-`cargo install-update` subcommand.
+`cargo-install-update` and `cargo-install-update-config`; Cargo exposes the first
+as the `cargo install-update` subcommand.
 
 `naldo-update` runs exactly `cargo install-update -a` for registry binaries.
 It never passes `--git` or its short form `-g`, so Git-originating tools are not
@@ -109,10 +110,10 @@ integrations, and session state are separate.
 ## Pixi
 
 The official installer owns `~/.pixi/bin/pixi`.
-For this installation, use `pixi self-update` deliberately after reviewing its release. Do not run that
-command for a package-manager-owned Pixi. Conda is not selected because Pixi
-already covers conda-forge/native/CUDA environments without another base
-environment, solver, cache, or shell activation layer.
+For this installation, use `pixi self-update` after reviewing its release.
+Do not run that command for a package-manager-owned Pixi. Conda is not selected
+because Pixi already covers conda-forge/native/CUDA environments without
+another base environment, solver, cache, or shell activation layer.
 
 ## JetBrainsMono Nerd Font
 
