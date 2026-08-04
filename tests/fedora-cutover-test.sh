@@ -129,10 +129,14 @@ for index in $(seq 1 20); do
 done
 pass 'clean-install runbook retains the ordered 20-step release sequence'
 
-laptop_guide="$REPO_DIR/bootstrap/fedora/LAPTOP-SETUP.md"
-[[ -f "$laptop_guide" ]] || fail 'laptop post-install checklist is missing'
+clean_guide="$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md"
+[[ ! -e "$REPO_DIR/bootstrap/fedora/LAPTOP-SETUP.md" ]] ||
+  fail 'a duplicated laptop runbook remains beside the canonical clean-install guide'
 for requirement in \
+  'profile=desktop' \
   'profile=laptop' \
+  '### Desktop only' \
+  '### Laptop only' \
   'git@github.com:snaldos/naldo-dots.git' \
   'git@github.com:snaldos/second-brain.git' \
   'git@github.com:snaldos/Wallpapers.git' \
@@ -141,11 +145,37 @@ for requirement in \
   'lfs install --local' \
   'sync-all dotfiles' \
   'sync-control enable'; do
-  grep -Fq "$requirement" "$laptop_guide" || fail "laptop checklist omits: $requirement"
+  grep -Fq "$requirement" "$clean_guide" || fail "unified clean-install guide omits: $requirement"
 done
-! grep -Eq 'sudo dnf install (akmod-nvidia|xorg-x11-drv-nvidia)|UUID=.* /mnt/data ' "$laptop_guide" ||
-  fail 'laptop checklist includes a desktop-only NVIDIA or HDD action'
-pass 'laptop checklist covers shared repositories agent LFS synchronization and excludes desktop-only state'
+python3 - "$clean_guide" <<'PY'
+from pathlib import Path
+import sys
+
+lines = Path(sys.argv[1]).read_text().splitlines()
+sections: list[tuple[str, str]] = []
+heading = ""
+body: list[str] = []
+for line in lines:
+    if line.startswith("### "):
+        if heading:
+            sections.append((heading, "\n".join(body)))
+        heading, body = line, []
+    elif line.startswith("## "):
+        if heading:
+            sections.append((heading, "\n".join(body)))
+        heading, body = "", []
+    elif heading:
+        body.append(line)
+if heading:
+    sections.append((heading, "\n".join(body)))
+
+laptop = "\n".join(body for heading, body in sections if heading.startswith("### Laptop"))
+assert laptop
+assert "akmod-nvidia" not in laptop
+assert "xorg-x11-drv-nvidia" not in laptop
+assert "/mnt/data" not in laptop
+PY
+pass 'one clean-install guide contains isolated desktop and laptop branches without a duplicated runbook'
 
 for scope in 'reusable, human-run Fedora clean-install guide' 'later clean installations' \
   'not a snapshot of every installed package' 'record of transitive' \

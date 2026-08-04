@@ -183,11 +183,11 @@ is never overwritten; `settings.default.json` seeds only a missing file and uses
 
 ## Fedora bootstrap and verification
 
-For a migration, later clean install, or occasional Fedora audit, start with
-`bootstrap/fedora/CLEAN-INSTALL.md`. After Fedora is installed on the laptop,
-`bootstrap/fedora/LAPTOP-SETUP.md` is the profile-specific execution checklist.
-Both derive software from the same six profile-aware provider manifests and
-link the editor-tool, remote-access, and wallpaper runbooks. After
+For either machine's fresh installation or an occasional Fedora audit, follow
+`bootstrap/fedora/CLEAN-INSTALL.md` from top to bottom. It is the single
+profile-aware execution path and derives software from the six provider
+manifests while linking deeper editor-tool, remote-access, and wallpaper
+references. After
 installing selected dependencies and running the user installer:
 
 ```bash

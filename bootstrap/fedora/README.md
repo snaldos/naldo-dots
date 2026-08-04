@@ -1,9 +1,9 @@
 # Fedora Workstation bootstrap
 
 This directory is a reusable, human-run Fedora clean-install guide, curated
-installation inventory, and read-only verifier. It supports the current desktop
-migration, the following laptop migration, later clean installations, and
-occasional audits when Fedora, providers, or workstation preferences change.
+installation inventory, and read-only verifier. It supports desktop and laptop
+fresh installations, later clean installations, and occasional audits when
+Fedora, providers, or workstation preferences change.
 
 The manifests list software deliberately selected for a clean installation.
 They are not a snapshot of every installed package, a record of transitive
@@ -101,8 +101,7 @@ not invent missing package names or add fallback providers.
 
 | File | Purpose |
 |---|---|
-| `CLEAN-INSTALL.md` | canonical ordered fresh-install sequence |
-| `LAPTOP-SETUP.md` | complete laptop-only command-by-command execution path after Fedora is installed |
+| `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
 | `EDITOR-TOOLS.md` | Helix responsibilities, installation commands and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

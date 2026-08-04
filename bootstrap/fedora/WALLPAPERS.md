@@ -120,9 +120,6 @@ wallpapers_path=~/Wallpapers
 WALLPAPERS_REQUIRED_MOUNT=
 ```
 
-An existing configuration created before the guard was added is interpreted as
-an empty guard, preserving laptop behavior.
-
 ## Verification before enabling periodic sync
 
 Desktop:
