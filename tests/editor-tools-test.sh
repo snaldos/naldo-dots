@@ -103,8 +103,14 @@ assert providers["basedpyright"][0] == "uv:basedpyright"
 assert providers["basedpyright-langserver"][0] == "uv:basedpyright"
 assert providers["ruff"][0] == "uv:ruff"
 assert providers["ty"][0] == "uv:ty"
-assert providers["taplo"][0] == "npm:@taplo/cli"
-for command in ["typst", "tinymist", "typstyle", "harper-ls", "markdown-oxide"]:
+assert providers["taplo"][0] == "cargo:taplo-cli"
+toml_language = next(language for language in languages if language["name"] == "toml")
+assert toml_language["language-servers"] == ["taplo"]
+assert toml_language["formatter"] == {
+    "command": "taplo",
+    "args": ["format", "--stdin-filepath", "%{buffer_name}", "-"],
+}
+for command in ["typst", "tinymist", "typstyle", "harper-ls", "markdown-oxide", "taplo"]:
     assert providers[command][0].startswith("cargo:")
 
 # npm and uv are intentionally rolling user tools; only Cargo installs retain
@@ -123,13 +129,23 @@ grep -Fq 'language-servers = ["basedpyright", "ruff"]' "$REPO_DIR/helix/.config/
   fail 'experimental ty became an active Python server'
 pass 'BasedPyright Ruff and optional ty have non-conflicting roles'
 
-for command in typst tinymist typstyle harper-ls markdown-oxide; do
+for command in typst tinymist typstyle harper-ls markdown-oxide taplo; do
   awk -F '\t' -v command="$command" '$2 == command && $3 == "feature" && $5 ~ /^cargo install --locked/ { found=1 } END { exit !found }' \
     "$REPO_DIR/bootstrap/fedora/cargo-tools.tsv" || fail "$command lacks one locked stable Cargo installation"
 done
 ! rg -n 'nightly' "$REPO_DIR/bootstrap/fedora/cargo-tools.tsv" ||
   fail 'nightly Cargo editor tooling is selected'
-pass 'Typst Markdown and prose tooling retains deliberate stable Cargo pins only'
+awk -F '\t' '
+  $1 == "taplo-cli" && $2 == "taplo" && $3 == "feature" &&
+  $4 == "https://crates.io/crates/taplo-cli" &&
+  $5 == "cargo install --locked --version 0.10.0 --features lsp taplo-cli" &&
+  $7 == "cargo uninstall taplo-cli" { found=1 }
+  END { exit !found }
+' "$REPO_DIR/bootstrap/fedora/cargo-tools.tsv" ||
+  fail 'Taplo does not use the locked official Cargo build with LSP support'
+! awk -F '\t' '$1 == "@taplo/cli" || $2 == "taplo" { found=1 } END { exit !found }' \
+  "$REPO_DIR/bootstrap/fedora/npm-packages.tsv" || fail 'broken npm Taplo provider remains selected'
+pass 'Typst Markdown prose and TOML tooling retain deliberate stable Cargo providers'
 
 awk -F '\t' '
   $1 == "cargo-update" && $2 == "cargo-install-update,cargo-install-update-config" &&

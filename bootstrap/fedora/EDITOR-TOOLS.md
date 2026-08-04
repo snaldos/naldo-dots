@@ -33,8 +33,8 @@ npm install --global "${npm_tools[@]}"
 
 `vscode-langservers-extracted` is a community npm repackaging of VS Code's
 language-server components, not a Fedora or Microsoft-supported system package.
-The audited package exports the exact JSON, HTML, and CSS commands above.
-`@taplo/cli` exports `taplo`. Never use `sudo npm install -g`.
+The audited package exports the exact JSON, HTML, and CSS commands above. Never
+use `sudo npm install -g`.
 
 Update after reviewing release notes with `npm update --global PACKAGE` and
 remove with `npm uninstall --global PACKAGE`.
@@ -81,6 +81,10 @@ awk -F '\t' -v profile="$profile" '
 
 Review that output, then execute each line exactly. This keeps the locked command
 in one authoritative place rather than copying its version into several files.
+Taplo is installed as the official `taplo-cli` crate with the `lsp` feature;
+the similarly named npm CLI is not selected because its distributed build omits
+LSP support. Helix uses the same Cargo binary for TOML language intelligence and
+stdin formatting.
 
 Before changing a pin, inspect the stable release/tag and rerun the locked
 versioned command. Uninstall with `cargo uninstall PACKAGE`. The `cargo-update`

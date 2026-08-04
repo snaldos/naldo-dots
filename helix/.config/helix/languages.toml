@@ -1,5 +1,5 @@
 # Every external command used below has one preferred provider in
-# bootstrap/fedora/{commands,npm-packages,uv-tools,cargo-tools}.tsv.
+# bootstrap/fedora/{dnf-packages,npm-packages,uv-tools,cargo-tools}.tsv.
 
 [language-server.basedpyright]
 command = "basedpyright-langserver"
@@ -84,6 +84,7 @@ auto-format = true
 [[language]]
 name = "toml"
 language-servers = ["taplo"]
+formatter = { command = "taplo", args = ["format", "--stdin-filepath", "%{buffer_name}", "-"] }
 auto-format = true
 
 [[language]]
