@@ -16,7 +16,7 @@ show_message() {
   clear
   printf '\n%s\n\n' "$1"
   printf 'Press Enter to return...'
-  IFS= read -r _
+  IFS= read -r _ </dev/tty
 }
 
 enter_git_root() {
@@ -36,7 +36,6 @@ git_menu() {
     git_choice=$(menu "Git tool: " \
       "Lazygit" \
       "TUICR" \
-      "Repository history" \
       "GitHub dashboard" \
       "Back") || return
 
@@ -49,11 +48,6 @@ git_menu() {
     "TUICR")
       enter_git_root || continue
       exec tuicr
-      ;;
-
-    "Repository history")
-      enter_git_root || continue
-      exec tig
       ;;
 
     "GitHub dashboard")
