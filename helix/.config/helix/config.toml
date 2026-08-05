@@ -4,13 +4,32 @@ theme = "noctalia-overrides"
 hidden = false
 git-ignore = true
 
-# Open Yazi as an interactive file-tree picker and load the selected file(s).
+
 [keys.normal]
+
+# Ctrl-y: open Yazi at the current file and open the selected file in Helix.
 C-y = [
-  ':sh rm -f /tmp/unique-ca1ea106',
-  ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/unique-ca1ea106',
+  ':insert-output sh "$HOME/.config/helix/scripts/yazi-picker" "%{buffer_name}"',
   ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
-  ':open %sh{cat /tmp/unique-ca1ea106}',
+  ':open %sh{cat "$HOME/.cache/helix/yazi-picker" 2>/dev/null}',
+  ':redraw',
+  ':set mouse false',
+  ':set mouse true',
+]
+
+# Ctrl-g: show the Git history of the current file.
+C-g = [
+  ':insert-output sh "$HOME/.config/helix/scripts/git-view" history "%{buffer_name}" </dev/tty >/dev/tty 2>&1',
+  ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
+  ':redraw',
+  ':set mouse false',
+  ':set mouse true',
+]
+
+# Ctrl-t: show Tig blame for the current file.
+C-t = [
+  ':insert-output sh "$HOME/.config/helix/scripts/git-view" blame "%{buffer_name}" </dev/tty >/dev/tty 2>&1',
+  ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
   ':redraw',
   ':set mouse false',
   ':set mouse true',

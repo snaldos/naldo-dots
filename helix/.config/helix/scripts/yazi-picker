@@ -1,0 +1,9 @@
+#!/bin/sh
+
+chooser_file="$HOME/.cache/helix/yazi-picker"
+start_path=${1:-.}
+
+mkdir -p "$(dirname "$chooser_file")"
+rm -f "$chooser_file"
+
+exec yazi "$start_path" --chooser-file="$chooser_file"

@@ -1,0 +1,67 @@
+#!/bin/sh
+
+mode=${1:-}
+buffer_name=${2:-}
+
+wait_for_helix() {
+    clear >/dev/tty 2>/dev/null
+
+    printf '\n%s\n\n' "$1" >/dev/tty
+    printf 'Press Enter to return to Helix...' >/dev/tty
+
+    IFS= read -r _ </dev/tty
+    exit 0
+}
+
+case "$mode" in
+    history|blame)
+        ;;
+    *)
+        wait_for_helix "Unknown Git view: $mode"
+        ;;
+esac
+
+[ -n "$buffer_name" ] ||
+    wait_for_helix "The current buffer has no file path."
+
+[ "$buffer_name" != "[scratch]" ] ||
+    wait_for_helix "A scratch buffer has no Git history."
+
+case "$buffer_name" in
+    /*)
+        file=$buffer_name
+        ;;
+    *)
+        file="$PWD/$buffer_name"
+        ;;
+esac
+
+file=$(
+    realpath -m -- "$file" 2>/dev/null
+) || wait_for_helix "Could not resolve the current file path."
+
+file_directory=$(dirname -- "$file")
+
+repo_root=$(
+    git -C "$file_directory" rev-parse --show-toplevel 2>/dev/null
+) || wait_for_helix "The current file is not inside a Git repository."
+
+relative_file=$(
+    realpath --relative-to="$repo_root" -- "$file" 2>/dev/null
+) || wait_for_helix "Could not resolve the file relative to its repository."
+
+cd "$repo_root" ||
+    wait_for_helix "Could not enter the Git repository root."
+
+git ls-files --error-unmatch -- "$relative_file" >/dev/null 2>&1 ||
+    wait_for_helix "The current file is not tracked by Git."
+
+case "$mode" in
+    history)
+        exec tig --follow -- "$relative_file"
+        ;;
+
+    blame)
+        exec tig blame -- "$relative_file"
+        ;;
+esac
