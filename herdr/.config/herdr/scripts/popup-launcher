@@ -1,94 +1,63 @@
 #!/bin/sh
 
 menu() {
+  prompt=$1
+  shift
+
   printf '%s\n' "$@" |
     fzf \
-      --prompt="Open popup: " \
+      --prompt="$prompt" \
       --layout=reverse \
       --border \
       --no-multi
 }
 
-pause_message() {
+show_message() {
   clear
-  printf '%s\n\n' "$1"
+  printf '\n%s\n\n' "$1"
   printf 'Press Enter to return...'
-  read -r _
+  IFS= read -r _
 }
 
 enter_git_root() {
-  git_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
-    pause_message "The current directory is not inside a Git repository."
+  root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    show_message "The current directory is not inside a Git repository."
     return 1
   }
 
-  cd "$git_root" || {
-    pause_message "Could not enter the Git repository root."
+  cd "$root" || {
+    show_message "Could not enter the Git repository root."
     return 1
   }
-}
-
-choose_git_file() {
-  git ls-files |
-    fzf \
-      --prompt="$1" \
-      --layout=reverse \
-      --border \
-      --no-multi
-}
-
-open_file_history() {
-  enter_git_root || return
-
-  file=$(choose_git_file "File history: ") || return
-  [ -n "$file" ] || return
-
-  exec tig --follow -- "$file"
-}
-
-open_file_blame() {
-  enter_git_root || return
-
-  file=$(choose_git_file "File blame: ") || return
-  [ -n "$file" ] || return
-
-  exec tig blame -- "$file"
-}
-
-open_repo_history() {
-  enter_git_root || return
-  exec tig
 }
 
 git_menu() {
   while :; do
-    git_choice=$(menu \
+    git_choice=$(menu "Git tool: " \
       "Lazygit" \
       "TUICR" \
       "Repository history" \
-      "File history" \
-      "File blame" \
+      "GitHub dashboard" \
       "Back") || return
 
     case "$git_choice" in
     "Lazygit")
+      enter_git_root || continue
       exec lazygit
       ;;
 
     "TUICR")
+      enter_git_root || continue
       exec tuicr
       ;;
 
     "Repository history")
-      open_repo_history
+      enter_git_root || continue
+      exec tig
       ;;
 
-    "File history")
-      open_file_history
-      ;;
-
-    "File blame")
-      open_file_blame
+    "GitHub dashboard")
+      exec gh dash
       ;;
 
     "Back")
@@ -99,10 +68,9 @@ git_menu() {
 }
 
 while :; do
-  choice=$(menu \
+  choice=$(menu "Open popup: " \
     "Git tools" \
     "Yazi" \
-    "GitHub dashboard" \
     "Typst scratchpad" \
     "Terminal") || exit 0
 
@@ -113,10 +81,6 @@ while :; do
 
   "Yazi")
     exec yazi
-    ;;
-
-  "GitHub dashboard")
-    exec gh dash
     ;;
 
   "Typst scratchpad")

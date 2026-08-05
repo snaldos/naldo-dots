@@ -4,31 +4,22 @@ theme = "noctalia-overrides"
 hidden = false
 git-ignore = true
 
-
 [keys.normal]
 
-# Ctrl-y: open Yazi at the current file and open the selected file in Helix.
+# Ctrl-y: open Yazi at the current file, then open the selected file in Helix.
 C-y = [
-  ':insert-output sh "$HOME/.config/helix/scripts/yazi-picker" "%{buffer_name}"',
+  ':sh rm -f /tmp/helix-yazi-picker',
+  ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/helix-yazi-picker',
   ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
-  ':open %sh{cat "$HOME/.cache/helix/yazi-picker" 2>/dev/null}',
+  ':open %sh{cat /tmp/helix-yazi-picker}',
   ':redraw',
   ':set mouse false',
   ':set mouse true',
 ]
 
-# Ctrl-g: show the Git history of the current file.
+# Ctrl-g: open LazyGit with the current file's history.
 C-g = [
-  ':insert-output sh "$HOME/.config/helix/scripts/git-view" history "%{buffer_name}" </dev/tty >/dev/tty 2>&1',
-  ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
-  ':redraw',
-  ':set mouse false',
-  ':set mouse true',
-]
-
-# Ctrl-t: show Tig blame for the current file.
-C-t = [
-  ':insert-output sh "$HOME/.config/helix/scripts/git-view" blame "%{buffer_name}" </dev/tty >/dev/tty 2>&1',
+  ':insert-output lazygit -f "%{buffer_name}" -sm half </dev/tty >/dev/tty 2>&1',
   ':sh printf "\x1b[?1049h\x1b[?2004h" > /dev/tty',
   ':redraw',
   ':set mouse false',
