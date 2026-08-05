@@ -1,37 +1,130 @@
 #!/bin/sh
 
-choice=$(
-    printf '%s\n' \
-        "Lazygit" \
-        "TUICR" \
-        "GitHub dashboard" \
-        "Typst scratchpad" \
-        "Terminal" |
-        fzf \
-            --prompt="Open popup: " \
-            --layout=reverse \
-            --border \
-            --no-multi
-) || exit 0
+menu() {
+  printf '%s\n' "$@" |
+    fzf \
+      --prompt="Open popup: " \
+      --layout=reverse \
+      --border \
+      --no-multi
+}
 
-case "$choice" in
+pause_message() {
+  clear
+  printf '%s\n\n' "$1"
+  printf 'Press Enter to return...'
+  read -r _
+}
+
+enter_git_root() {
+  git_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    pause_message "The current directory is not inside a Git repository."
+    return 1
+  }
+
+  cd "$git_root" || {
+    pause_message "Could not enter the Git repository root."
+    return 1
+  }
+}
+
+choose_git_file() {
+  git ls-files |
+    fzf \
+      --prompt="$1" \
+      --layout=reverse \
+      --border \
+      --no-multi
+}
+
+open_file_history() {
+  enter_git_root || return
+
+  file=$(choose_git_file "File history: ") || return
+  [ -n "$file" ] || return
+
+  exec tig --follow -- "$file"
+}
+
+open_file_blame() {
+  enter_git_root || return
+
+  file=$(choose_git_file "File blame: ") || return
+  [ -n "$file" ] || return
+
+  exec tig blame -- "$file"
+}
+
+open_repo_history() {
+  enter_git_root || return
+  exec tig
+}
+
+git_menu() {
+  while :; do
+    git_choice=$(menu \
+      "Lazygit" \
+      "TUICR" \
+      "Repository history" \
+      "File history" \
+      "File blame" \
+      "Back") || return
+
+    case "$git_choice" in
     "Lazygit")
-        exec lazygit
-        ;;
+      exec lazygit
+      ;;
 
     "TUICR")
-        exec tuicr
-        ;;
+      exec tuicr
+      ;;
 
-    "GitHub dashboard")
-        exec gh dash
-        ;;
+    "Repository history")
+      open_repo_history
+      ;;
 
-    "Typst scratchpad")
-        exec hx /tmp/helix-scratchpad.typ
-        ;;
+    "File history")
+      open_file_history
+      ;;
 
-    "Terminal")
-        exec "${SHELL:-sh}"
-        ;;
-esac
+    "File blame")
+      open_file_blame
+      ;;
+
+    "Back")
+      return
+      ;;
+    esac
+  done
+}
+
+while :; do
+  choice=$(menu \
+    "Git tools" \
+    "Yazi" \
+    "GitHub dashboard" \
+    "Typst scratchpad" \
+    "Terminal") || exit 0
+
+  case "$choice" in
+  "Git tools")
+    git_menu
+    ;;
+
+  "Yazi")
+    exec yazi
+    ;;
+
+  "GitHub dashboard")
+    exec gh dash
+    ;;
+
+  "Typst scratchpad")
+    exec hx /tmp/helix-scratchpad.typ
+    ;;
+
+  "Terminal")
+    exec "${SHELL:-sh}"
+    ;;
+  esac
+done
