@@ -74,7 +74,7 @@ enabled = true
 video_source = "portal"
 
 [plugin_settings."noctalia/notes"]
-notes_dir = "~/Vaults/second-brain/00 - Inbox"
+notes_dir = "~/Vaults/state-space/State"
 
 [plugin_settings."noctalia/wallhaven"]
 # Keep api_key in machine-local credentials.toml; see credentials.toml.example.

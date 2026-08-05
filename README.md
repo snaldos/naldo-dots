@@ -7,14 +7,14 @@ as explicit GNU Stow packages under `$HOME`.
 
 ## Start here
 
-| Task | Entry point |
-|---|---|
-| Install a fresh desktop or laptop | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
-| Review selected providers | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md) |
-| Deploy an existing checkout | `./install.sh --profile desktop` or `./install.sh --profile laptop` |
-| Install the root-owned keyd integration | [`system/keyd/README.md`](system/keyd/README.md) |
-| Update installed software | [`MAINTENANCE.md`](MAINTENANCE.md) |
-| Inspect the Pi configuration | [`pi/.pi/agent/README.md`](pi/.pi/agent/README.md) |
+| Task                                    | Entry point                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| Install a fresh desktop or laptop       | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
+| Review selected providers               | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md)               |
+| Deploy an existing checkout             | `./install.sh --profile desktop` or `./install.sh --profile laptop`      |
+| Install the root-owned keyd integration | [`system/keyd/README.md`](system/keyd/README.md)                         |
+| Update installed software               | [`MAINTENANCE.md`](MAINTENANCE.md)                                       |
+| Inspect the Pi configuration            | [`pi/.pi/agent/README.md`](pi/.pi/agent/README.md)                       |
 
 For a clean Fedora installation, follow the complete guide from the beginning
 rather than running the user installer first.
@@ -88,12 +88,12 @@ Then remove it from the declared package list. See
 
 ## Repository synchronization
 
-`sync-all` supports exactly dotfiles, second-brain Notes, and Wallpapers. Paths
-and enabled state live in the mode-`0600` machine-local file
+`sync-all` supports exactly dotfiles, the State Space vault (`notes` task), and
+Wallpapers. Paths and enabled state live in the mode-`0600` machine-local file
 `~/.config/naldo/sync/repositories.conf`.
 
-Notes use narrow attachment-only Git LFS rules; Wallpapers store image payloads
-in Git LFS. The laptop keeps `~/Wallpapers` as its worktree. The desktop links
+State Space uses narrow attachment-only Git LFS rules; Wallpapers store image
+payloads in Git LFS. The laptop keeps `~/Wallpapers` as its worktree. The desktop links
 that path to `/mnt/data/repos/Wallpapers` and requires `/mnt/data` to be a real
 mount before synchronization can touch it. See
 [`bootstrap/fedora/WALLPAPERS.md`](bootstrap/fedora/WALLPAPERS.md).

@@ -152,7 +152,7 @@ for requirement in \
   '### Desktop only' \
   '### Laptop only' \
   'git@github.com:snaldos/naldo-dots.git' \
-  'git@github.com:snaldos/second-brain.git' \
+  'git@github.com:snaldos/state-space.git' \
   'git@github.com:snaldos/Wallpapers.git' \
   'WALLPAPERS_REQUIRED_MOUNT=' \
   'gcr-ssh-agent.socket' \

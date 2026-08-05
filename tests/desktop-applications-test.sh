@@ -159,6 +159,17 @@ awk '
   fail 'Noctalia Screen Recorder does not explicitly use portal capture'
 pass 'the Flathub-compatible Noctalia recorder remains selected in portal mode'
 
+grep -Fq '"noctalia/notes"' "$REPO_DIR/noctalia/.config/noctalia/config.toml" ||
+  fail 'Noctalia Notes plugin is not selected'
+awk '
+  $0 == "[plugin_settings.\"noctalia/notes\"]" { active=1; next }
+  /^\[/ { active=0 }
+  active && $0 == "notes_dir = \"~/Vaults/state-space/State\"" { found=1 }
+  END { exit !found }
+' "$REPO_DIR/noctalia/.config/noctalia/config.toml" ||
+  fail 'Noctalia Notes does not target the State directory'
+pass 'Noctalia Notes targets State Space current state'
+
 mime_default_is inode/directory yazi.desktop
 for mime in text/html application/xhtml+xml x-scheme-handler/http x-scheme-handler/https; do
   mime_default_is "$mime" app.zen_browser.zen.desktop

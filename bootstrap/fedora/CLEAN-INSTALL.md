@@ -15,12 +15,12 @@ Private keys, tokens, Git identity, mount IDs, GCR/Noctalia/Tailscale state, and
 repository paths are machine-local and must never be copied from the desktop to
 the laptop or committed.
 
-| Boundary | Desktop | Laptop |
-|---|---|---|
-| graphics | Fedora Intel stack plus RPM Fusion NVIDIA | Fedora Intel stack only |
-| Wallpapers | HDD mounted at `/mnt/data`; `~/Wallpapers` is a symlink | direct SSD worktree at `~/Wallpapers` |
-| wallpaper sync guard | `/mnt/data` | empty |
-| device names | `naldo-fedora-desktop`, `naldo-desktop` | `naldo-fedora-laptop`, `naldo-laptop` |
+| Boundary             | Desktop                                                 | Laptop                                |
+| -------------------- | ------------------------------------------------------- | ------------------------------------- |
+| graphics             | Fedora Intel stack plus RPM Fusion NVIDIA               | Fedora Intel stack only               |
+| Wallpapers           | HDD mounted at `/mnt/data`; `~/Wallpapers` is a symlink | direct SSD worktree at `~/Wallpapers` |
+| wallpaper sync guard | `/mnt/data`                                             | empty                                 |
+| device names         | `naldo-fedora-desktop`, `naldo-desktop`                 | `naldo-fedora-laptop`, `naldo-laptop` |
 
 ## 1. Install Fedora Workstation
 
@@ -529,16 +529,16 @@ rebooting.
 Run no command here. The laptop uses Fedora’s Intel graphics stack and does not
 add RPM Fusion or NVIDIA packages.
 
-## 11. Clone Notes and configure wallpaper storage
+## 11. Clone State Space and configure wallpaper storage
 
-### Common Notes
+### Common State Space setup
 
 ```bash
 install -d "$HOME/Vaults"
-git clone git@github.com:snaldos/second-brain.git "$HOME/Vaults/second-brain"
-git -C "$HOME/Vaults/second-brain" lfs install --local
-git -C "$HOME/Vaults/second-brain" lfs pull
-git -C "$HOME/Vaults/second-brain" lfs fsck
+git clone git@github.com:snaldos/state-space.git "$HOME/Vaults/state-space"
+git -C "$HOME/Vaults/state-space" lfs install --local
+git -C "$HOME/Vaults/state-space" lfs pull
+git -C "$HOME/Vaults/state-space" lfs fsck
 ```
 
 Never restore the removed credential file.
@@ -621,7 +621,7 @@ Set:
 dotfiles_enabled=true
 dotfiles_path=~/dotfiles
 notes_enabled=true
-notes_path=~/Vaults/second-brain
+notes_path=~/Vaults/state-space
 wallpapers_enabled=true
 wallpapers_path=~/Wallpapers
 ```
@@ -920,7 +920,7 @@ if [[ "$profile" == desktop ]]; then
 else
   test ! -L "$HOME/Wallpapers"
 fi
-git -C "$HOME/Vaults/second-brain" lfs fsck
+git -C "$HOME/Vaults/state-space" lfs fsck
 git -C "$HOME/Wallpapers" lfs fsck
 case "$profile" in
   desktop) ./bootstrap/fedora/verify.sh --profile desktop ;;
@@ -944,7 +944,7 @@ sync-all wallpapers
 Require clean repositories equal to their remotes:
 
 ```bash
-for repo in "$HOME/dotfiles" "$HOME/Vaults/second-brain" "$HOME/Wallpapers"; do
+for repo in "$HOME/dotfiles" "$HOME/Vaults/state-space" "$HOME/Wallpapers"; do
   test -z "$(git -C "$repo" status --porcelain)"
   test "$(git -C "$repo" rev-parse HEAD)" = \
     "$(git -C "$repo" rev-parse origin/main)"

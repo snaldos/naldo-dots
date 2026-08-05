@@ -6,7 +6,7 @@ NIRI="${NIRI:-niri}"
 JQ="${JQ:-jq}"
 TERMINAL="${NALDO_TERMINAL:-ghostty}"
 HERDR="${NALDO_HERDR:-herdr}"
-NOTES_DIR="${NALDO_NOTES_DIR:-$HOME/Vaults/second-brain}"
+NOTES_DIR="${NALDO_NOTES_DIR:-$HOME/Vaults/state-space}"
 NOTES_APP_ID="${NALDO_NOTES_APP_ID:-com.mitchellh.ghostty.notes}"
 NOTES_SESSION="${NALDO_NOTES_SESSION:-notes}"
 

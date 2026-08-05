@@ -6,7 +6,7 @@ dotfiles_enabled=true
 dotfiles_path=~/dotfiles
 
 notes_enabled=true
-notes_path=~/Vaults/second-brain
+notes_path=~/Vaults/state-space
 
 wallpapers_enabled=true
 wallpapers_path=~/Wallpapers
