@@ -83,6 +83,23 @@ assert tinymist_rows == [[
     "all",
 ]], f"unexpected Tinymist provider row: {tinymist_rows}"
 
+with (root / "helix/.config/helix/config.toml").open("rb") as handle:
+    editor_config = tomllib.load(handle)
+expected_yazi_picker = [
+    ":sh rm -f /tmp/unique-ca1ea106",
+    ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/unique-ca1ea106',
+    ':sh printf "\\x1b[?1049h\\x1b[?2004h" > /dev/tty',
+    ":open %sh{cat /tmp/unique-ca1ea106}",
+    ":redraw",
+    ":set mouse false",
+    ":set mouse true",
+]
+assert editor_config["keys"]["normal"]["C-y"] == expected_yazi_picker
+assert any(
+    row[0] == "yazi" and "yazi" in row[4].split(",") and row[-1] == "all"
+    for row in rows("external-tools.tsv")
+), "Yazi picker has no shared executable provider"
+
 with (root / "helix/.config/helix/languages.toml").open("rb") as handle:
     config = tomllib.load(handle)
 servers = config["language-server"]
@@ -147,7 +164,7 @@ assert all(len(row) == 5 for row in rows("npm-packages.tsv"))
 assert all(len(row) == 6 for row in rows("uv-tools.tsv"))
 assert all(len(row) == 9 for row in rows("cargo-tools.tsv"))
 PY
-pass 'every active Helix command has exactly one installation-source provider'
+pass 'every active Helix command and the Yazi picker have installation-source providers'
 
 grep -Fq 'disableOrganizeImports = true' "$REPO_DIR/helix/.config/helix/languages.toml" ||
   fail 'BasedPyright import organization is not disabled in favor of Ruff'

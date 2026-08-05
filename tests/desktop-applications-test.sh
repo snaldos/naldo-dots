@@ -7,6 +7,7 @@ FLATPAK_MANIFEST="$REPO_DIR/bootstrap/fedora/flatpaks.tsv"
 EXTERNAL_MANIFEST="$REPO_DIR/bootstrap/fedora/external-tools.tsv"
 MIMEAPPS="$REPO_DIR/desktop/.config/mimeapps.list"
 ANNOTATOR="$REPO_DIR/desktop/.local/bin/naldo-annotated-snip"
+YAZI_KEYMAP="$REPO_DIR/yazi/.config/yazi/keymap.toml"
 workspace="$(mktemp -d "${TMPDIR:-/tmp}/desktop-applications-test.XXXXXX")"
 checks=0
 trap 'rm -rf -- "$workspace"' EXIT
@@ -78,6 +79,37 @@ PATH="$fake_bin:$PATH" "$ANNOTATOR"
 [[ "$(<"$workspace/swappy.input")" == new-png-data ]] ||
   fail 'annotation helper did not pipe captured PNG data to Swappy'
 pass 'Noctalia region capture pipes PNG data to swappy -f -'
+
+python3 - "$YAZI_KEYMAP" <<'PY'
+from pathlib import Path
+import sys
+import tomllib
+
+with Path(sys.argv[1]).open("rb") as handle:
+    keymap = tomllib.load(handle)["mgr"]["prepend_keymap"]
+assert keymap == [
+    {
+        "on": "y",
+        "run": [
+            'shell -- for path in %s; do printf "file://%s\\n" "$path"; done | wl-copy -t text/uri-list',
+            "yank",
+        ],
+        "desc": "Yank and copy file URI(s) to clipboard",
+    },
+    {
+        "on": ["g", "r"],
+        "run": 'shell -- root="$(git rev-parse --show-toplevel)" && ya emit cd "$root"',
+        "desc": "Go to Git repository root",
+    },
+]
+PY
+awk -F '\t' '$1 == "wl-clipboard" && $3 == "wl-copy,wl-paste" && $6 ~ /Yazi file-URI yanks/ { found=1 } END { exit !found }' \
+  "$DNF_MANIFEST" || fail 'Yazi clipboard yanking lacks its selected Wayland provider'
+awk -F '\t' '$1 == "git-core" && $3 == "git" { found=1 } END { exit !found }' \
+  "$DNF_MANIFEST" || fail 'Yazi repository-root navigation lacks its Git provider'
+awk -F '\t' '$1 == "yazi" && $5 == "yazi,ya" { found=1 } END { exit !found }' \
+  "$EXTERNAL_MANIFEST" || fail 'Yazi keymap lacks both required Yazi executables'
+pass 'Yazi y mirrors selected file URIs to Wayland and g r returns to the Git root'
 
 excluded_annotator='sa'"tty"
 if rg -n -i "\\b(grim|slurp|$excluded_annotator)\\b" \

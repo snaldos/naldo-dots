@@ -62,6 +62,30 @@ credentials, SSH/GCR state, Tailscale identity, mount identity, repository paths
 and synchronization enablement. Installers initialize only missing safe defaults
 and preserve existing private or generated files.
 
+## Changing deployed files
+
+After adding, renaming, or deleting a tracked file, reconcile the links from the
+repository root:
+
+```bash
+./deploy-links.sh --dry-run
+./deploy-links.sh
+```
+
+The complete `--restow` removes stale managed symlinks for deleted files. Verify
+both the target and a possible dangling link with `test ! -e TARGET` and
+`test ! -L TARGET`. If a regular file remains, Stow does not own it; inspect it
+rather than adopting or deleting it automatically.
+
+To remove a complete package, unstow it while its source directory still exists:
+
+```bash
+stow --dir="$HOME/dotfiles" --target="$HOME" --no-folding --delete PACKAGE
+```
+
+Then remove it from the declared package list. See
+[`pi/.pi/agent/skills/linux-research-workflow/references/dotfiles-sync.md`](pi/.pi/agent/skills/linux-research-workflow/references/dotfiles-sync.md).
+
 ## Repository synchronization
 
 `sync-all` supports exactly dotfiles, second-brain Notes, and Wallpapers. Paths

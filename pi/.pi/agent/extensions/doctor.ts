@@ -42,6 +42,7 @@ const expectedSkills = [
   "statistical-data-analysis",
   "study-coach",
   "typst-math-authoring",
+  "vault-notes",
 ];
 
 function clean(value: string, maxLength = 500): string {

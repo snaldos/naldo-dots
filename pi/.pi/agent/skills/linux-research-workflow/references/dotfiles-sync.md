@@ -30,7 +30,15 @@ synchronization, initializes missing private/generated files, installs a
 machine-local Git include, and reloads only the user unit inventory. It performs
 no privileged operation or package transaction.
 
-Removing a whole package is explicit: unstow it while its source still exists.
+After adding, renaming, or deleting an individual tracked file, run
+`./deploy-links.sh --dry-run` and then `./deploy-links.sh`. Its complete
+`--restow` removes stale managed symlinks. Verify a deleted target with both
+`test ! -e TARGET` and `test ! -L TARGET`, because a dangling symlink fails the
+first test but passes the second. A remaining regular file is unmanaged and must
+be inspected rather than adopted automatically.
+
+Removing a whole package is explicit: unstow it while its source still exists
+with `stow --dir="$HOME/dotfiles" --target="$HOME" --no-folding --delete PACKAGE`.
 GNU Stow has no deployment database. Always retain `--no-folding` so target
 directories stay real and generated/private files never live in package sources.
 

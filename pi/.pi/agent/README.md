@@ -122,7 +122,7 @@ from the active Noctalia palette and therefore change with its color source.
 
 `/coach`, `/derive`, `/proof-review`, `/mental-model`, `/oral-exam`, `/python`, `/data-analysis`, `/experiment`, `/paper`, `/typst-notes`, `/write`, and `/verify` are narrow entry points. They complement rather than duplicate the detailed skills.
 
-The 11 focused skills are:
+The 12 focused skills are:
 
 - mathematics and learning: `mathematical-reasoning`, `study-coach`
 - writing and Typst: `typst-math-authoring`, `academic-writing`
@@ -130,6 +130,7 @@ The 11 focused skills are:
 - research sources: `paper-reading-reproduction`, `scientific-documents`
 - cognition: `computational-neuroscience`
 - workstation: `linux-research-workflow`
+- personal knowledge base: `vault-notes`
 
 There is no umbrella research skill, generated project scaffold, custom compaction policy, automatic session naming, or autonomous agent loop.
 

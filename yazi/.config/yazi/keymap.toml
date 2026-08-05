@@ -1,0 +1,14 @@
+# Mirror Yazi's internal yank to the Wayland clipboard as a file URI list.
+[[mgr.prepend_keymap]]
+on = "y"
+run = [
+  'shell -- for path in %s; do printf "file://%s\n" "$path"; done | wl-copy -t text/uri-list',
+  "yank",
+]
+desc = "Yank and copy file URI(s) to clipboard"
+
+# Return to the root of the Git repository containing the current directory.
+[[mgr.prepend_keymap]]
+on = [ "g", "r" ]
+run = 'shell -- root="$(git rev-parse --show-toplevel)" && ya emit cd "$root"'
+desc = "Go to Git repository root"
