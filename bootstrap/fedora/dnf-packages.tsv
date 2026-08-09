@@ -74,7 +74,6 @@ make	development	make	-	-	Native build prerequisite	all
 cmake	development	cmake	-	-	Native build prerequisite	all
 pkgconf-pkg-config	development	pkg-config	-	-	Native dependency discovery	all
 openssl-devel	development	-	-	-	Cargo build prerequisite	all
-difftastic	feature	difft	-	-	LazyGit structural diff	all
 git-delta	feature	delta	-	-	LazyGit pager	all
 poppler-utils	development	pdftotext	-	-	Scientific PDF extraction	all
 blender	feature	blender	application:blender.desktop	-	Installed 3D application	all

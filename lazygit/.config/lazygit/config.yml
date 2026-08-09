@@ -2,9 +2,11 @@ os:
   editPreset: "helix (hx)"
 git:
   diffRenderers:
-    - colorArg: always
+    - name: delta unified
+      colorArg: always
       command: >-
         sh -c 'exec delta --dark --paging=never --syntax-theme=ansi --true-color=always --minus-style="syntax ${NOCTALIA_DELTA_DELETE:-#3a232a}" --minus-emph-style="syntax bold ${NOCTALIA_DELTA_DELETE:-#3a232a}" --plus-style="syntax ${NOCTALIA_DELTA_ADD:-#1f3328}" --plus-emph-style="syntax bold ${NOCTALIA_DELTA_ADD:-#1f3328}" --line-numbers --line-numbers-left-style=blue --line-numbers-right-style=blue --line-numbers-minus-style=red --line-numbers-plus-style=green'
-    - colorArg: always
-      command: difft --color=always --display=side-by-side
-      type: extDiff
+    - name: delta side-by-side
+      colorArg: always
+      command: >-
+        sh -c 'exec delta --dark --side-by-side --paging=never --syntax-theme=ansi --true-color=always --minus-style="syntax ${NOCTALIA_DELTA_DELETE:-#3a232a}" --minus-emph-style="syntax bold ${NOCTALIA_DELTA_DELETE:-#3a232a}" --plus-style="syntax ${NOCTALIA_DELTA_ADD:-#1f3328}" --plus-emph-style="syntax bold ${NOCTALIA_DELTA_ADD:-#1f3328}" --line-numbers --line-numbers-left-style=blue --line-numbers-right-style=blue --line-numbers-minus-style=red --line-numbers-plus-style=green'
