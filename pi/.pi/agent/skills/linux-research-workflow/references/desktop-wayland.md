@@ -12,10 +12,13 @@ printf 'type=%s desktop=%s\n' "${XDG_SESSION_TYPE-}" "${XDG_CURRENT_DESKTOP-}"
 systemctl --user --no-pager --type=service --state=running
 ```
 
-The intended login path is GDM → the package-provided Niri session → native
-Noctalia. Login-manager and base-desktop configuration are outside this
-repository. Separate compositor, shell, systemd-user lifecycle, portals,
-PipeWire/WirePlumber, and kernel/device support when diagnosing a symptom.
+The primary login path is GDM → the package-provided Niri session → native
+Noctalia. GDM also exposes Fedora's package-provided KDE Plasma session as the
+full fallback desktop. The bootstrap runbooks document that topology, while the
+user installers never switch display managers or remove desktops. Read
+`bootstrap/fedora/DESKTOPS.md` before a desktop-stack change. Separate
+compositor, shell, systemd-user lifecycle, portals, PipeWire/WirePlumber, and
+kernel/device support when diagnosing a symptom.
 
 ## Niri
 
@@ -40,10 +43,13 @@ For shared changes, validate isolated copies with both machine profiles. Use
 JSON and `jq` for nontrivial IPC inspection. Do not restart the session merely
 to validate a static edit.
 
-Niri uses GNOME and GTK portal backends selected by the tracked portal config.
-Noctalia supplies the user-facing PolicyKit agent; the system authority remains
-separate. GNOME Keyring supplies Secret Service. Verify backend selection and
-service state rather than adding manual startup commands.
+Niri uses GNOME and GTK portal backends selected by the tracked,
+desktop-specific portal config. Plasma uses Fedora's KDE portal backend. Do not
+add a generic user `portals.conf`, which would mask Fedora's desktop-specific
+Plasma and GNOME defaults. Noctalia supplies Niri's user-facing PolicyKit agent;
+the system authority remains separate. GNOME Keyring supplies Niri's Secret
+Service. Verify backend selection and service state rather than adding manual
+startup commands.
 
 ## Native Noctalia v5
 

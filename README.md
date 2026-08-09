@@ -1,7 +1,8 @@
 # Dotfiles
 
-Fedora Workstation configuration for a GDM → Niri → Noctalia session, deployed
-as explicit GNU Stow packages under `$HOME`.
+Fedora 44 Workstation configuration for a GDM session chooser with
+Niri → Noctalia as the primary desktop and KDE Plasma as the full fallback,
+deployed as explicit GNU Stow packages under `$HOME`.
 
 ![Niri desktop with Helix, Pi, and Noctalia](assets/screenshots/desktop-overview.png)
 
@@ -10,6 +11,7 @@ as explicit GNU Stow packages under `$HOME`.
 | Task                                    | Entry point                                                              |
 | --------------------------------------- | ------------------------------------------------------------------------ |
 | Install a fresh desktop or laptop       | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
+| Review the Niri/Plasma/GDM boundaries   | [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md)           |
 | Review selected providers               | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md)               |
 | Deploy an existing checkout             | `./install.sh --profile desktop` or `./install.sh --profile laptop`      |
 | Install the root-owned keyd integration | [`system/keyd/README.md`](system/keyd/README.md)                         |
@@ -34,9 +36,24 @@ Responsibilities are deliberately separate:
 - `tests/` validates deployment, provider ownership, profile isolation, desktop
   policy, synchronization safety, and Pi extensions.
 
-The repository does not own GDM, the base GNOME installation, boot or graphics
-setup, package-repository activation, disk mounts, credentials, or account
-enrollment.
+The repository documents but does not automatically switch the display manager,
+remove desktop environments, or mutate boot and graphics setup. Package
+transactions remain explicit clean-install or transition steps; disk mounts,
+credentials, and account enrollment remain machine-local.
+
+## Desktop stack
+
+The supported Fedora 44 topology is GDM → Niri/Noctalia or KDE Plasma. GDM is
+kept because it already starts Niri reliably and also exposes Plasma's packaged
+Wayland session. Fedora's `kde-desktop` group supplies the coherent Plasma
+environment; its mandatory Plasma Login Manager package remains installed but
+inactive. GNOME stays available until Plasma passes a real login, hardware,
+portal, lock/suspend, and return-to-Niri acceptance test.
+
+Niri continues to use its explicit GNOME/GTK portal backends and GNOME Keyring.
+Plasma uses Fedora's KDE portal policy. No component is replaced merely to make
+Niri look KDE-native. The staged validation and eventual GNOME-reduction rules
+are in [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md).
 
 ## Deployment model
 

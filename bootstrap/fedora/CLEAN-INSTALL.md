@@ -24,9 +24,10 @@ the laptop or committed.
 
 ## 1. Install Fedora Workstation
 
-Install the current stable Fedora Workstation with GNOME and GDM. Do not replace
-GDM or manually create a Niri session. Before erasing an existing installation,
-confirm GitHub browser access, 2FA, and offline recovery methods.
+Install the current stable Fedora Workstation with GNOME and GDM. Keep GDM and
+do not manually create a Niri session; the official Plasma group and packaged
+Niri session are added below. Before erasing an existing installation, confirm
+GitHub browser access, 2FA, and offline recovery methods.
 
 - **Desktop only:** preserve the secondary HDD filesystem; do not format it.
 - **Laptop only:** use the internal SSD and do not create `/mnt/data`.
@@ -144,8 +145,26 @@ Do not configure another SSH agent, agent forwarding, `authorized_keys`,
 
 ### Common
 
-Review the manifest, derive non-optional rows for the selected profile, inspect
-the printed package list, and install it:
+First review and install Fedora 44's coherent KDE Plasma desktop group. The
+group also installs Plasma Login Manager, but Fedora's first-installed-wins
+preset must leave the already working GDM selected:
+
+```bash
+dnf group info kde-desktop
+sudo dnf group install kde-desktop
+sudo systemctl disable plasma-setup.service
+test "$(systemctl is-enabled plasma-setup.service 2>/dev/null || true)" = disabled
+test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
+  /usr/lib/systemd/system/gdm.service
+systemctl is-enabled gdm.service
+```
+
+Workstation has already completed account provisioning, so the KDE group's
+pre-login out-of-box wizard must not run on the next boot. Keep its package as a
+group member but keep `plasma-setup.service` disabled.
+
+Then review the manifest, derive non-optional rows for the selected profile,
+inspect the printed package list, and install it:
 
 ```bash
 hx bootstrap/fedora/dnf-packages.tsv
@@ -158,9 +177,12 @@ printf '  %s\n' "${fedora_packages[@]}"
 sudo dnf install "${fedora_packages[@]}"
 ```
 
-This includes GitHub CLI, Thunderbird, Helix, GCR, Git LFS, Noctalia, Niri,
-PipeWire, portals, scientific build tools, and selected applications. It does
-not include `openssh-server` or Conda.
+Together the group and manifest provide full Plasma/KWin, Dolphin, Konsole,
+System Settings, KDE portals and PolicyKit integration, plus GitHub CLI,
+Thunderbird, Helix, GCR, Git LFS, Noctalia, Niri, PipeWire, scientific build
+tools, and selected applications. They do not include `openssh-server` or
+Conda. Read [`DESKTOPS.md`](DESKTOPS.md) before changing GDM or removing any
+GNOME component.
 
 ## 5. Install reviewed RPM/COPR providers
 
@@ -793,6 +815,10 @@ test "$(xdg-mime query default x-scheme-handler/mailto)" = \
 for extension in ms-python.python ms-toolsai.jupyter charliermarsh.ruff; do
   code --list-extensions | grep -Fxi "$extension"
 done
+test -f /usr/share/wayland-sessions/niri.desktop
+test -f /usr/share/wayland-sessions/plasma.desktop
+test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
+  /usr/lib/systemd/system/gdm.service
 systemctl --user status \
   xdg-desktop-portal.service pipewire.service wireplumber.service \
   gcr-ssh-agent.socket
@@ -852,7 +878,13 @@ on a fresh machine.
 7. verify VS Code can select a Pixi/uv project interpreter and open a notebook;
 8. test the Noctalia recorder in portal mode;
 9. press `Mod+T` and `Mod+Z`; confirm ordinary Ghostty and new Zen windows both
-   open in Niri’s default tiled layout.
+   open in Niri’s default tiled layout;
+10. log out, select **Plasma** in GDM, and complete the login, display, input,
+    network, Bluetooth, audio, lock/unlock, suspend/resume, portal, PolicyKit,
+    Dolphin, Konsole, and System Settings acceptance gate in
+    [`DESKTOPS.md`](DESKTOPS.md); and
+11. log out of Plasma, return to Niri, and confirm unchanged Noctalia, keyring,
+    clipboard, recording, and portal behavior.
 
 ## 17. Enroll Tailscale and keep inbound SSH disabled
 
@@ -979,13 +1011,16 @@ The machine is complete when:
   working machine-local logins, and Pi doctor has zero failures;
 - Helix TypeScript/JavaScript LSP, BasedPyright, project-opt-in `ty`, Ruff, and
   Prettier are healthy;
-- Niri, Noctalia, keyd/Bongo Cat, portals, Tailscale, and storage survive reboot;
+- GDM offers both package-provided Niri and Plasma Wayland sessions;
+- Niri, Noctalia, Plasma, keyd/Bongo Cat, desktop-specific portals, Tailscale,
+  and storage survive reboot;
 - `openssh-server` is absent and Tailscale SSH is false;
 - Notes and Wallpapers pass LFS checks;
 - all three repositories are clean and synchronized; and
 - `sync-all.timer` is enabled only after the manual and systemd runs pass.
 
 For maintenance use [`../../MAINTENANCE.md`](../../MAINTENANCE.md). For detailed
-recovery and trust boundaries use [`EDITOR-TOOLS.md`](EDITOR-TOOLS.md),
-[`REMOTE-ACCESS.md`](REMOTE-ACCESS.md), [`WALLPAPERS.md`](WALLPAPERS.md), and
+recovery and trust boundaries use [`DESKTOPS.md`](DESKTOPS.md),
+[`EDITOR-TOOLS.md`](EDITOR-TOOLS.md), [`REMOTE-ACCESS.md`](REMOTE-ACCESS.md),
+[`WALLPAPERS.md`](WALLPAPERS.md), and
 [`../../system/keyd/README.md`](../../system/keyd/README.md).

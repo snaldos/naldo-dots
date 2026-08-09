@@ -6,16 +6,23 @@ fresh installations, later clean installations, and occasional audits when
 Fedora, providers, or workstation preferences change.
 
 The manifests list software deliberately selected for a clean installation.
-They are not a snapshot of every installed package, a record of transitive
+Fedora's `kde-desktop` comps group additionally owns Plasma's complete,
+release-specific desktop closure; `dnf-packages.tsv` records its required
+verification anchors rather than duplicating every group member. The manifests
+are not a snapshot of every installed package, a record of transitive
 dependencies, an automatic desired-state reconciler, the normal update
 mechanism, or a requirement that desktop and laptop contain identical software.
-Repository scripts do not install packages, enable repositories, configure GDM,
-change graphics, mount storage, activate SSH/Tailscale, or authenticate services;
+Repository scripts do not install packages, enable repositories, switch the
+display manager, remove desktops, change graphics, mount storage, activate
+SSH/Tailscale, or authenticate services;
 system-changing commands remain explicit steps for a human to review and run.
-Start with [`CLEAN-INSTALL.md`](CLEAN-INSTALL.md).
+Start with
+[`CLEAN-INSTALL.md`](CLEAN-INSTALL.md) and the desktop boundary in
+[`DESKTOPS.md`](DESKTOPS.md).
 
 ```text
-Fedora boot → GDM → package-provided Niri session → Noctalia
+Fedora boot → GDM → package-provided Niri session → Noctalia  (primary)
+                  └→ package-provided KDE Plasma session     (fallback)
 ```
 
 ## Curated clean-install manifests
@@ -25,7 +32,7 @@ once for its chosen provider:
 
 | File | Selected clean-install scope |
 |---|---|
-| `dnf-packages.tsv` | official Fedora package, classification, executables, desktop files, units |
+| `dnf-packages.tsv` | official Fedora package anchors, classification, executables, desktop files, units |
 | `flatpaks.tsv` | required/optional Flathub IDs, packaged integration commands, and exported desktop files |
 | `npm-packages.tsv` | user-prefix npm packages and exported commands |
 | `uv-tools.tsv` | user-level Python tools and clean-provisioning activation policy |
@@ -51,7 +58,7 @@ Helix mapping remains authoritative for buffer-level activation.
 
 Classifications:
 
-- `session`: necessary for GDM → Niri → Noctalia;
+- `session`: necessary for the selected GDM → Niri/Noctalia or Plasma sessions;
 - `feature`: required by an intentionally configured workflow;
 - `optional`: supported but deliberately non-default;
 - `development`: research/development tooling that does not gate the desktop.
@@ -72,8 +79,9 @@ sources.
 
 ## Selected sources
 
-- Official Fedora DNF supplies the base session, OpenSSH clients, GitHub CLI,
-  GCR, Git LFS, desktop applications, Helix, Node/npm, uv, Rust/Cargo, and build
+- Official Fedora DNF supplies GDM, Niri, Noctalia, Plasma through the
+  `kde-desktop` group, portals, OpenSSH clients, GitHub CLI, GCR, Git LFS,
+  desktop applications, Helix, Node/npm, uv, Rust/Cargo, and build
   prerequisites. An inbound OpenSSH server is not selected.
 - Flathub supplies Zen, Discord, Obsidian, the sole GPU Screen Recorder provider,
   and Sioyek. Vesktop is the only optional application alternative.
@@ -104,6 +112,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
+| `DESKTOPS.md` | Niri/Plasma topology, GDM decision, portal boundaries, and staged GNOME reduction |
 | `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

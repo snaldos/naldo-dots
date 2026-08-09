@@ -1,30 +1,29 @@
 # Workstation maintenance
 
 Run `naldo-update` manually from a terminal when there is time to review prompts
-and failures. This is the one-command whole-workstation update; for Fedora RPMs
-alone, the corresponding command is `sudo dnf upgrade --refresh`. It works on
-both profiles because each package manager updates only its locally installed
-packages. It never
-synchronizes repositories,
-reboots, enables services, removes software, or installs a missing provider.
+and failures. It updates the normal workstation providers while leaving VS Code
+extension maintenance to VS Code itself. It works on both profiles because
+each package manager updates only its locally installed packages. It never
+synchronizes repositories, reboots, enables services, removes software, or
+installs a missing provider.
 
 Provider order:
 
 1. `sudo dnf upgrade --refresh`
 2. `flatpak update --user`
-3. `code --update-extensions`, only when VS Code has extensions
-4. `gh extension upgrade --all`, only when `gh` is authenticated and has extensions
-5. outdated global npm packages, excluding TypeScript's incompatible next major
-6. `npm install --global 'typescript@6'`, only when TypeScript is already installed
-7. `uv tool upgrade --all`
-8. `cargo install-update -a`
-9. `tuicr update`, only with a valid official-installer receipt
-10. `herdr update`, only with a valid stable-channel official-installer receipt
+3. `gh extension upgrade --all`, only when `gh` is authenticated and has extensions
+4. outdated global npm packages, excluding TypeScript's incompatible next major
+5. `npm install --global 'typescript@6'`, only when TypeScript is already installed
+6. `uv tool upgrade --all`
+7. `cargo install-update -a`
+8. `tuicr update`, only with a valid official-installer receipt
+9. `herdr update`, only with a valid stable-channel official-installer receipt
 
 An unavailable/unrecognized provider is reported and skipped. Any attempted
 update failure stops the command. DNF owns Fedora, COPR, Microsoft VS Code,
-Google Chrome, and Tailscale RPMs; the updater does not replace them through a
-generic GitHub downloader.
+Google Chrome, and Tailscale RPMs; all installed RPMs follow the ordinary DNF
+transaction. The updater does not replace packages through a generic GitHub
+downloader.
 
 Pixi self-update and the two Git-tagged Cargo tools remain deliberate manual
 operations because they replace environment/session infrastructure or bypass
@@ -50,19 +49,16 @@ from `bootstrap/fedora/uv-tools.tsv` through the clean-install procedure.
 BasedPyright remains Helix's global default, while projects may opt into `ty` in
 `.helix/languages.toml`. Do not enable both type checkers for one buffer.
 
-## VS Code and GitHub CLI extensions
+## VS Code
 
-Only these VS Code extensions are directly selected:
+VS Code is a configured non-primary fallback. Its RPM follows the ordinary DNF
+transaction, but `naldo-update` does not inspect or update its extensions.
+Maintain those from VS Code itself when you choose to use it.
 
-```text
-ms-python.python
-ms-toolsai.jupyter
-charliermarsh.ruff
-```
+## GitHub CLI extension
 
-Their dependency extensions are managed by VS Code. `code --update-extensions`
-updates the installed closure. `gh-dash` is managed by GitHub CLI; its update
-requires a valid keyring-backed `gh auth` login.
+`gh-dash` is managed by GitHub CLI during `naldo-update`; its update requires a
+valid keyring-backed `gh auth` login.
 
 ## Tuicr direct installation
 

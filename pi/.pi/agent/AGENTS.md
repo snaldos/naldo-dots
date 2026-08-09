@@ -32,7 +32,7 @@ I am a machine-learning master's student at the University of Tübingen. My recu
 
 ## Workstation and safety
 
-- The workstation is Linux-oriented and currently targets Fedora Workstation with systemd, GDM → Niri → Noctalia, Fish interactively, Ghostty, Herdr, Helix (`hx`) as the primary editor, uv, and Pixi. Pi's command tool runs Bash; emit Fish syntax only when editing Fish configuration.
+- The workstation is Linux-oriented and currently targets Fedora 44 Workstation with systemd and GDM offering primary Niri → Noctalia plus a full KDE Plasma fallback; GNOME remains installed during the staged transition. Fish is interactive alongside Ghostty, Herdr, Helix (`hx`) as the primary editor, uv, and Pixi. Pi's command tool runs Bash; emit Fish syntax only when editing Fish configuration.
 - Before changing tool configuration, inspect the loaded file and installed version/help, then run the tool's validator when available.
 - For privilege elevation, agent tool commands must use `/usr/bin/sudo -n` and rely on the safety guard's explicit per-call approval; the guard owns any native password prompt, and secrets must never enter Pi input or command arguments.
 - Do not edit Herdr-managed integration files such as `herdr-agent-state.ts`; add custom behavior beside them.

@@ -66,17 +66,6 @@ printf ' %s' "$@" >>"$NALDO_UPDATE_TEST_LOG"
 printf '\n' >>"$NALDO_UPDATE_TEST_LOG"
 [[ "${NALDO_UPDATE_FAIL:-}" != npm ]] || exit "${NALDO_UPDATE_FAIL_STATUS:-23}"
 EOF
-cat >"$fake_bin/code" <<'EOF'
-#!/bin/bash
-if [[ "$1" == --list-extensions ]]; then
-  [[ "${NALDO_UPDATE_CODE_EMPTY:-0}" == 1 ]] || printf '%s\n' ms-python.python ms-toolsai.jupyter charliermarsh.ruff
-  exit 0
-fi
-printf 'code' >>"$NALDO_UPDATE_TEST_LOG"
-printf ' %s' "$@" >>"$NALDO_UPDATE_TEST_LOG"
-printf '\n' >>"$NALDO_UPDATE_TEST_LOG"
-[[ "${NALDO_UPDATE_FAIL:-}" != code ]] || exit "${NALDO_UPDATE_FAIL_STATUS:-23}"
-EOF
 cat >"$fake_bin/gh" <<'EOF'
 #!/bin/bash
 if [[ "$1 $2" == "auth status" ]]; then
@@ -91,7 +80,7 @@ printf ' %s' "$@" >>"$NALDO_UPDATE_TEST_LOG"
 printf '\n' >>"$NALDO_UPDATE_TEST_LOG"
 [[ "${NALDO_UPDATE_FAIL:-}" != gh ]] || exit "${NALDO_UPDATE_FAIL_STATUS:-23}"
 EOF
-chmod 0755 "$fake_bin/npm" "$fake_bin/code" "$fake_bin/gh"
+chmod 0755 "$fake_bin/npm" "$fake_bin/gh"
 cat >"$installer_bin/tuicr" <<'EOF'
 #!/bin/bash
 printf 'tuicr' >>"$NALDO_UPDATE_TEST_LOG"
@@ -131,7 +120,6 @@ provider_path="$installer_bin:$fake_bin"
 cat >"$workspace/providers.expected" <<'EOF'
 sudo dnf upgrade --refresh
 flatpak update --user
-code --update-extensions
 gh extension upgrade --all
 npm update --global prettier
 npm install --global typescript@6
@@ -142,14 +130,14 @@ herdr update
 EOF
 diff -u "$workspace/providers.expected" "$workspace/providers.log" ||
   fail 'update providers did not run once in the required order'
-for label in 'DNF packages' 'Flatpak applications' 'VS Code extensions' 'GitHub CLI extensions' \
-  'global npm packages' 'uv tools' 'Cargo registry binaries' 'Tuicr official installer' \
+for label in 'DNF packages' 'Flatpak applications' 'GitHub CLI extensions' 'global npm packages' \
+  'uv tools' 'Cargo registry binaries' 'Tuicr official installer' \
   'Herdr official installer'; do
   grep -Fq "== $label ==" "$workspace/providers.out" || fail "missing provider section: $label"
 done
 grep -Fq 'protocol-changing update may require restarting the active Herdr session' "$workspace/providers.out" ||
   fail 'Herdr update did not warn about an active-session protocol change'
-pass 'available providers run once in labeled DNF Flatpak VS Code GitHub npm uv Cargo Tuicr and Herdr order'
+pass 'available providers run once in labeled DNF Flatpak GitHub npm uv Cargo Tuicr and Herdr order'
 
 : >"$workspace/constrained.log"
 HOME="$installer_home" XDG_DATA_HOME="$installer_data" PATH="$provider_path" \
@@ -178,7 +166,7 @@ pass 'constrained TypeScript and receipt-owned Tuicr updates cannot install miss
 PATH="$workspace/empty-bin" NALDO_UPDATE_TEST_LOG="$workspace/skipped.log" \
   /bin/bash "$workspace/naldo-update" >"$workspace/skipped.out"
 [[ ! -s "$workspace/skipped.log" ]] || fail 'an unavailable provider was executed'
-[[ "$(grep -c '^SKIP:' "$workspace/skipped.out")" == 9 ]] ||
+[[ "$(grep -c '^SKIP:' "$workspace/skipped.out")" == 8 ]] ||
   fail 'unavailable providers were not all reported clearly'
 pass 'unavailable providers are reported and skipped'
 
@@ -198,7 +186,7 @@ diff -u "$workspace/failure.expected" "$workspace/failure.log" ||
   fail 'updates continued after a provider failed'
 pass 'provider failures propagate immediately without running later providers'
 
-head -n 9 "$workspace/providers.expected" >"$workspace/no-herdr.expected"
+head -n 8 "$workspace/providers.expected" >"$workspace/no-herdr.expected"
 rm -f -- "$herdr_receipt"
 : >"$workspace/no-receipt.log"
 HOME="$installer_home" XDG_DATA_HOME="$installer_data" PATH="$provider_path" \
@@ -253,6 +241,12 @@ for forbidden in '-y' --assumeyes autoremove '--git' sync-all sync-control syste
 done
 ! grep -Eq 'dnf .*install|flatpak .*install|(^|[[:space:]])remove([[:space:]]|$)' "$UPDATER" ||
   fail 'naldo-update installs missing applications or removes software'
+grep -Fq 'sudo dnf upgrade --refresh' "$UPDATER" ||
+  fail 'naldo-update does not use the ordinary DNF RPM upgrade'
+! grep -Fq -- '--exclude=code' "$UPDATER" ||
+  fail 'naldo-update unnecessarily excludes the VS Code RPM from DNF upgrades'
+! rg -n 'code --(list|update)-extensions' "$UPDATER" >/dev/null ||
+  fail 'naldo-update still inspects or updates VS Code extensions'
 grep -Fq 'npm list --global --depth=0 --json typescript' "$UPDATER" ||
   fail 'TypeScript major constraint is not guarded by installed-package presence'
 [[ "$(grep -Fc "npm install --global 'typescript@6'" "$UPDATER")" == 1 ]] ||
@@ -276,6 +270,7 @@ for policy in \
   '`herdr update` only when that receipt exactly names the' \
   'protocol-changing update may require restarting the active Herdr session' \
   'use `pixi self-update`' \
+  '`naldo-update` does not inspect or update its extensions' \
   'official Nerd Fonts `v3.5.0`'; do
   grep -Fq "$policy" "$MAINTENANCE" || fail "maintenance guide omits: $policy"
 done

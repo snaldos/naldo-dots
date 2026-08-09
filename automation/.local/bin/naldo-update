@@ -37,18 +37,6 @@ else
   skip 'flatpak is unavailable'
 fi
 
-section 'VS Code extensions'
-if command -v code >/dev/null 2>&1; then
-  mapfile -t vscode_extensions < <(code --list-extensions)
-  if ((${#vscode_extensions[@]} > 0)); then
-    code --update-extensions
-  else
-    skip 'VS Code has no installed extensions'
-  fi
-else
-  skip 'VS Code is unavailable'
-fi
-
 section 'GitHub CLI extensions'
 if ! command -v gh >/dev/null 2>&1; then
   skip 'GitHub CLI is unavailable'

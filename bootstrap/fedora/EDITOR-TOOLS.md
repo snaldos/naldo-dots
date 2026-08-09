@@ -102,7 +102,8 @@ charliermarsh.ruff
 VS Code may install dependencies such as debugpy, Pylance, Python Environments,
 and Jupyter renderers. They are provider-managed dependency closure, not
 additional selections. No settings profile, extension pack, or separate
-JavaScript debugger is selected.
+JavaScript debugger is selected. The VS Code RPM follows normal DNF upgrades,
+while extension maintenance is initiated from VS Code itself.
 
 ## Health check
 

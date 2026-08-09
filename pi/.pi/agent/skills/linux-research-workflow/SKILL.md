@@ -1,7 +1,7 @@
 ---
 name: linux-research-workflow
-description: "Inspect, debug, validate, maintain, or configure Naldo's Fedora-targeted Linux desktop/laptop: GNU Stow dotfiles, repository synchronization, Niri, native Noctalia v5, systemd, Wayland, keyd, Ghostty, Fish, Helix, Yazi, Zen Flatpak, Herdr, and scientific tooling."
-compatibility: "Fedora Workstation target; Linux; GDM to Niri; native Noctalia v5; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
+description: "Inspect, debug, validate, maintain, or configure Naldo's Fedora-targeted Linux desktop/laptop: GNU Stow dotfiles, repository synchronization, Niri, native Noctalia v5, KDE Plasma fallback, systemd, Wayland, keyd, Ghostty, Fish, Helix, Yazi, Zen Flatpak, Herdr, and scientific tooling."
+compatibility: "Fedora 44 Workstation target; Linux; GDM to primary Niri/Noctalia and fallback KDE Plasma; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
 ---
 
 # Linux Research Workstation
@@ -11,7 +11,8 @@ compatibility: "Fedora Workstation target; Linux; GDM to Niri; native Noctalia v
 Treat this as a target profile that must still be inspected against the installed
 Fedora release and application versions:
 
-- Fedora Workstation login through GDM into the package-provided Niri session
+- Fedora 44 Workstation login through GDM into either the package-provided Niri
+  session (primary) or the Fedora `kde-desktop` Plasma session (full fallback)
 - Niri running through `niri-session`/`niri.service`, with native Noctalia as the shell
 - Fish, Ghostty, Starship, Helix (`hx`), Yazi, Zen as
   `app.zen_browser.zen`, and Herdr; Neovim is only an optional stock fallback
@@ -22,8 +23,10 @@ Fedora release and application versions:
 - root-owned keyd mapping and Bongo Cat udev rule under `system/`, installed only by `install-system.sh`
 - Noctalia templates as durable sources; rendered outputs remain machine-local
 
-This repository does not configure the login manager, the boot path, the base
-GNOME desktop, repositories, package updates, or graphics drivers.
+The bootstrap runbooks document the selected desktop topology and explicit
+package transactions. User deployment scripts do not switch the login manager,
+remove GNOME, alter the boot path, enable repositories, update packages, or
+change graphics drivers.
 
 ## Load the matching reference
 

@@ -55,14 +55,14 @@ pass 'fresh deployment is complete and idempotent'
 
 identical_target="$workspace/identical"
 mkdir -p "$identical_target/.config/xdg-desktop-portal"
-cp "$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal/portals.conf" \
-  "$identical_target/.config/xdg-desktop-portal/portals.conf"
-cp "$identical_target/.config/xdg-desktop-portal/portals.conf" "$workspace/identical.before"
+cp "$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal/niri-portals.conf" \
+  "$identical_target/.config/xdg-desktop-portal/niri-portals.conf"
+cp "$identical_target/.config/xdg-desktop-portal/niri-portals.conf" "$workspace/identical.before"
 run_expect_failure "$workspace/identical.log" "$DEPLOY_LINKS" --target "$identical_target"
-cmp -s "$workspace/identical.before" "$identical_target/.config/xdg-desktop-portal/portals.conf" ||
+cmp -s "$workspace/identical.before" "$identical_target/.config/xdg-desktop-portal/niri-portals.conf" ||
   fail 'conflicting regular target changed'
-[[ -f "$identical_target/.config/xdg-desktop-portal/portals.conf" &&
-  ! -L "$identical_target/.config/xdg-desktop-portal/portals.conf" ]] ||
+[[ -f "$identical_target/.config/xdg-desktop-portal/niri-portals.conf" &&
+  ! -L "$identical_target/.config/xdg-desktop-portal/niri-portals.conf" ]] ||
   fail 'conflicting regular target was adopted or migrated'
 pass 'regular target conflicts require explicit review even when byte-identical'
 
