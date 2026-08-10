@@ -1,4 +1,4 @@
-# Fedora Workstation clean installation
+# Fedora KDE Plasma Desktop clean installation
 
 This is the only installation sequence for both machines. Run it from top to
 bottom in a Bash shell, one code block at a time. Every time you open a new
@@ -22,13 +22,13 @@ the laptop or committed.
 | wallpaper sync guard | `/mnt/data`                                             | empty                                 |
 | device names         | `naldo-fedora-desktop`, `naldo-desktop`                 | `naldo-fedora-laptop`, `naldo-laptop` |
 
-## 1. Install Fedora Workstation
+## 1. Install Fedora KDE Plasma Desktop Edition
 
-Install the current stable Fedora Workstation. Keep its GNOME desktop,
-applications, integration packages, and GDM intact. This guide adds packaged
-Niri, Plasma, and Plasma Login Manager; it does not replace Workstation's package
-composition or manually create a Niri session. Before erasing an existing
-installation, confirm GitHub browser access, 2FA, and offline recovery methods.
+Install the current stable Fedora KDE Plasma Desktop Edition directly. This
+guide keeps its complete Plasma composition and adds packaged Niri plus every
+selected GNOME/GTK integration package that Niri needs; it does not install
+GNOME Shell/session or GDM. Before erasing an existing installation, confirm
+GitHub browser access, 2FA, and offline recovery methods.
 
 - **Desktop only:** preserve the secondary HDD filesystem; do not format it.
 - **Laptop only:** use the internal SSD and do not create `/mnt/data`.
@@ -55,6 +55,8 @@ bash
 test -n "$BASH_VERSION"
 cat /etc/fedora-release
 test "$(rpm -E %fedora)" = 44
+test "$(. /etc/os-release; printf %s "$VARIANT_ID")" = kde
+rpm -q fedora-release-kde-desktop fedora-release-identity-kde-desktop
 ```
 
 Select exactly one profile in every new provisioning shell:
@@ -68,7 +70,7 @@ esac
 printf 'selected profile: %s\n' "$profile"
 ```
 
-## 3. Create the SSH identity, enroll GCR, and clone dotfiles
+## 3. Create the SSH identity and clone dotfiles from Plasma
 
 ### Common
 
@@ -76,8 +78,7 @@ Install only the client/bootstrap packages required before the repository is
 available. This setup never installs an inbound SSH server.
 
 ```bash
-sudo dnf install git-core openssh-clients gcr fish helix
-systemctl --user enable --now gcr-ssh-agent.socket
+sudo dnf install git-core openssh-clients fish helix
 ```
 
 Create a new passphrase-protected key for this device. Never copy a private key
@@ -96,49 +97,31 @@ under a device-specific title:
 cat "$HOME/.ssh/id_ed25519.pub"
 ```
 
-Select GCR only in this bootstrap shell; do not create a global environment or
-Fish override. Fresh sessions select their Fedora-packaged agent.
+The initial KDE session uses Fedora's OpenSSH agent. Do not create a global
+socket override or ask KWallet to replace this agent:
 
 ```bash
-ssh_socket="$XDG_RUNTIME_DIR/gcr/ssh"
-test -S "$ssh_socket"
-export SSH_AUTH_SOCK="$ssh_socket"
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
+systemctl --user is-active ssh-agent.socket ssh-agent.service
+ssh-add "$HOME/.ssh/id_ed25519"
+ssh-add -T "$HOME/.ssh/id_ed25519.pub"
 git ls-remote git@github.com:snaldos/naldo-dots.git refs/heads/main
-```
-
-When GCR asks, first check **Automatically unlock this key whenever I'm logged
-in**, then enter the passphrase and click **Unlock**. The passphrase is saved in
-GNOME Keyring, not in dotfiles. Restart GCR and prove that a systemd user service
-can use the stored key without another prompt:
-
-```bash
-systemctl --user restart gcr-ssh-agent.service
-systemd-run --user --wait --collect \
-  --unit=naldo-bootstrap-agent-check.service \
-  /usr/bin/git ls-remote \
-  git@github.com:snaldos/naldo-dots.git refs/heads/main
-```
-
-If another prompt appears, stop and repeat the GCR enrollment; do not enable
-background synchronization with a locked key. Clone the repository:
-
-```bash
 git clone git@github.com:snaldos/naldo-dots.git "$HOME/dotfiles"
 cd "$HOME/dotfiles"
 ```
 
-Niri/GNOME retain GCR; Plasma later uses Fedora's OpenSSH agent and requires one
-manual `ssh-add ~/.ssh/id_ed25519` after reboot. Do not configure agent
+Niri's GNOME Keyring/GCR path is installed from the manifest and enrolled after
+the first Niri login. Plasma requires another manual
+`ssh-add ~/.ssh/id_ed25519` after each reboot. Do not configure agent
 forwarding, `authorized_keys`, `sshd`, or Tailscale SSH.
 
 ## 4. Install selected Fedora packages
 
 ### Common
 
-First review and install Fedora 44's coherent KDE Plasma desktop group. The
-group also installs Plasma Login Manager. Fedora's first-installed-wins preset
-leaves the current GDM path selected until GNOME, Niri, and Plasma pass their
-baseline checks:
+Review and reconcile Fedora 44's coherent KDE Plasma desktop group. The KDE
+Edition already selects Plasma Login Manager; the group command is idempotent
+and ensures the complete release-specific composition:
 
 ```bash
 dnf group info kde-desktop
@@ -146,15 +129,14 @@ sudo dnf group install kde-desktop
 sudo systemctl disable plasma-setup.service
 test "$(systemctl is-enabled plasma-setup.service 2>/dev/null || true)" = disabled
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
-  /usr/lib/systemd/system/gdm.service
-systemctl is-enabled gdm.service
-systemctl is-enabled plasmalogin.service || true
+  /usr/lib/systemd/system/plasmalogin.service
+systemctl is-enabled plasmalogin.service
+! rpm -q gdm >/dev/null 2>&1
 ```
 
-Workstation has already completed account provisioning, so the KDE group's
-pre-login out-of-box wizard must not run on the next boot. Keep its package as a
-group member but keep `plasma-setup.service` disabled. Do not switch display
-managers yet.
+Initial account provisioning is complete, so the KDE group's pre-login
+out-of-box wizard must not run again. Keep its package as a group member but
+keep `plasma-setup.service` disabled.
 
 Then review the manifest, derive non-optional rows for the selected profile,
 inspect the printed package list, and install it:
@@ -170,13 +152,12 @@ printf '  %s\n' "${fedora_packages[@]}"
 sudo dnf install "${fedora_packages[@]}"
 ```
 
-Make the cross-desktop login, keyring, and portal closure explicit in DNF's
-reason database. This prevents a future `dnf autoremove` from classifying GCR or
-a PAM module as an obsolete GNOME dependency:
+Make the retained login, keyring, and portal closure explicit in DNF's reason
+database. This prevents a future targeted package operation from classifying
+GCR or a PAM module as an obsolete GNOME dependency:
 
 ```bash
 sudo dnf -y mark user \
-  gdm gnome-shell gnome-session-wayland-session mutter \
   plasma-login-manager pam-kwallet \
   gnome-keyring gnome-keyring-pam gcr \
   xdg-desktop-portal xdg-desktop-portal-gnome \
@@ -185,13 +166,13 @@ sudo dnf -y mark user \
   xwayland-satellite
 ```
 
-Together Workstation, the group, and the manifest provide retained GNOME/GDM;
-full Plasma/KWin, Dolphin, Konsole, System Settings, KDE portals and PolicyKit;
-both login PAM modules; plus GitHub CLI, Thunderbird, Helix, GCR, Git LFS,
-Noctalia, Niri, PipeWire, scientific build tools, and selected applications.
-They do not select `openssh-server` or Conda. Read
-[`DESKTOPS.md`](DESKTOPS.md) before the display-manager cutover. Do not remove
-Workstation components.
+The KDE group and manifest provide full Plasma/KWin, Dolphin, Konsole, System
+Settings, KDE portals and PolicyKit; plus Niri, Noctalia, GNOME Keyring/PAM,
+GCR, GNOME/GTK portals, Nautilus, PipeWire, GitHub CLI, Thunderbird, Helix, Git
+LFS, scientific build tools, and selected applications. Those GNOME-named rows
+are explicit because the KDE Edition does not guarantee Niri's integration
+closure. The selection does not include GNOME Shell/session, GDM,
+`openssh-server`, or Conda. Read [`DESKTOPS.md`](DESKTOPS.md) for the boundaries.
 
 ## 5. Install reviewed RPM/COPR providers
 
@@ -738,13 +719,13 @@ desktop-file-validate \
 ```
 
 The same-ID XDG autostart entry retains XWayland Video Bridge for legacy X11
-screen sharing in KDE/GNOME but excludes it from Niri with
-`OnlyShowIn=KDE;GNOME;`. Native Niri portal capture does not require the bridge,
-and no package-owned file is changed.
+screen sharing in KDE but excludes it from Niri with `OnlyShowIn=KDE;`. Native
+Niri portal capture does not require the bridge, and no package-owned file is
+changed.
 
-The desktop package owns no SSH-agent selection or key-loading policy.
-Niri/GNOME and Plasma inherit their different package-owned agent sockets from
-a fresh session.
+The desktop package owns no SSH-agent selection or key-loading policy. Niri and
+Plasma inherit their different package-owned agent sockets from a fresh
+session.
 
 Set machine-local Git identity:
 
@@ -790,9 +771,8 @@ Do not add the account to the broad `input` group.
 
 ### Common
 
-Log out. In the still-transitional GDM chooser, select the package-provided
-**Niri** session. Open Ghostty, enter Bash, restore the profile, and return to
-the repository:
+Log out. In Plasma Login Manager, select the package-provided **Niri** session.
+Open Ghostty, enter Bash, restore the profile, and return to the repository:
 
 ```bash
 bash
@@ -800,7 +780,25 @@ test -n "$BASH_VERSION"
 profile=laptop  # use profile=desktop only on the desktop
 case "$profile" in desktop|laptop) ;; *) exit 2 ;; esac
 cd "$HOME/dotfiles"
+test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
+systemctl --user enable --now gcr-ssh-agent.socket
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/gcr/ssh"
+git ls-remote git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
+
+When GCR asks, first check **Automatically unlock this key whenever I'm logged
+in**, then enter the SSH-key passphrase and click **Unlock**. GNOME Keyring, not
+dotfiles, stores it. Restart GCR and require a silent systemd Git operation:
+
+```bash
+systemctl --user restart gcr-ssh-agent.service
+systemd-run --user --wait --collect \
+  --unit=naldo-bootstrap-gcr-check.service \
+  /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
+```
+
+If another prompt appears, stop and repair GCR enrollment before enabling
+background synchronization.
 
 In Noctalia Settings → Plugins → Browse Plugins, materialize the official
 **Screen Recorder** and **Bongo Cat** plugins. Configure:
@@ -838,13 +836,15 @@ test "$(xdg-mime query default x-scheme-handler/mailto)" = \
 for extension in ms-python.python ms-toolsai.jupyter charliermarsh.ruff; do
   code --list-extensions | grep -Fxi "$extension"
 done
-test -f /usr/share/wayland-sessions/gnome.desktop
 test -f /usr/share/wayland-sessions/niri.desktop
 test -f /usr/share/wayland-sessions/plasma.desktop
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
-  /usr/lib/systemd/system/gdm.service
+  /usr/lib/systemd/system/plasmalogin.service
+test "$(. /etc/os-release; printf %s "$VARIANT_ID")" = kde
+! rpm -q gdm gnome-shell gnome-session mutter >/dev/null 2>&1
 systemctl --user status \
-  xdg-desktop-portal.service pipewire.service wireplumber.service \
+  xdg-desktop-portal.service xdg-desktop-portal-gnome.service \
+  xdg-desktop-portal-gtk.service pipewire.service wireplumber.service \
   gcr-ssh-agent.socket
 ```
 
@@ -903,30 +903,23 @@ on a fresh machine.
 8. test the Noctalia recorder in portal mode;
 9. press `Mod+T` and `Mod+Z`; confirm ordinary Ghostty and new Zen windows both
    open in Niri’s default tiled layout;
-10. log out, select **Plasma** in GDM, and complete the login, display, input,
+10. log out, select **Plasma** in PLM, and complete the login, display, input,
     network, Bluetooth, audio, lock/unlock, suspend/resume, portal, PolicyKit,
     Dolphin, Konsole, and System Settings baseline in
-    [`DESKTOPS.md`](DESKTOPS.md);
-11. log out, select **GNOME**, and verify GNOME Shell, Nautilus open/save/upload,
-    keyring, networking, audio, lock, and suspend/resume; and
-12. log out of GNOME, return to Niri, and confirm unchanged Noctalia, keyring,
-    clipboard, recording, and portal behavior.
+    [`DESKTOPS.md`](DESKTOPS.md); and
+11. log out of Plasma, return to **Niri**, and confirm unchanged Noctalia,
+    keyring, clipboard, recording, browser open/save/upload, and portal behavior.
 
-Only after all three sessions pass, stage Plasma Login Manager for the next
-boot. These commands must not stop the current Niri session. Do not use
-`systemctl --dry-run`; inspect the alias after each real operation:
+Both selected sessions must pass through the already-active PLM before the first
+reboot acceptance gate:
 
 ```bash
-sudo systemctl disable gdm.service
-sudo systemctl enable plasmalogin.service
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
   /usr/lib/systemd/system/plasmalogin.service
 systemctl is-enabled plasmalogin.service
-test "$(systemctl is-enabled gdm.service 2>/dev/null || true)" = disabled
+systemctl is-active plasmalogin.service
+! rpm -q gdm >/dev/null 2>&1
 ```
-
-GDM remains installed permanently as an inactive rollback option. PLM must start
-all three sessions after reboot before the display-manager cutover is accepted.
 
 ## 17. Enroll Tailscale and keep inbound SSH disabled
 
@@ -949,7 +942,7 @@ test "$(systemctl is-active sshd.service 2>/dev/null || true)" = inactive
 No reusable auth key, Tailscale SSH, firewall opening, or inbound OpenSSH server
 is selected.
 
-## 18. Reboot, accept PLM, and preserve the Workstation composition
+## 18. Reboot and accept the final two-session topology
 
 ### Common
 
@@ -1013,10 +1006,9 @@ case "$profile" in
 esac
 ```
 
-With GDM still installed but inactive, log out, select **Plasma** in PLM, and
-repeat the Plasma acceptance gate. Do not manually unlock a wallet at login. In
-Konsole, enter Bash and verify the canonical PAM-opened wallet and Fedora's
-package-owned OpenSSH agent:
+Log out, select **Plasma** in PLM, and repeat the Plasma acceptance gate. Do not
+manually unlock a wallet at login. In Konsole, enter Bash and verify the
+canonical PAM-opened wallet and Fedora's package-owned OpenSSH agent:
 
 ```bash
 bash
@@ -1053,27 +1045,8 @@ Repeat the manual `ssh-add` after an agent restart or reboot. KWallet remains
 available for Plasma application secrets, but standard OpenSSH-agent use does
 not store the SSH passphrase there.
 
-Log out, select **GNOME** in PLM, and verify the retained Workstation session.
-Open a terminal, enter Bash, and check the real login path:
-
-```bash
-bash
-test -n "$BASH_VERSION"
-test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
-case ":${XDG_CURRENT_DESKTOP-}:" in *:GNOME:*) ;; *) exit 1 ;; esac
-systemctl --user is-active xdg-desktop-portal.service
-systemctl --user is-active gcr-ssh-agent.socket
-systemctl --user is-active \
-  'app-org.kde.xwaylandvideobridge@autostart.service'
-systemd-run --user --wait --collect \
-  --unit=naldo-gnome-gcr-check.service \
-  /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
-```
-
-Test Nautilus open/save/upload, networking, audio, lock/unlock, and
-suspend/resume. Then log out and return to **Niri**. This rechecks the primary
-path and makes Niri PLM's remembered default. Open Ghostty, enter Bash, and
-restore the profile:
+Log out and return to **Niri**. This rechecks the primary path and makes Niri
+PLM's remembered default. Open Ghostty, enter Bash, and restore the profile:
 
 ```bash
 bash
@@ -1081,11 +1054,35 @@ test -n "$BASH_VERSION"
 profile=laptop  # use profile=desktop only on the desktop
 case "$profile" in desktop|laptop) ;; *) exit 2 ;; esac
 cd "$HOME/dotfiles"
+test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
+systemctl --user is-active xdg-desktop-portal.service
+systemctl --user is-active xdg-desktop-portal-gnome.service
+systemctl --user is-active xdg-desktop-portal-gtk.service
+systemctl --user is-active gcr-ssh-agent.socket
+```
+
+Both selected sessions are now accepted through PLM. Confirm that the KDE
+Edition identity and Niri's explicitly selected GNOME infrastructure survived
+the reboot:
+
+```bash
+test "$(. /etc/os-release; printf %s "$VARIANT_ID")" = kde
+rpm -q fedora-release-kde-desktop fedora-release-identity-kde-desktop
+rpm -V fedora-release-identity-kde-desktop
+rpm -q \
+  niri xwayland-satellite noctalia \
+  gnome-keyring gnome-keyring-pam gcr nautilus \
+  xdg-desktop-portal xdg-desktop-portal-gnome \
+  xdg-desktop-portal-gtk xdg-desktop-portal-kde
+! rpm -q fedora-release-workstation fedora-release-identity-workstation \
+  gdm gnome-shell gnome-session gnome-session-wayland-session \
+  gnome-classic-session mutter >/dev/null 2>&1
+dnf check
 ```
 
 ### Desktop only
 
-Keep the Workstation-owned `thermald` package installed. The selected i5-13400F
+Keep Fedora's selected `thermald` package installed. The selected i5-13400F
 desktop is not a mobile thermal platform, so disable only its inapplicable
 service rather than removing the package:
 
@@ -1098,7 +1095,7 @@ test "$(systemctl is-enabled thermald.service 2>/dev/null || true)" = disabled
 
 ### Laptop only
 
-Retain and enable the Workstation thermal service on supported laptop hardware:
+Retain and enable Fedora's thermal service on supported laptop hardware:
 
 ```bash
 test "$profile" = laptop
@@ -1109,18 +1106,28 @@ systemctl is-active thermald.service
 
 ### Common final verification
 
-Do not remove Workstation packages. Do not run a general autoremove. Verify the
-complete three-desktop closure, package-owned portal policy, and inactive GDM:
+Do not turn the explicit Niri integration list into a GNOME-name-based cleanup.
+Verify the KDE identity, two-session closure, and retained package-owned GNOME
+infrastructure:
 
 ```bash
 rpm -q \
-  gdm gnome-shell gnome-session gnome-session-wayland-session mutter nautilus \
-  niri noctalia plasma-login-manager plasma-workspace pam-kwallet \
-  gnome-keyring gnome-keyring-pam gcr \
-  xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-desktop-portal-kde
-for session in gnome.desktop niri.desktop plasma.desktop; do
+  fedora-release-kde-desktop fedora-release-identity-kde-desktop nautilus \
+  niri noctalia plasma-login-manager plasma-desktop plasma-workspace kwin \
+  pam-kwallet gnome-keyring gnome-keyring-pam gcr \
+  xdg-desktop-portal xdg-desktop-portal-gnome \
+  xdg-desktop-portal-gtk xdg-desktop-portal-kde
+! rpm -q fedora-release-workstation fedora-release-identity-workstation \
+  >/dev/null 2>&1
+for package in gdm gnome-shell gnome-session \
+  gnome-session-wayland-session gnome-classic-session mutter; do
+  ! rpm -q "$package" >/dev/null 2>&1
+done
+for session in niri.desktop plasma.desktop; do
   test -f "/usr/share/wayland-sessions/$session"
 done
+test ! -e /usr/share/wayland-sessions/gnome.desktop
+test ! -e /usr/share/wayland-sessions/gnome-classic.desktop
 test ! -e "$HOME/.config/xdg-desktop-portal/portals.conf"
 test ! -e "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
 rpm -qf /usr/share/xdg-desktop-portal/niri-portals.conf
@@ -1128,7 +1135,8 @@ test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
   /usr/lib/systemd/system/plasmalogin.service
 systemctl is-enabled plasmalogin.service
 systemctl is-active plasmalogin.service
-test "$(systemctl is-active gdm.service 2>/dev/null || true)" = inactive
+test "$(systemctl show gdm.service -p LoadState --value 2>/dev/null || true)" = \
+  not-found
 dnf check
 systemd-run --user --wait --collect \
   --unit=naldo-final-agent-check.service \
@@ -1181,20 +1189,22 @@ repeat all three manual tasks before re-enabling.
 
 The machine is complete when:
 
+- `/etc/os-release` and the selected release packages identify Fedora KDE
+  Plasma Desktop Edition;
 - the selected profile verifier has zero missing required items;
 - all repository tests pass;
-- GCR unlocks silently in Niri/GNOME, Plasma's OpenSSH key is loaded with
-  `ssh-add`, and systemd Git access succeeds in the selected session;
+- GCR unlocks silently in Niri, Plasma's OpenSSH key is loaded with `ssh-add`,
+  and systemd Git access succeeds in the selected session;
 - `gh`, `gh-dash`, Tuicr, Thunderbird, VS Code, and the selected VS Code
   extensions are present;
 - Herdr's generated Pi integration is current, Codex CLI and Pi have separate
   working machine-local logins, and Pi doctor has zero failures;
 - Helix TypeScript/JavaScript LSP, BasedPyright, project-opt-in `ty`, Ruff, and
   Prettier are healthy;
-- Plasma Login Manager offers package-provided GNOME, Niri, and Plasma Wayland
-  sessions, remembers Niri as preferred, and installed GDM remains inactive;
-- GNOME, Niri, Noctalia, Plasma, both PAM/keyring paths, keyd/Bongo Cat,
-  package-owned desktop portals, Tailscale, and storage survive reboot;
+- Plasma Login Manager offers package-provided Niri and Plasma Wayland
+  sessions, remembers Niri as preferred, and GDM/GNOME Shell/session are absent;
+- Niri, Noctalia, Plasma, both PAM/keyring paths, retained GNOME/GTK portal
+  infrastructure, keyd/Bongo Cat, Tailscale, and storage survive reboot;
 - `openssh-server` is absent and Tailscale SSH is false;
 - Notes and Wallpapers pass LFS checks;
 - all three repositories are clean and synchronized; and

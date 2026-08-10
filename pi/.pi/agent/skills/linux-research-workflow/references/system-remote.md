@@ -88,8 +88,8 @@ GitHub CLI tokens remain machine-local. Do not print private key or token
 contents. `openssh-server`, `authorized_keys`, agent forwarding, firewall
 openings, and Tailscale SSH are absent.
 
-Retain Fedora's session-native agents: Niri/GNOME use GCR with GNOME Keyring,
-while Plasma exports `$XDG_RUNTIME_DIR/ssh-agent.socket` and pulls
+Retain Fedora's session-native agents: Niri uses GCR with GNOME Keyring, while
+Plasma exports `$XDG_RUNTIME_DIR/ssh-agent.socket` and pulls
 `ssh-agent.service` through `plasma-core.target`. Do not globally set
 `SSH_AUTH_SOCK`, add a Fish universal override, or shadow package-owned Plasma
 hooks. Do not add a key-loading autostart or compatibility layer. In Plasma,

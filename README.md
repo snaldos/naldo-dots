@@ -1,23 +1,23 @@
 # Dotfiles
 
-Fedora 44 Workstation configuration with its GNOME desktop retained, Niri →
-Noctalia as the preferred session, and KDE Plasma as a full fallback, all
-selected through Plasma Login Manager and deployed as explicit GNU Stow
-packages under `$HOME`.
+Fedora 44 KDE Plasma Desktop Edition configuration with Niri → Noctalia as the
+preferred session and KDE Plasma as the full fallback, both selected through
+Plasma Login Manager. GNOME Shell/session is intentionally absent while GNOME
+infrastructure needed by Niri and applications remains installed.
 
 ![Niri desktop with Helix, Pi, and Noctalia](assets/screenshots/desktop-overview.png)
 
 ## Start here
 
-| Task                                    | Entry point                                                              |
-| --------------------------------------- | ------------------------------------------------------------------------ |
-| Install a fresh desktop or laptop       | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
-| Review the GNOME/Niri/Plasma boundaries | [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md)           |
-| Review selected providers               | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md)               |
-| Deploy an existing checkout             | `./install.sh --profile desktop` or `./install.sh --profile laptop`      |
-| Install the root-owned keyd integration | [`system/keyd/README.md`](system/keyd/README.md)                         |
-| Update installed software               | [`MAINTENANCE.md`](MAINTENANCE.md)                                       |
-| Inspect the Pi configuration            | [`pi/.pi/agent/README.md`](pi/.pi/agent/README.md)                       |
+| Task                                             | Entry point                                                              |
+| ------------------------------------------------ | ------------------------------------------------------------------------ |
+| Install a fresh desktop or laptop                | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
+| Review Niri/Plasma/GNOME-infrastructure boundaries | [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md)         |
+| Review selected providers                        | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md)               |
+| Deploy an existing checkout                      | `./install.sh --profile desktop` or `./install.sh --profile laptop`      |
+| Install the root-owned keyd integration          | [`system/keyd/README.md`](system/keyd/README.md)                         |
+| Update installed software                        | [`MAINTENANCE.md`](MAINTENANCE.md)                                       |
+| Inspect the Pi configuration                     | [`pi/.pi/agent/README.md`](pi/.pi/agent/README.md)                       |
 
 For a clean Fedora installation, follow the complete guide from the beginning
 rather than running the user installer first.
@@ -37,26 +37,30 @@ Responsibilities are deliberately separate:
 - `tests/` validates deployment, provider ownership, profile isolation, desktop
   policy, synchronization safety, and Pi extensions.
 
-The repository documents but does not automatically switch the display manager,
-remove desktop environments, or mutate boot and graphics setup. Package
-transactions remain explicit clean-install or transition steps; disk mounts,
-credentials, and account enrollment remain machine-local.
+The repository documents but does not make unprompted display-manager or desktop
+changes. The reviewed Workstation conversion and other package transactions
+remain explicit transition or clean-install steps; user deployment never
+performs them. Disk mounts, credentials, and account enrollment remain
+machine-local.
 
 ## Desktop stack
 
-The supported Fedora 44 topology is an intact Workstation installation plus
-Niri and Fedora's complete `kde-desktop` group. Plasma Login Manager offers the
-package-provided GNOME, Niri, and Plasma sessions; Niri is preferred. GDM stays
-installed as a disabled rollback display manager rather than being removed.
+The supported Fedora 44 topology uses the KDE Plasma Desktop Edition identity
+and Fedora's complete `kde-desktop` group, with Niri added as the preferred
+session. Plasma Login Manager offers package-provided Niri and Plasma sessions.
+Converted Workstation installations remove GNOME Shell/session plus GDM only
+after both replacement sessions pass through PLM; useful GNOME/GTK application
+infrastructure remains.
 
-Niri and GNOME use Fedora's package-owned GNOME/GTK portal policy, GNOME
-Keyring, and GCR SSH agent. Plasma uses Fedora's KDE portal policy, canonical
-`kdewallet`, and OpenSSH agent. Plasma deliberately has no custom key-loading
-autostart: after reboot, run `ssh-add ~/.ssh/id_ed25519` once in a terminal.
-The KDE group's XWayland Video Bridge remains available for legacy screen
-sharing in Plasma/GNOME but its idle virtual window is excluded from Niri
-through a session-scoped XDG autostart entry. There is no user portal override
-or desktop-removal phase. The acceptance and recovery boundaries are in
+Niri uses Fedora's package-owned GNOME/GTK portal policy, GNOME Keyring, and GCR
+SSH agent without requiring a GNOME login session. Plasma uses Fedora's KDE
+portal policy, canonical `kdewallet`, and OpenSSH agent. Plasma deliberately has
+no custom key-loading autostart: after reboot, run
+`ssh-add ~/.ssh/id_ed25519` once in a terminal. The KDE group's XWayland Video
+Bridge remains available for legacy screen sharing in Plasma, while its idle
+virtual window is excluded from Niri through a session-scoped XDG autostart
+entry. There is no user portal override or GNOME-name-based package purge. The
+acceptance, removal, and recovery boundaries are in
 [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md).
 
 ## Deployment model

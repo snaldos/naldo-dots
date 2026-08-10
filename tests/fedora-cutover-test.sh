@@ -27,7 +27,7 @@ for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid; do
     fail "non-selected DNF provider remains: $obsolete"
 done
 awk -F '\t' '$1 == "gcr" && $2 == "feature" && $5 == "user:gcr-ssh-agent.socket" { found=1 } END { exit !found }' \
-  "$DNF" || fail 'GCR does not own the selected Niri/GNOME SSH-agent socket'
+  "$DNF" || fail 'GCR does not own the selected Niri SSH-agent socket'
 awk -F '\t' '$1 == "git-lfs" && $2 == "feature" && $3 == "git-lfs" { found=1 } END { exit !found }' \
   "$DNF" || fail 'Git LFS is not a selected Fedora feature'
 for ownership in \
@@ -77,8 +77,8 @@ video_bridge_autostart="$REPO_DIR/desktop/.config/autostart/org.kde.xwaylandvide
   fail 'XWayland Video Bridge autostart policy is not a regular tracked source'
 desktop-file-validate "$video_bridge_autostart" ||
   fail 'XWayland Video Bridge autostart policy is invalid'
-grep -Fqx 'OnlyShowIn=KDE;GNOME;' "$video_bridge_autostart" ||
-  fail 'XWayland Video Bridge is not excluded from the Niri session'
+grep -Fqx 'OnlyShowIn=KDE;' "$video_bridge_autostart" ||
+  fail 'XWayland Video Bridge is not restricted to the Plasma session'
 ! grep -Eq '^(Hidden=true|NotShowIn=)' "$video_bridge_autostart" ||
   fail 'XWayland Video Bridge policy disables more than the selected session scope'
 awk -F '\t' '
@@ -87,19 +87,23 @@ awk -F '\t' '
   $4 == "application:org.kde.xwaylandvideobridge.desktop" { found=1 }
   END { exit !found }
 ' "$DNF" || fail 'XWayland Video Bridge source is not owned by the Fedora manifest'
-grep -Fq 'OnlyShowIn=KDE;GNOME;' "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
-  fail 'desktop runbook omits the session-scoped video-bridge policy'
+grep -Fq 'OnlyShowIn=KDE;' "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+  fail 'desktop runbook omits the Plasma-scoped video-bridge policy'
 pass 'XWayland Video Bridge remains installed for legacy sharing without entering Niri'
 
-for package in fedora-release-workstation gdm gnome-shell \
-  gnome-session-wayland-session mutter; do
-  awk -F '\t' -v package="$package" '
-    $1 == package && ($2 == "session" || $2 == "feature") { found=1 }
+for identity_package in fedora-release-kde-desktop \
+  fedora-release-identity-kde-desktop; do
+  awk -F '\t' -v package="$identity_package" '
+    $1 == package && $2 == "session" { found=1 }
     END { exit !found }
-  ' "$DNF" || fail "required Workstation anchor is absent: $package"
+  ' "$DNF" || fail "Fedora KDE Edition identity anchor is absent: $identity_package"
 done
-awk -F '\t' '$1 == "gdm" && $2 == "feature" && $5 == "system:gdm.service" { found=1 } END { exit !found }' \
-  "$DNF" || fail 'installed rollback GDM is not represented without selecting it as active'
+for unselected_package in fedora-release-workstation \
+  fedora-release-identity-workstation gdm gnome-shell gnome-session \
+  gnome-session-wayland-session gnome-classic-session mutter; do
+  ! awk -F '\t' -v package="$unselected_package" '$1 == package { found=1 } END { exit !found }' \
+    "$DNF" || fail "unselected edition/session package remains selected: $unselected_package"
+done
 
 for package in plasma-desktop plasma-workspace kwin xdg-desktop-portal-kde polkit-kde \
   plasma-systemsettings dolphin konsole; do
@@ -118,22 +122,37 @@ awk -F '\t' '$1 == "plasma-setup" && $2 == "optional" && $5 == "system:plasma-se
   "$DNF" || fail 'disabled Plasma OOBE group member is not documented'
 grep -Fq 'sudo dnf group install kde-desktop' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install does not install Fedora KDE as a coherent comps group'
-grep -Fq 'Keep Fedora Workstation intact and add Niri and KDE' \
-  "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
-  fail 'desktop runbook does not preserve the Workstation/Niri/KDE composition'
+grep -Fq 'Install Fedora KDE Plasma Desktop Edition' \
+  "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean install does not start from Fedora KDE Plasma Desktop Edition'
 grep -Fq 'sudo systemctl disable plasma-setup.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
-  fail 'clean install would leave Plasma OOBE enabled on an existing Workstation'
-grep -Fq 'sudo systemctl disable gdm.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
-  fail 'clean install never stages the reviewed GDM to PLM cutover'
-grep -Fq 'sudo systemctl enable plasmalogin.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
-  fail 'clean install never selects Plasma Login Manager'
-if rg -n 'gnome_surface_candidates|redundant_workstation_candidates|--setopt=protected_packages=' \
+  fail 'clean install would leave Plasma OOBE enabled after account provisioning'
+grep -Fq '/usr/lib/systemd/system/plasmalogin.service' \
+  "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean install does not verify Plasma Login Manager ownership'
+# The release-version variable belongs literally to the documented conversion command.
+# shellcheck disable=SC2016
+for conversion_guard in \
+  'dnf swap --assumeno --allowerasing' \
+  'dnf swap -y --allowerasing' \
+  'dnf remove --assumeno --no-autoremove' \
+  'dnf remove -y --no-autoremove' \
+  'fedora-release-kde-desktop-$release_version'; do
+  grep -Fq "$conversion_guard" "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+    fail "desktop conversion runbook omits: $conversion_guard"
+done
+if rg -n 'dnf[[:space:]]+group[[:space:]]+remove[[:space:]]+gnome-desktop|dnf[[:space:]]+autoremove|gnome-\\\*' \
   "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" >/dev/null; then
-  fail 'clean install still removes or overrides protection for the Workstation desktop'
+  fail 'clean install contains a broad GNOME or autoremove transaction'
 fi
-grep -Fq 'Do not run a general autoremove' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
-  fail 'clean install does not protect retained cross-desktop dependencies'
-pass 'intact Workstation and Fedora KDE group anchor PLM with both PAM integrations'
+for retained_package in gnome-keyring gnome-keyring-pam gcr \
+  xdg-desktop-portal xdg-desktop-portal-gnome xdg-desktop-portal-gtk nautilus; do
+  awk -F '\t' -v package="$retained_package" '
+    $1 == package && ($2 == "session" || $2 == "feature") { found=1 }
+    END { exit !found }
+  ' "$DNF" || fail "Niri GNOME/GTK infrastructure is not explicit: $retained_package"
+done
+pass 'KDE Edition identity anchors two PLM sessions with explicit Niri GNOME infrastructure'
 
 [[ ! -e "$REPO_DIR/xdg-desktop-portal" ]] ||
   fail 'a user portal-policy Stow package still masks Fedora desktop defaults'
@@ -142,7 +161,7 @@ grep -Fq '/usr/share/xdg-desktop-portal/niri-portals.conf' \
   fail 'Niri package-owned portal policy is not documented'
 awk -F '\t' '$1 == "nautilus" && $2 == "session" && $4 == "application:org.gnome.Nautilus.desktop" { found=1 } END { exit !found }' \
   "$DNF" || fail 'Nautilus is not retained as the GNOME portal FileChooser delegate'
-pass 'package-owned desktop portal policies preserve native Niri GNOME and Plasma behavior'
+pass 'package-owned desktop portal policies preserve native Niri and Plasma behavior without a GNOME session'
 
 awk -F '\t' '$1 == "wl-clipboard" && $2 == "feature" && $3 == "wl-copy,wl-paste" { found=1 } END { exit !found }' \
   "$DNF" || fail 'wl-clipboard does not own both CLI copy/paste commands'

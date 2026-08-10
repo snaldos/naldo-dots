@@ -1,11 +1,8 @@
 # package	classification	executables	desktop_files	units	purpose	profile
 # desktop_files use application: or wayland: prefixes; units use user: or system: prefixes.
 # profile is exactly all, desktop, or laptop.
-fedora-release-workstation	session	-	-	-	Fedora Workstation base retained intact beneath the added desktops	all
-gdm	feature	-	-	system:gdm.service	Installed inactive rollback display manager; PLM owns the boot alias	all
-gnome-shell	session	gnome-shell	-	-	Retained Workstation GNOME shell	all
-gnome-session-wayland-session	session	-	wayland:gnome.desktop	-	Retained Workstation GNOME Wayland session	all
-mutter	session	-	-	-	Retained Workstation GNOME compositor	all
+fedora-release-kde-desktop	session	-	-	-	Fedora KDE Plasma Desktop Edition defaults package	all
+fedora-release-identity-kde-desktop	session	-	-	-	Fedora KDE Plasma Desktop Edition identity and Plasma protection policy	all
 niri	session	niri	wayland:niri.desktop	user:niri.service	Primary compositor and package-provided Wayland session	all
 noctalia	session	noctalia	application:dev.noctalia.Noctalia.desktop	-	Native shell for the Niri session	all
 plasma-desktop	session	-	-	-	Fedora KDE group anchor for the full Plasma fallback desktop	all
@@ -16,21 +13,21 @@ polkit-kde	session	-	-	user:plasma-polkit-agent.service	PolicyKit authentication
 plasma-systemsettings	feature	systemsettings	application:systemsettings.desktop	-	Plasma desktop configuration interface	all
 dolphin	feature	dolphin	application:org.kde.dolphin.desktop	-	Plasma fallback file manager	all
 konsole	feature	konsole	application:org.kde.konsole.desktop	-	Plasma fallback terminal	all
-plasma-login-manager	session	plasmalogin	-	system:plasmalogin.service	Active login manager offering GNOME, primary Niri, and fallback Plasma	all
+plasma-login-manager	session	plasmalogin	-	system:plasmalogin.service	Active login manager offering primary Niri and fallback Plasma	all
 pam-kwallet	session	-	-	-	Plasma Login Manager PAM module for canonical KDE wallet login unlock	all
-plasma-setup	optional	-	-	system:plasma-setup.service	Fedora KDE group OOBE retained but disabled on an already-provisioned Workstation	all
+plasma-setup	optional	-	-	system:plasma-setup.service	Fedora KDE group OOBE retained but disabled after initial account provisioning	all
 pipewire	session	pipewire	-	user:pipewire.service	Audio and Noctalia runtime	all
 wireplumber	session	wireplumber	-	user:wireplumber.service	PipeWire session policy	all
 xdg-desktop-portal	session	-	-	user:xdg-desktop-portal.service	Portal broker	all
-xdg-desktop-portal-gnome	session	-	-	-	GNOME portal backend	all
-xdg-desktop-portal-gtk	session	-	-	-	GTK portal backend	all
+xdg-desktop-portal-gnome	session	-	-	user:xdg-desktop-portal-gnome.service	GNOME portal backend selected by Fedora's Niri policy	all
+xdg-desktop-portal-gtk	session	-	-	user:xdg-desktop-portal-gtk.service	GTK portal fallback selected by Fedora's Niri policy	all
 nautilus	session	nautilus	application:org.gnome.Nautilus.desktop	-	Niri GNOME portal FileChooser delegate; Yazi remains the default file manager	all
 gnome-keyring	feature	-	-	user:gnome-keyring-daemon.service	Niri Secret Service and login keyring	all
 gnome-keyring-pam	session	-	-	-	Plasma Login Manager PAM module for Niri login-keyring unlock	all
-gcr	feature	-	-	user:gcr-ssh-agent.socket	Fedora GCR SSH agent for Niri and retained GNOME sessions	all
+gcr	feature	-	-	user:gcr-ssh-agent.socket	Fedora GCR SSH agent backed by GNOME Keyring in Niri	all
 polkit	session	-	-	system:polkit.service	Authority for Noctalia PolicyKit agent	all
 xwayland-satellite	session	xwayland-satellite	-	-	X11 compatibility under Niri	all
-xwaylandvideobridge	feature	xwaylandvideobridge	application:org.kde.xwaylandvideobridge.desktop	-	Legacy X11 screen-sharing bridge retained for Plasma and GNOME but excluded from Niri autostart	all
+xwaylandvideobridge	feature	xwaylandvideobridge	application:org.kde.xwaylandvideobridge.desktop	-	Legacy X11 screen-sharing bridge retained only for Plasma and excluded from Niri autostart	all
 NetworkManager	feature	nmcli	-	system:NetworkManager.service	Noctalia network backend	all
 bluez	feature	bluetoothctl	-	system:bluetooth.service	Bluetooth backend	all
 upower	feature	upower	-	system:upower.service	Power and battery backend	all

@@ -1,9 +1,9 @@
-# Fedora Workstation bootstrap
+# Fedora KDE Plasma Desktop bootstrap
 
 This directory is a reusable, human-run Fedora clean-install guide, curated
 installation inventory, and read-only verifier. It supports desktop and laptop
 fresh installations, later clean installations, and occasional audits when
-Fedora, providers, or workstation preferences change.
+Fedora, providers, or workstation requirements change.
 
 The manifests list software deliberately selected for a clean installation.
 Fedora's `kde-desktop` comps group additionally owns Plasma's complete,
@@ -14,18 +14,19 @@ dependencies, an automatic desired-state reconciler, the normal update
 mechanism, or a requirement that desktop and laptop contain identical software.
 Repository scripts do not install packages, enable repositories, switch the
 display manager, remove desktops, change graphics, mount storage, activate
-SSH/Tailscale, or authenticate services;
-system-changing commands remain explicit steps for a human to review and run.
+SSH/Tailscale, or authenticate services. The documented GNOME session
+transition and other system-changing commands remain explicit steps for a human
+to review and run.
 Start with
 [`CLEAN-INSTALL.md`](CLEAN-INSTALL.md) and the desktop boundary in
 [`DESKTOPS.md`](DESKTOPS.md).
 
 ```text
 Fedora boot → Plasma Login Manager → package-provided Niri → Noctalia  (primary)
-                                  ├→ package-provided Plasma  (full fallback)
-                                  └→ Workstation GNOME       (retained)
+                                  └→ package-provided Plasma  (full fallback)
 
-GDM remains installed but inactive as the display-manager rollback.
+GNOME Shell/session and GDM are absent. GNOME Keyring, GCR, GNOME/GTK portals,
+Nautilus, and useful GNOME/GTK application infrastructure remain installed.
 ```
 
 ## Curated clean-install manifests
@@ -61,7 +62,7 @@ Helix mapping remains authoritative for buffer-level activation.
 
 Classifications:
 
-- `session`: necessary for the selected PLM → GNOME, Niri/Noctalia, or Plasma sessions;
+- `session`: necessary for the selected PLM → Niri/Noctalia or Plasma sessions;
 - `feature`: required by an intentionally configured workflow;
 - `optional`: supported but deliberately non-default;
 - `development`: research/development tooling that does not gate the desktop.
@@ -82,12 +83,15 @@ sources.
 
 ## Selected sources
 
-- Official Fedora DNF supplies and retains the Workstation GNOME desktop and
-  GDM, then adds Plasma Login Manager, Niri, Noctalia, and Plasma through the
-  `kde-desktop` group. It also supplies all sessions' PAM/keyring and portal
-  integration, OpenSSH clients, GitHub CLI, GCR, Git LFS, desktop applications,
-  Helix, Node/npm, uv, Rust/Cargo, and build prerequisites. PLM is active; GDM
-  is installed only for rollback. An inbound OpenSSH server is not selected.
+- Official Fedora DNF supplies the KDE Plasma Desktop Edition identity/defaults,
+  complete `kde-desktop` group, Plasma Login Manager, Niri, Noctalia, and all
+  selected GNOME/GTK infrastructure. Converted Workstation systems switch only
+  the release identity/defaults and remove GNOME Shell/session, Mutter, and GDM
+  through separately reviewed transactions; they do not purge retained
+  applications or infrastructure. Fedora also supplies both sessions'
+  PAM/keyring and portal integration, OpenSSH clients, GitHub CLI, GCR, Git LFS,
+  desktop applications, Helix, Node/npm, uv, Rust/Cargo, and build prerequisites.
+  An inbound OpenSSH server is not selected.
 - Flathub supplies Zen, Discord, Obsidian, the sole GPU Screen Recorder provider,
   and Sioyek. Vesktop is the only optional application alternative.
 - Google Chrome uses Google's signed RPM repository. Visual Studio Code uses
@@ -109,7 +113,7 @@ sources.
 
 Fedora 44 package names and identities were audited for this release. Before a
 later installation or audit, review the manifests and runbooks against the
-actual Fedora release, current providers, and current workstation choices. Do
+actual Fedora release, current providers, and current system choices. Do
 not invent missing package names or add fallback providers.
 
 ## Policy runbooks
@@ -117,7 +121,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
-| `DESKTOPS.md` | Workstation/Niri/Plasma topology, PLM/KWallet and session-agent decisions, portals, and rollback |
+| `DESKTOPS.md` | KDE-Edition/Niri/Plasma topology, Workstation conversion, PLM/KWallet, portals, and recovery |
 | `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH agents, manual Plasma key loading, Tailscale trust, and private state |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

@@ -14,10 +14,13 @@ systemctl --user --no-pager --type=service --state=running
 
 The primary login path is Plasma Login Manager → the package-provided Niri
 session → native Noctalia. The same chooser exposes Fedora's package-provided
-KDE Plasma session as the full fallback and the intact Workstation GNOME
-session. GDM remains installed but inactive as a rollback display manager.
-The bootstrap runbooks document that topology, while the user installers never
-switch display managers or remove desktops. Read `bootstrap/fedora/DESKTOPS.md`
+KDE Plasma session as the full fallback. GNOME Shell/session, Mutter, and GDM
+are intentionally absent; the Fedora KDE Plasma Desktop Edition identity is
+selected, while GNOME Keyring, GCR, GNOME/GTK portals, Nautilus, and useful
+GNOME/GTK application infrastructure remain. The bootstrap runbooks document
+that topology and the reviewed conversion transaction, while user installers
+never switch display managers or remove desktops. Read
+`bootstrap/fedora/DESKTOPS.md`
 before a desktop-stack change. Separate compositor, shell, systemd-user
 lifecycle, portals, PipeWire/WirePlumber, and kernel/device support when
 diagnosing a symptom.
@@ -58,10 +61,9 @@ service state rather than adding manual startup commands.
 Fedora's KDE group retains XWayland Video Bridge for legacy X11 screen sharing,
 but its unrestricted vendor autostart can expose an idle full-output bridge
 window as a black tile through Niri's xwayland-satellite integration. The
-tracked same-ID XDG autostart entry uses `OnlyShowIn=KDE;GNOME;`: keep the
-package and package-owned desktop files intact, do not hide the surface with a
-Niri opacity rule, and expect native Niri portal capture to work without the
-bridge.
+tracked same-ID XDG autostart entry uses `OnlyShowIn=KDE;`: keep the package
+and package-owned desktop files intact, do not hide the surface with a Niri
+opacity rule, and expect native Niri portal capture to work without the bridge.
 
 ## Native Noctalia v5
 

@@ -49,30 +49,31 @@ control sockets, agent sockets, host keys, certificates, or copied credentials.
 
 Retain the key passphrase and let each Fedora desktop select its packaged agent:
 
-- Niri and GNOME use GCR at `$XDG_RUNTIME_DIR/gcr/ssh` and store the passphrase
-  in GNOME Keyring.
+- Niri uses GCR at `$XDG_RUNTIME_DIR/gcr/ssh` and stores the passphrase in
+  GNOME Keyring.
 - Plasma uses OpenSSH `ssh-agent` at `$XDG_RUNTIME_DIR/ssh-agent.socket`.
   KWallet remains Plasma's Secret Service, but it does not persist the key for
   OpenSSH's in-memory agent.
 
 Do not set `SSH_AUTH_SOCK` in `environment.d`, as a Fish universal variable, or
 through a tracked Plasma hook. Such global state masks Fedora's session policy
-when moving between Niri, GNOME, and Plasma.
+when moving between Niri and Plasma.
 
-For the initial clone from Workstation GNOME or Niri, enable Fedora's GCR socket
-and select it only in the current bootstrap shell:
+A fresh KDE Edition installation performs the initial clone from Plasma with
+Fedora's OpenSSH agent:
 
 ```bash
-systemctl --user enable --now gcr-ssh-agent.socket
-ssh_socket="$XDG_RUNTIME_DIR/gcr/ssh"
-test -S "$ssh_socket"
-export SSH_AUTH_SOCK="$ssh_socket"
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
+systemctl --user is-active ssh-agent.socket ssh-agent.service
+ssh-add "$HOME/.ssh/id_ed25519"
 git ls-remote git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
 
-In GCR's dialog, first check **Automatically unlock this key whenever I'm logged
-in**, then enter the passphrase and click **Unlock**. Prove GNOME-Keyring
-persistence by restarting GCR and using the key from a transient user service:
+After the manifest installs Niri, GNOME Keyring, and GCR, log into Niri and
+access the Git remote once. In GCR's dialog, first check **Automatically unlock
+this key whenever I'm logged in**, then enter the passphrase and click
+**Unlock**. Prove keyring persistence by restarting GCR and using the key from a
+transient user service:
 
 ```bash
 systemctl --user restart gcr-ssh-agent.service

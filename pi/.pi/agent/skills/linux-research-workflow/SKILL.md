@@ -1,7 +1,7 @@
 ---
 name: linux-research-workflow
 description: "Inspect, debug, validate, maintain, or configure Naldo's Fedora-targeted Linux desktop/laptop: GNU Stow dotfiles, repository synchronization, Niri, native Noctalia v5, KDE Plasma fallback, systemd, Wayland, keyd, Ghostty, Fish, Helix, Yazi, Zen Flatpak, Herdr, and scientific tooling."
-compatibility: "Fedora 44 Workstation target; Linux; Plasma Login Manager to retained GNOME, primary Niri/Noctalia, and fallback KDE Plasma; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
+compatibility: "Fedora 44 KDE Plasma Desktop Edition target; Linux; Plasma Login Manager to primary Niri/Noctalia and fallback KDE Plasma; retained GNOME infrastructure without GNOME Shell/session or GDM; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
 ---
 
 # Linux Research Workstation
@@ -11,9 +11,11 @@ compatibility: "Fedora 44 Workstation target; Linux; Plasma Login Manager to ret
 Treat this as a target profile that must still be inspected against the installed
 Fedora release and application versions:
 
-- intact Fedora 44 Workstation with Plasma Login Manager offering the retained
-  GNOME session, package-provided Niri (primary), and Fedora `kde-desktop`
-  Plasma (full fallback); GDM is installed but inactive as rollback
+- Fedora 44 KDE Plasma Desktop Edition identity/defaults with Plasma Login
+  Manager offering package-provided Niri (primary) and Fedora `kde-desktop`
+  Plasma (full fallback); GNOME Shell/session, Mutter, and GDM are absent while
+  GNOME Keyring, GCR, GNOME/GTK portals, Nautilus, and useful GNOME/GTK
+  application infrastructure remain
 - Niri running through `niri-session`/`niri.service`, with native Noctalia as the shell
 - Fish, Ghostty, Starship, Helix (`hx`), Yazi, Zen as
   `app.zen_browser.zen`, and Herdr; Neovim is only an optional stock fallback
@@ -21,15 +23,16 @@ Fedora release and application versions:
   `--no-folding`
 - explicit `install.sh --profile desktop|laptop` selection rendered into Niri's machine-local selector
 - one disabled-by-default `sync-all.timer` for dotfiles, notes, and wallpapers
-- Fedora session-native SSH agents: GCR under Niri/GNOME and OpenSSH under
-  Plasma, with manual `ssh-add` after reboot and no custom key-loading autostart
+- Fedora session-native SSH agents: GCR under Niri and OpenSSH under Plasma,
+  with manual `ssh-add` after reboot and no custom key-loading autostart
 - root-owned keyd mapping and Bongo Cat udev rule under `system/`, installed only by `install-system.sh`
 - Noctalia templates as durable sources; rendered outputs remain machine-local
 
-The bootstrap runbooks document the selected desktop topology and explicit
-package transactions. User deployment scripts do not switch the login manager,
-remove desktops, alter the boot path, enable repositories, update packages, or
-change graphics drivers.
+The bootstrap runbooks document the selected desktop topology and the explicit,
+reviewed Workstation-to-KDE identity and GNOME session-removal transactions.
+User deployment scripts do not switch the login manager, remove desktops, alter
+the boot path, enable repositories, update packages, or change graphics
+drivers.
 
 ## Load the matching reference
 

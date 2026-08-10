@@ -5,4 +5,4 @@ Comment=Bridge Wayland screen capture to legacy X11 applications
 Exec=xwaylandvideobridge
 TryExec=xwaylandvideobridge
 NoDisplay=true
-OnlyShowIn=KDE;GNOME;
+OnlyShowIn=KDE;

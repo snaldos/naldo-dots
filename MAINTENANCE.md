@@ -1,4 +1,4 @@
-# Workstation maintenance
+# Fedora KDE workstation maintenance
 
 Run `naldo-update` manually from a terminal when there is time to review prompts
 and failures. It updates the normal workstation providers while leaving VS Code

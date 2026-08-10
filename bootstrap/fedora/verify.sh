@@ -284,6 +284,55 @@ verify_flatpak_command_list() {
   done
 }
 
+verify_selected_desktop_topology() {
+  local package session_file variant_id alias owner
+
+  awk -F '\t' '$1 == "fedora-release-identity-kde-desktop" { found=1 } END { exit !found }' \
+    "$BOOTSTRAP_DIR/dnf-packages.tsv" || return 0
+
+  printf '\n== Selected KDE Edition and two-session topology ==\n'
+  variant_id="$(awk -F= '$1 == "VARIANT_ID" { gsub(/"/, "", $2); print $2 }' /etc/os-release 2>/dev/null)"
+  if [[ "$variant_id" == kde ]]; then
+    record_present identity session 'VARIANT_ID=kde' /etc/os-release
+  else
+    record_missing identity session 'VARIANT_ID=kde' "observed ${variant_id:-missing}"
+  fi
+
+  for package in fedora-release-workstation fedora-release-identity-workstation \
+    gdm gnome-shell gnome-session gnome-session-wayland-session \
+    gnome-classic-session mutter; do
+    if command -v rpm >/dev/null 2>&1 && rpm --quiet -q "$package"; then
+      record_missing absence session "$package" 'package must be absent in the selected topology'
+    else
+      record_present absence session "$package" not-installed
+    fi
+  done
+
+  for session_file in gnome.desktop gnome-classic.desktop; do
+    if desktop_file_exists "$session_file" wayland; then
+      record_missing absence session "$session_file" 'GNOME login session must be absent'
+    else
+      record_present absence session "$session_file" not-installed
+    fi
+  done
+
+  alias="$(readlink -f /etc/systemd/system/display-manager.service 2>/dev/null || true)"
+  if [[ "$alias" == /usr/lib/systemd/system/plasmalogin.service ]]; then
+    record_present service session display-manager.service plasmalogin.service
+  else
+    record_missing service session display-manager.service \
+      "expected plasmalogin.service; observed ${alias:-missing}"
+  fi
+
+  owner="$(rpm -qf --qf '%{NAME}' /etc/dnf/protected.d/plasma-desktop.conf 2>/dev/null || true)"
+  if [[ "$owner" == fedora-release-identity-kde-desktop ]] &&
+    grep -Fxq plasma-desktop /etc/dnf/protected.d/plasma-desktop.conf 2>/dev/null; then
+    record_present policy session plasma-desktop.conf fedora-release-identity-kde-desktop
+  else
+    record_missing policy session plasma-desktop.conf "unexpected owner/content: ${owner:-missing}"
+  fi
+}
+
 verify_flatpaks() {
   local identifier classification remote desktop integration_commands purpose applicability provider
   printf '\n== Flatpak applications, integration commands, and exported desktop files ==\n'
@@ -571,6 +620,7 @@ verify_tracked_user_outputs() {
 printf 'Fedora verification profile: %s\n' "$profile"
 
 verify_dnf_packages
+verify_selected_desktop_topology
 verify_flatpaks
 verify_npm_tools
 verify_uv_tools
