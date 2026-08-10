@@ -83,8 +83,9 @@ systemd-run --user --wait --collect \
 ```
 
 In a fresh Plasma login, Fedora's package-owned environment hook and target
-select and start OpenSSH's agent. Load the passphrase-protected key once per
-agent lifetime, then prove that user services can use it:
+select and start OpenSSH's agent. No custom key-loading autostart is installed.
+After reboot, load the passphrase-protected key manually in a local terminal,
+then prove that the exact key and user services use the selected agent:
 
 ```bash
 test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
@@ -92,16 +93,15 @@ test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = \
   "$XDG_RUNTIME_DIR/ssh-agent.socket"
 systemctl --user is-active ssh-agent.socket ssh-agent.service
 ssh-add "$HOME/.ssh/id_ed25519"
-ssh-add -l
+ssh-add -T "$HOME/.ssh/id_ed25519.pub"
 systemd-run --user --wait --collect \
   --unit=naldo-openssh-agent-check.service \
   /usr/bin/git ls-remote \
   git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
 
-Enter the passphrase only in the local terminal or Fedora's packaged
-KSSHAskPass prompt. OpenSSH does not retain it across an agent restart or reboot,
-so repeat `ssh-add` before expecting unattended synchronization in Plasma. Enable
+OpenSSH does not retain the key across an agent restart or reboot, so repeat the
+manual `ssh-add` before expecting unattended synchronization in Plasma. Enable
 `sync-all.timer` only after the current session's transient Git check succeeds.
 
 ## GitHub CLI authentication

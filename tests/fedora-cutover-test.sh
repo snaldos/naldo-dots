@@ -46,8 +46,9 @@ for ownership in \
 done
 pass 'Fedora manifest owns selected SSH GCR LFS development and clean-install commands'
 
-! find "$REPO_DIR/desktop" -type f -iname '*ssh*agent*' -print -quit | grep -q . ||
-  fail 'the desktop package still owns an SSH-agent policy'
+! find "$REPO_DIR/desktop" -type f \
+  \( -iname '*ssh*agent*' -o -iname '*ssh*add*' \) -print -quit | grep -q . ||
+  fail 'the desktop package still owns SSH-agent or key-loading policy'
 for vendor_path in \
   /etc/xdg/plasma-workspace/env/ssh-agent.sh \
   /usr/lib/systemd/user/plasma-core.target.d/ssh-agent.conf; do
@@ -66,7 +67,10 @@ done
 grep -Fq "Retain Fedora's session-native agent selection" \
   "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
   fail 'desktop runbook does not preserve Fedora session-native agents'
-pass 'Niri GNOME and Plasma retain Fedora session-native SSH agents without tracked overrides'
+grep -Fq 'key-loading autostart; key loading in Plasma is manual' \
+  "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+  fail 'desktop runbook does not make Plasma key loading explicitly manual'
+pass 'native SSH agents retain manual Plasma key loading without tracked overrides'
 
 for package in fedora-release-workstation gdm gnome-shell \
   gnome-session-wayland-session mutter; do

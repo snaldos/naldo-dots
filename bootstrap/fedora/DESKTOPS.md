@@ -111,7 +111,8 @@ across every desktop:
 
 Do not track replacements for those Plasma files, export `SSH_AUTH_SOCK` through
 `environment.d`, or set it as a Fish universal variable. A fresh session must
-inherit its package-owned socket naturally.
+inherit its package-owned socket naturally. There is deliberately no custom
+key-loading autostart; key loading in Plasma is manual.
 
 Verify Niri/GNOME with GCR. The first command may open GCR's local prompt; after
 remembering the passphrase in GNOME Keyring, the post-restart command must be
@@ -124,7 +125,8 @@ systemctl --user restart gcr-ssh-agent.service
 git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 ```
 
-Verify Plasma with Fedora's OpenSSH agent:
+Verify Plasma with Fedora's OpenSSH agent, then load the key manually from a
+terminal:
 
 ```bash
 test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
@@ -134,13 +136,14 @@ systemctl --user show-environment | \
   grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket"
 systemctl --user is-active ssh-agent.socket ssh-agent.service
 ssh-add "$HOME/.ssh/id_ed25519"
-ssh-add -l
+ssh-add -T "$HOME/.ssh/id_ed25519.pub"
 ```
 
-OpenSSH forgets the unlocked key when its agent or user manager stops. Load it
-again after reboot before enabling or relying on unattended synchronization in
-Plasma. An active but unselected GCR socket may remain available for the retained
-Niri/GNOME sessions; `SSH_AUTH_SOCK` identifies the agent the session uses.
+OpenSSH forgets the unlocked key when its agent or user manager stops. Run the
+manual `ssh-add` again after reboot before enabling or relying on unattended
+synchronization in Plasma. An active but unselected GCR socket may remain
+available for the retained Niri/GNOME sessions; `SSH_AUTH_SOCK` identifies the
+agent the session uses.
 
 ## Portal boundaries
 

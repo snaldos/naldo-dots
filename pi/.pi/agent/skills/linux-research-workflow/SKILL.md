@@ -21,6 +21,8 @@ Fedora release and application versions:
   `--no-folding`
 - explicit `install.sh --profile desktop|laptop` selection rendered into Niri's machine-local selector
 - one disabled-by-default `sync-all.timer` for dotfiles, notes, and wallpapers
+- Fedora session-native SSH agents: GCR under Niri/GNOME and OpenSSH under
+  Plasma, with manual `ssh-add` after reboot and no custom key-loading autostart
 - root-owned keyd mapping and Bongo Cat udev rule under `system/`, installed only by `install-system.sh`
 - Noctalia templates as durable sources; rendered outputs remain machine-local
 

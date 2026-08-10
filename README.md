@@ -49,10 +49,12 @@ Niri and Fedora's complete `kde-desktop` group. Plasma Login Manager offers the
 package-provided GNOME, Niri, and Plasma sessions; Niri is preferred. GDM stays
 installed as a disabled rollback display manager rather than being removed.
 
-Niri and GNOME use Fedora's package-owned GNOME/GTK portal policy and GNOME
-Keyring. Plasma uses Fedora's KDE portal policy and canonical `kdewallet`.
-There is no user portal override and no desktop-removal phase. The acceptance
-and recovery boundaries are in
+Niri and GNOME use Fedora's package-owned GNOME/GTK portal policy, GNOME
+Keyring, and GCR SSH agent. Plasma uses Fedora's KDE portal policy, canonical
+`kdewallet`, and OpenSSH agent. Plasma deliberately has no custom key-loading
+autostart: after reboot, run `ssh-add ~/.ssh/id_ed25519` once in a terminal.
+There is no user portal override or desktop-removal phase. The acceptance and
+recovery boundaries are in
 [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md).
 
 ## Deployment model

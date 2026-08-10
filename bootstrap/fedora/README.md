@@ -117,9 +117,9 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
-| `DESKTOPS.md` | Workstation/Niri/Plasma topology, PLM/KWallet decision, portal boundaries, and rollback |
+| `DESKTOPS.md` | Workstation/Niri/Plasma topology, PLM/KWallet and session-agent decisions, portals, and rollback |
 | `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
-| `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
+| `REMOTE-ACCESS.md` | OpenSSH agents, manual Plasma key loading, Tailscale trust, and private state |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |
 | `verify.sh` | read-only installed package/output report |
 

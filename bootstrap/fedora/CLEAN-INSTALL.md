@@ -128,8 +128,8 @@ cd "$HOME/dotfiles"
 ```
 
 Niri/GNOME retain GCR; Plasma later uses Fedora's OpenSSH agent and requires one
-`ssh-add` per agent lifetime. Do not configure agent forwarding,
-`authorized_keys`, `sshd`, or Tailscale SSH.
+manual `ssh-add ~/.ssh/id_ed25519` after reboot. Do not configure agent
+forwarding, `authorized_keys`, `sshd`, or Tailscale SSH.
 
 ## 4. Install selected Fedora packages
 
@@ -733,8 +733,9 @@ test "$(systemctl --user is-active sync-all.timer 2>/dev/null || true)" = inacti
 test ! -e "$HOME/.config/systemd/user/timers.target.wants/sync-all.timer"
 ```
 
-The desktop package owns no SSH-agent policy. Niri/GNOME and Plasma inherit
-their different package-owned agent sockets from a fresh session.
+The desktop package owns no SSH-agent selection or key-loading policy.
+Niri/GNOME and Plasma inherit their different package-owned agent sockets from
+a fresh session.
 
 Set machine-local Git identity:
 
@@ -1021,21 +1022,21 @@ test "$(qdbus-qt6 org.kde.ksecretd /ksecretd org.kde.KWallet.isOpen kdewallet)" 
   grep -F 'Wallet failed to get opened by PAM, error code is -9'
 ```
 
-OpenSSH keeps an unlocked key only in memory. Load it once per agent lifetime,
-entering the passphrase in the local terminal or Fedora's KSSHAskPass prompt,
-then prove that a user service inherits the same agent:
+OpenSSH keeps an unlocked key only in memory, and no custom key-loading
+autostart is installed. After reboot, load the key manually from a Plasma
+terminal and prove that the exact key and a user service use the same agent:
 
 ```bash
-ssh-add -l >/dev/null 2>&1 || ssh-add "$HOME/.ssh/id_ed25519"
-ssh-add -l
+ssh-add "$HOME/.ssh/id_ed25519"
+ssh-add -T "$HOME/.ssh/id_ed25519.pub"
 systemd-run --user --wait --collect \
   --unit=naldo-plasma-openssh-check.service \
   /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 ```
 
-Repeat `ssh-add` after an agent restart or reboot. KWallet remains available for
-Plasma application secrets, but standard OpenSSH-agent use does not store the
-SSH passphrase there.
+Repeat the manual `ssh-add` after an agent restart or reboot. KWallet remains
+available for Plasma application secrets, but standard OpenSSH-agent use does
+not store the SSH passphrase there.
 
 Log out, select **GNOME** in PLM, and verify the retained Workstation session.
 Open a terminal, enter Bash, and check the real login path:
