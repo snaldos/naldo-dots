@@ -47,10 +47,6 @@ run_successfully "$workspace/clean-apply.log" "$DEPLOY_LINKS" --target "$clean_t
 [[ -L "$clean_target/.local/bin/sync-all" ]] || fail 'sync-all source was not linked'
 [[ -L "$clean_target/.local/bin/naldo-update" ]] || fail 'naldo-update source was not linked'
 [[ -L "$clean_target/.local/share/applications/yazi.desktop" ]] || fail 'Yazi desktop source was not linked'
-[[ -L "$clean_target/.config/plasma-workspace/env/ssh-agent.sh" ]] ||
-  fail 'Plasma GCR environment policy was not linked'
-[[ -L "$clean_target/.config/systemd/user/plasma-core.target.d/ssh-agent.conf" ]] ||
-  fail 'Plasma OpenSSH-agent suppression policy was not linked'
 first_link="$(readlink "$clean_target/.config/helix/config.toml")"
 run_successfully "$workspace/clean-repeat.log" "$DEPLOY_LINKS" --target "$clean_target"
 [[ "$(readlink "$clean_target/.config/helix/config.toml")" == "$first_link" ]] ||

@@ -45,48 +45,34 @@ cat "$HOME/.ssh/id_ed25519.pub"
 Never track private keys, `known_hosts`, `authorized_keys`, SSH config fragments,
 control sockets, agent sockets, host keys, certificates, or copied credentials.
 
-## GCR login-keyring enrollment
+## Session-native SSH agents
 
-Fedora's GCR socket is the only SSH agent. It is shared by Fish, Git, Pi, and
-systemd user services:
+Retain the key passphrase and let each Fedora desktop select its packaged agent:
+
+- Niri and GNOME use GCR at `$XDG_RUNTIME_DIR/gcr/ssh` and store the passphrase
+  in GNOME Keyring.
+- Plasma uses OpenSSH `ssh-agent` at `$XDG_RUNTIME_DIR/ssh-agent.socket`.
+  KWallet remains Plasma's Secret Service, but it does not persist the key for
+  OpenSSH's in-memory agent.
+
+Do not set `SSH_AUTH_SOCK` in `environment.d`, as a Fish universal variable, or
+through a tracked Plasma hook. Such global state masks Fedora's session policy
+when moving between Niri, GNOME, and Plasma.
+
+For the initial clone from Workstation GNOME or Niri, enable Fedora's GCR socket
+and select it only in the current bootstrap shell:
 
 ```bash
 systemctl --user enable --now gcr-ssh-agent.socket
 ssh_socket="$XDG_RUNTIME_DIR/gcr/ssh"
 test -S "$ssh_socket"
-install -d -m 0700 "$HOME/.config/environment.d"
-printf 'SSH_AUTH_SOCK=%s\n' "$ssh_socket" |
-  install -m 0600 /dev/stdin \
-    "$HOME/.config/environment.d/60-naldo-ssh-agent.conf"
-systemctl --user set-environment SSH_AUTH_SOCK="$ssh_socket"
-fish -c 'set -Ux SSH_AUTH_SOCK "$XDG_RUNTIME_DIR/gcr/ssh"'
 export SSH_AUTH_SOCK="$ssh_socket"
-```
-
-Fedora 44 Plasma also ships a session hook and `plasma-core.target` dependency
-that would select a separate OpenSSH `ssh-agent`. The tracked `desktop` Stow
-package overrides only that Plasma behavior: its environment hook exports the
-GCR socket, and its same-named user drop-in shadows the vendor
-`ssh-agent.service` dependency. See [`DESKTOPS.md`](DESKTOPS.md) for the ambient
-Bash, Fish, and systemd acceptance checks. A per-command `SSH_AUTH_SOCK=...`
-override is not a substitute for fixing the session-wide route.
-
-Do not use `ssh-add` as the enrollment test: a terminal passphrase prompt can
-load a key for only the current agent lifetime. Instead trigger an authenticated
-Git-over-SSH operation:
-
-```bash
 git ls-remote git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
 
 In GCR's dialog, first check **Automatically unlock this key whenever I'm logged
-in**, then enter the passphrase and click **Unlock**. Without that check, the key
-is available only for the current agent lifetime. Plasma Login Manager's PAM
-stack unlocks the GNOME login keyring for Niri and canonical `kdewallet` for
-Plasma. GNOME shares Niri's GNOME Keyring item; the Plasma Secret Service
-backend stores a separate item. Enroll and test both secret stores if the Plasma
-fallback must sign silently. Prove persistence by
-restarting GCR and using the key from a transient systemd unit:
+in**, then enter the passphrase and click **Unlock**. Prove GNOME-Keyring
+persistence by restarting GCR and using the key from a transient user service:
 
 ```bash
 systemctl --user restart gcr-ssh-agent.service
@@ -96,9 +82,27 @@ systemd-run --user --wait --collect \
   git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
 
-That operation must succeed without another prompt. Repeat it after the first
-reboot before enabling `sync-all.timer`; otherwise the timer's first Git access
-will display an unexpected unlock dialog.
+In a fresh Plasma login, Fedora's package-owned environment hook and target
+select and start OpenSSH's agent. Load the passphrase-protected key once per
+agent lifetime, then prove that user services can use it:
+
+```bash
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
+test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = \
+  "$XDG_RUNTIME_DIR/ssh-agent.socket"
+systemctl --user is-active ssh-agent.socket ssh-agent.service
+ssh-add "$HOME/.ssh/id_ed25519"
+ssh-add -l
+systemd-run --user --wait --collect \
+  --unit=naldo-openssh-agent-check.service \
+  /usr/bin/git ls-remote \
+  git@github.com:snaldos/naldo-dots.git refs/heads/main
+```
+
+Enter the passphrase only in the local terminal or Fedora's packaged
+KSSHAskPass prompt. OpenSSH does not retain it across an agent restart or reboot,
+so repeat `ssh-add` before expecting unattended synchronization in Plasma. Enable
+`sync-all.timer` only after the current session's transient Git check succeeds.
 
 ## GitHub CLI authentication
 

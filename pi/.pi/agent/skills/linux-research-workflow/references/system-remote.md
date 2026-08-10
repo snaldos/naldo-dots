@@ -83,21 +83,19 @@ explicit approval.
 ## OpenSSH
 
 Only Fedora `openssh-clients` is selected. Device-specific, passphrase-protected
-Ed25519 keys, `known_hosts`, local host fragments, sockets, GCR state, and GitHub
-CLI tokens remain machine-local. Do not print private key or token contents.
-`openssh-server`, `authorized_keys`, agent forwarding, firewall openings, and
-Tailscale SSH are absent. GCR must store the key passphrase in the active Secret
-Service—GNOME Keyring under Niri and canonical `kdewallet` under Plasma—and pass
-a post-restart systemd Git operation before repository synchronization is
-enabled.
+Ed25519 keys, `known_hosts`, local host fragments, sockets, agent state, and
+GitHub CLI tokens remain machine-local. Do not print private key or token
+contents. `openssh-server`, `authorized_keys`, agent forwarding, firewall
+openings, and Tailscale SSH are absent.
 
-Fedora 44 Plasma otherwise exports `$XDG_RUNTIME_DIR/ssh-agent.socket` and pulls
-`ssh-agent.service` through `plasma-core.target`. The tracked `desktop` package
-shadows only that vendor target drop-in and exports `$XDG_RUNTIME_DIR/gcr/ssh`
-from Plasma's user environment hook. In a fresh Plasma login, verify the ambient
-Bash, Fish, and systemd-manager socket, require the OpenSSH agent service/socket
-to be inactive, and run signing without a per-command socket override. An
-explicit `SSH_AUTH_SOCK=...` can hide a broken session policy.
+Retain Fedora's session-native agents: Niri/GNOME use GCR with GNOME Keyring,
+while Plasma exports `$XDG_RUNTIME_DIR/ssh-agent.socket` and pulls
+`ssh-agent.service` through `plasma-core.target`. Do not globally set
+`SSH_AUTH_SOCK`, add a Fish universal override, or shadow package-owned Plasma
+hooks. In Plasma, load the passphrase-protected key with `ssh-add` once per agent
+lifetime. Before repository synchronization is enabled, verify the ambient
+Bash, Fish, and systemd-manager socket and pass a systemd Git operation using the
+current session's agent.
 
 Before a potentially disconnecting operation:
 

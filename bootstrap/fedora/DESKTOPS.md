@@ -76,12 +76,12 @@ general `dnf autoremove` across this cross-desktop composition.
 
 ## Keyring behavior
 
-The sessions deliberately use their native Secret Service implementation:
+The sessions use their native Secret Service implementation:
 
-- **Niri and GNOME:** GNOME Keyring owns `org.freedesktop.secrets`; GCR
-  retrieves the SSH key passphrase from the login keyring.
-- **Plasma:** KSecretD owns `org.freedesktop.secrets`; GCR retrieves the
-  separately enrolled SSH key passphrase from KWallet.
+- **Niri and GNOME:** GNOME Keyring owns `org.freedesktop.secrets`; GCR can
+  retrieve the SSH key passphrase from the login keyring.
+- **Plasma:** KSecretD owns `org.freedesktop.secrets`; Fedora's OpenSSH agent is
+  independent of KWallet and keeps an added SSH key only in memory.
 
 Use the canonical KWallet name `kdewallet`:
 
@@ -98,48 +98,49 @@ message `Wallet failed to get opened by PAM, error code is -9`. Do not patch the
 PAM stack; recreate the wallet under the canonical name and use the login
 password with Classic Blowfish when no OpenPGP secret key is available.
 
-KWallet 6.28 can initially expose an already PAM-opened collection as
-`Locked=true` through the Secret Service facade. This is stale collection
-bookkeeping, not a PAM failure, when the native backend reports
-`isOpen(kdewallet)=true`. A real libsecret/GCR request performs the standard
-Secret Service unlock protocol silently and changes the collection to unlocked.
-The acceptance test is therefore a fresh GCR restart followed by real SSH
-signing, not the initial `Locked` property alone.
-
 ## SSH agent boundary
 
-Fedora 44's Plasma composition otherwise selects a second OpenSSH agent through
-two package-owned files:
+Retain Fedora's session-native agent selection rather than forcing one agent
+across every desktop:
 
-- `/etc/xdg/plasma-workspace/env/ssh-agent.sh` fills an empty
-  `SSH_AUTH_SOCK` with `$XDG_RUNTIME_DIR/ssh-agent.socket`;
-- `/usr/lib/systemd/user/plasma-core.target.d/ssh-agent.conf` pulls
-  `ssh-agent.service` into every Plasma session.
+- Niri and GNOME use GCR at `$XDG_RUNTIME_DIR/gcr/ssh`.
+- Plasma's `/etc/xdg/plasma-workspace/env/ssh-agent.sh` selects
+  `$XDG_RUNTIME_DIR/ssh-agent.socket`.
+- Plasma's `/usr/lib/systemd/user/plasma-core.target.d/ssh-agent.conf` starts
+  `ssh-agent.service`.
 
-That conflicts with the selected single GCR agent. The tracked `desktop` Stow
-package therefore owns two higher-precedence user files:
+Do not track replacements for those Plasma files, export `SSH_AUTH_SOCK` through
+`environment.d`, or set it as a Fish universal variable. A fresh session must
+inherit its package-owned socket naturally.
 
-- `~/.config/plasma-workspace/env/ssh-agent.sh` exports
-  `$XDG_RUNTIME_DIR/gcr/ssh` inside Plasma;
-- `~/.config/systemd/user/plasma-core.target.d/ssh-agent.conf` shadows only the
-  same-named vendor drop-in, without editing or masking a package file.
-
-After a fresh Plasma login, verify the ambient route rather than hiding a wrong
-session environment with a per-command override:
+Verify Niri/GNOME with GCR. The first command may open GCR's local prompt; after
+remembering the passphrase in GNOME Keyring, the post-restart command must be
+silent:
 
 ```bash
 test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/gcr/ssh"
-test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = "$XDG_RUNTIME_DIR/gcr/ssh"
-systemctl --user show-environment | \
-  grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh"
-test "$(systemctl --user is-active ssh-agent.service 2>/dev/null || true)" = inactive
-test "$(systemctl --user is-active ssh-agent.socket 2>/dev/null || true)" = inactive
-test "$(systemctl --user show ssh-agent.service -p MainPID --value)" = 0
+systemctl --user is-active gcr-ssh-agent.socket
+systemctl --user restart gcr-ssh-agent.service
+git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 ```
 
-A signing command prefixed with `SSH_AUTH_SOCK=...` proves only that GCR itself
-works; it does not prove that Bash, Fish, applications, or `sync-all.service`
-will select GCR naturally.
+Verify Plasma with Fedora's OpenSSH agent:
+
+```bash
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
+test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = \
+  "$XDG_RUNTIME_DIR/ssh-agent.socket"
+systemctl --user show-environment | \
+  grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket"
+systemctl --user is-active ssh-agent.socket ssh-agent.service
+ssh-add "$HOME/.ssh/id_ed25519"
+ssh-add -l
+```
+
+OpenSSH forgets the unlocked key when its agent or user manager stops. Load it
+again after reboot before enabling or relying on unattended synchronization in
+Plasma. An active but unselected GCR socket may remain available for the retained
+Niri/GNOME sessions; `SSH_AUTH_SOCK` identifies the agent the session uses.
 
 ## Portal boundaries
 
@@ -178,7 +179,7 @@ three sessions through PLM:
    PipeWire/WirePlumber, recording, lock, and suspend/resume.
 2. **Plasma:** KWin/Plasma, KDE portals, PolicyKit, networking, Bluetooth,
    audio, removable storage, Discover, notifications, lock/suspend, canonical
-   `kdewallet`, and silent GCR signing after a fresh agent restart.
+   `kdewallet`, Fedora's OpenSSH agent, and signing after an explicit `ssh-add`.
 3. **GNOME:** GNOME Shell/Mutter, GNOME portals, Nautilus chooser, keyring,
    networking, audio, lock, and suspend/resume.
 4. Return to **Niri** so PLM remembers the preferred daily session.

@@ -68,7 +68,7 @@ esac
 printf 'selected profile: %s\n' "$profile"
 ```
 
-## 3. Create the SSH identity, persist GCR unlock, and clone dotfiles
+## 3. Create the SSH identity, enroll GCR, and clone dotfiles
 
 ### Common
 
@@ -96,32 +96,20 @@ under a device-specific title:
 cat "$HOME/.ssh/id_ed25519.pub"
 ```
 
-Configure the single Fedora GCR socket for the current shell, Fish, and the
-systemd user manager:
+Select GCR only in this bootstrap shell; do not create a global environment or
+Fish override. Fresh sessions select their Fedora-packaged agent.
 
 ```bash
 ssh_socket="$XDG_RUNTIME_DIR/gcr/ssh"
 test -S "$ssh_socket"
-install -d -m 0700 "$HOME/.config/environment.d"
-printf 'SSH_AUTH_SOCK=%s\n' "$ssh_socket" |
-  install -m 0600 /dev/stdin \
-    "$HOME/.config/environment.d/60-naldo-ssh-agent.conf"
-systemctl --user set-environment SSH_AUTH_SOCK="$ssh_socket"
-fish -c 'set -Ux SSH_AUTH_SOCK "$XDG_RUNTIME_DIR/gcr/ssh"'
 export SSH_AUTH_SOCK="$ssh_socket"
-```
-
-Trigger an authenticated Git-over-SSH operation:
-
-```bash
 git ls-remote git@github.com:snaldos/naldo-dots.git refs/heads/main
 ```
 
 When GCR asks, first check **Automatically unlock this key whenever I'm logged
-in**, then enter the passphrase and click **Unlock**. Entering it without that
-check unlocks only the current agent. The passphrase is saved in the GNOME login
-keyring, not in dotfiles. Restart the agent and prove that a systemd user
-service can use the stored key without another prompt:
+in**, then enter the passphrase and click **Unlock**. The passphrase is saved in
+GNOME Keyring, not in dotfiles. Restart GCR and prove that a systemd user service
+can use the stored key without another prompt:
 
 ```bash
 systemctl --user restart gcr-ssh-agent.service
@@ -139,8 +127,9 @@ git clone git@github.com:snaldos/naldo-dots.git "$HOME/dotfiles"
 cd "$HOME/dotfiles"
 ```
 
-Do not configure another SSH agent, agent forwarding, `authorized_keys`,
-`sshd`, or Tailscale SSH.
+Niri/GNOME retain GCR; Plasma later uses Fedora's OpenSSH agent and requires one
+`ssh-add` per agent lifetime. Do not configure agent forwarding,
+`authorized_keys`, `sshd`, or Tailscale SSH.
 
 ## 4. Install selected Fedora packages
 
@@ -742,17 +731,10 @@ esac
 sync-control status
 test "$(systemctl --user is-active sync-all.timer 2>/dev/null || true)" = inactive
 test ! -e "$HOME/.config/systemd/user/timers.target.wants/sync-all.timer"
-test "$(readlink -f "$HOME/.config/plasma-workspace/env/ssh-agent.sh")" = \
-  "$HOME/dotfiles/desktop/.config/plasma-workspace/env/ssh-agent.sh"
-test "$(readlink -f "$HOME/.config/systemd/user/plasma-core.target.d/ssh-agent.conf")" = \
-  "$HOME/dotfiles/desktop/.config/systemd/user/plasma-core.target.d/ssh-agent.conf"
-sh -n "$HOME/.config/plasma-workspace/env/ssh-agent.sh"
 ```
 
-Those two tracked Plasma files form one policy: the environment hook selects
-Fedora GCR, while the higher-precedence same-named user drop-in shadows only
-Plasma's vendor dependency on `ssh-agent.service`. Do not edit package files or
-run a second OpenSSH agent beside GCR.
+The desktop package owns no SSH-agent policy. Niri/GNOME and Plasma inherit
+their different package-owned agent sockets from a fresh session.
 
 Set machine-local Git identity:
 
@@ -1019,50 +1001,41 @@ esac
 
 With GDM still installed but inactive, log out, select **Plasma** in PLM, and
 repeat the Plasma acceptance gate. Do not manually unlock a wallet at login. In
-Konsole, enter Bash and verify the canonical PAM-opened wallet:
+Konsole, enter Bash and verify the canonical PAM-opened wallet and Fedora's
+package-owned OpenSSH agent:
 
 ```bash
 bash
 test -n "$BASH_VERSION"
 test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
 test "$(loginctl show-session "$XDG_SESSION_ID" -p Desktop --value)" = KDE
-test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/gcr/ssh"
-test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = "$XDG_RUNTIME_DIR/gcr/ssh"
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
+test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = \
+  "$XDG_RUNTIME_DIR/ssh-agent.socket"
 systemctl --user show-environment | \
-  grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh"
-test "$(systemctl --user is-active ssh-agent.service 2>/dev/null || true)" = inactive
-test "$(systemctl --user is-active ssh-agent.socket 2>/dev/null || true)" = inactive
-test "$(systemctl --user show ssh-agent.service -p MainPID --value)" = 0
+  grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket"
+systemctl --user is-active ssh-agent.socket ssh-agent.service
 grep -Fx 'Default Wallet=kdewallet' "$HOME/.config/kwalletrc"
 test "$(qdbus-qt6 org.kde.ksecretd /ksecretd org.kde.KWallet.isOpen kdewallet)" = true
 ! journalctl --user -b --no-pager | \
   grep -F 'Wallet failed to get opened by PAM, error code is -9'
 ```
 
-If GCR has never stored this key in Plasma's separate KWallet backend, the first
-signing request opens a local SSH-passphrase dialog. Enable its remember option
-and enter the passphrase only there. Do not prefix this command with an explicit
-`SSH_AUTH_SOCK`: the ambient Plasma route is part of the acceptance test.
+OpenSSH keeps an unlocked key only in memory. Load it once per agent lifetime,
+entering the passphrase in the local terminal or Fedora's KSSHAskPass prompt,
+then prove that a user service inherits the same agent:
 
 ```bash
-signature="$(mktemp "${TMPDIR:-/tmp}/naldo-plasma-sign.XXXXXX")"
-printf 'plasma-wallet-enrollment\n' | \
-  ssh-keygen -Y sign -f "$HOME/.ssh/id_ed25519.pub" -n file >"$signature"
-test -s "$signature"
-rm -f -- "$signature"
+ssh-add -l >/dev/null 2>&1 || ssh-add "$HOME/.ssh/id_ed25519"
+ssh-add -l
+systemd-run --user --wait --collect \
+  --unit=naldo-plasma-openssh-check.service \
+  /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 ```
 
-Clear GCR's memory cache and repeat. This request must finish without another
-dialog even if KWallet's initial Secret Service `Locked` property was stale:
-
-```bash
-systemctl --user restart gcr-ssh-agent.service
-signature="$(mktemp "${TMPDIR:-/tmp}/naldo-plasma-resign.XXXXXX")"
-printf 'plasma-wallet-persistence\n' | \
-  ssh-keygen -Y sign -f "$HOME/.ssh/id_ed25519.pub" -n file >"$signature"
-test -s "$signature"
-rm -f -- "$signature"
-```
+Repeat `ssh-add` after an agent restart or reboot. KWallet remains available for
+Plasma application secrets, but standard OpenSSH-agent use does not store the
+SSH passphrase there.
 
 Log out, select **GNOME** in PLM, and verify the retained Workstation session.
 Open a terminal, enter Bash, and check the real login path:
@@ -1140,7 +1113,7 @@ systemctl is-active plasmalogin.service
 test "$(systemctl is-active gdm.service 2>/dev/null || true)" = inactive
 dnf check
 systemd-run --user --wait --collect \
-  --unit=naldo-final-gcr-check.service \
+  --unit=naldo-final-agent-check.service \
   /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 case "$profile" in
   desktop) ./bootstrap/fedora/verify.sh --profile desktop ;;
@@ -1192,7 +1165,8 @@ The machine is complete when:
 
 - the selected profile verifier has zero missing required items;
 - all repository tests pass;
-- GCR unlocks silently after login and systemd Git access succeeds;
+- GCR unlocks silently in Niri/GNOME, Plasma's OpenSSH key is loaded with
+  `ssh-add`, and systemd Git access succeeds in the selected session;
 - `gh`, `gh-dash`, Tuicr, Thunderbird, VS Code, and the selected VS Code
   extensions are present;
 - Herdr's generated Pi integration is current, Codex CLI and Pi have separate

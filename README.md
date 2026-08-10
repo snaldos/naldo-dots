@@ -116,8 +116,9 @@ mount before synchronization can touch it. See
 [`bootstrap/fedora/WALLPAPERS.md`](bootstrap/fedora/WALLPAPERS.md).
 
 The timer remains disabled until all repositories, LFS checks, the applicable
-mount guard, silent GCR access, and a systemd-managed run pass the clean-install
-procedure. Synchronization can commit, fetch, rebase, and push.
+mount guard, current-session SSH-agent access, and a systemd-managed run pass
+the clean-install procedure. Synchronization can commit, fetch, rebase, and
+push.
 
 ## Tool policy
 

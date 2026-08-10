@@ -27,7 +27,7 @@ xdg-desktop-portal-gtk	session	-	-	-	GTK portal backend	all
 nautilus	session	nautilus	application:org.gnome.Nautilus.desktop	-	Niri GNOME portal FileChooser delegate; Yazi remains the default file manager	all
 gnome-keyring	feature	-	-	user:gnome-keyring-daemon.service	Niri Secret Service and login keyring	all
 gnome-keyring-pam	session	-	-	-	Plasma Login Manager PAM module for Niri login-keyring unlock	all
-gcr	feature	-	-	user:gcr-ssh-agent.socket	Single Fedora GCR SSH agent shared by Fish and systemd user services	all
+gcr	feature	-	-	user:gcr-ssh-agent.socket	Fedora GCR SSH agent for Niri and retained GNOME sessions	all
 polkit	session	-	-	system:polkit.service	Authority for Noctalia PolicyKit agent	all
 xwayland-satellite	session	xwayland-satellite	-	-	X11 compatibility under Niri	all
 NetworkManager	feature	nmcli	-	system:NetworkManager.service	Noctalia network backend	all
