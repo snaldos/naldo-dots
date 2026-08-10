@@ -86,10 +86,10 @@ assert tinymist_rows == [[
 with (root / "helix/.config/helix/config.toml").open("rb") as handle:
     editor_config = tomllib.load(handle)
 expected_yazi_picker = [
-    ":sh rm -f /tmp/unique-ca1ea106",
-    ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/unique-ca1ea106',
+    ":sh rm -f /tmp/helix-yazi-picker",
+    ':insert-output yazi "%{buffer_name}" --chooser-file=/tmp/helix-yazi-picker',
     ':sh printf "\\x1b[?1049h\\x1b[?2004h" > /dev/tty',
-    ":open %sh{cat /tmp/unique-ca1ea106}",
+    ":open %sh{cat /tmp/helix-yazi-picker}",
     ":redraw",
     ":set mouse false",
     ":set mouse true",
