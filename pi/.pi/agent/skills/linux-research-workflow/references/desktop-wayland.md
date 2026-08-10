@@ -12,13 +12,15 @@ printf 'type=%s desktop=%s\n' "${XDG_SESSION_TYPE-}" "${XDG_CURRENT_DESKTOP-}"
 systemctl --user --no-pager --type=service --state=running
 ```
 
-The primary login path is GDM → the package-provided Niri session → native
-Noctalia. GDM also exposes Fedora's package-provided KDE Plasma session as the
-full fallback desktop. The bootstrap runbooks document that topology, while the
-user installers never switch display managers or remove desktops. Read
-`bootstrap/fedora/DESKTOPS.md` before a desktop-stack change. Separate
-compositor, shell, systemd-user lifecycle, portals, PipeWire/WirePlumber, and
-kernel/device support when diagnosing a symptom.
+The primary login path is Plasma Login Manager → the package-provided Niri
+session → native Noctalia. The same chooser exposes Fedora's package-provided
+KDE Plasma session as the full fallback desktop. GDM and GNOME Shell are absent;
+GNOME Keyring, GCR, and GNOME/GTK portals remain deliberate Niri dependencies.
+The bootstrap runbooks document that topology, while the user installers never
+switch display managers or remove desktops. Read `bootstrap/fedora/DESKTOPS.md`
+before a desktop-stack change. Separate compositor, shell, systemd-user
+lifecycle, portals, PipeWire/WirePlumber, and kernel/device support when
+diagnosing a symptom.
 
 ## Niri
 

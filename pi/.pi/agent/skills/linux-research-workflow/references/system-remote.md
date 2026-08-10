@@ -86,9 +86,10 @@ Only Fedora `openssh-clients` is selected. Device-specific, passphrase-protected
 Ed25519 keys, `known_hosts`, local host fragments, sockets, GCR state, and GitHub
 CLI tokens remain machine-local. Do not print private key or token contents.
 `openssh-server`, `authorized_keys`, agent forwarding, firewall openings, and
-Tailscale SSH are absent. GCR must store the key passphrase in the GDM-unlocked
-login keyring and pass a post-restart systemd Git operation before repository
-synchronization is enabled.
+Tailscale SSH are absent. GCR must store the key passphrase in the active Secret
+Service—GNOME Keyring under Niri and canonical `kdewallet` under Plasma—and pass
+a post-restart systemd Git operation before repository synchronization is
+enabled.
 
 Before a potentially disconnecting operation:
 

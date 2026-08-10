@@ -1,7 +1,7 @@
 ---
 name: linux-research-workflow
 description: "Inspect, debug, validate, maintain, or configure Naldo's Fedora-targeted Linux desktop/laptop: GNU Stow dotfiles, repository synchronization, Niri, native Noctalia v5, KDE Plasma fallback, systemd, Wayland, keyd, Ghostty, Fish, Helix, Yazi, Zen Flatpak, Herdr, and scientific tooling."
-compatibility: "Fedora 44 Workstation target; Linux; GDM to primary Niri/Noctalia and fallback KDE Plasma; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
+compatibility: "Fedora 44 Workstation target; Linux; Plasma Login Manager to primary Niri/Noctalia and fallback KDE Plasma; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
 ---
 
 # Linux Research Workstation
@@ -11,8 +11,9 @@ compatibility: "Fedora 44 Workstation target; Linux; GDM to primary Niri/Noctali
 Treat this as a target profile that must still be inspected against the installed
 Fedora release and application versions:
 
-- Fedora 44 Workstation login through GDM into either the package-provided Niri
-  session (primary) or the Fedora `kde-desktop` Plasma session (full fallback)
+- Fedora 44 Workstation login through Plasma Login Manager into either the
+  package-provided Niri session (primary) or the Fedora `kde-desktop` Plasma
+  session (full fallback); GDM and GNOME Shell are absent
 - Niri running through `niri-session`/`niri.service`, with native Noctalia as the shell
 - Fish, Ghostty, Starship, Helix (`hx`), Yazi, Zen as
   `app.zen_browser.zen`, and Herdr; Neovim is only an optional stock fallback

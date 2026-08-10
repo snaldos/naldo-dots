@@ -21,8 +21,8 @@ Start with
 [`DESKTOPS.md`](DESKTOPS.md).
 
 ```text
-Fedora boot → GDM → package-provided Niri session → Noctalia  (primary)
-                  └→ package-provided KDE Plasma session     (fallback)
+Fedora boot → Plasma Login Manager → package-provided Niri → Noctalia  (primary)
+                                  └→ package-provided Plasma  (fallback)
 ```
 
 ## Curated clean-install manifests
@@ -58,7 +58,7 @@ Helix mapping remains authoritative for buffer-level activation.
 
 Classifications:
 
-- `session`: necessary for the selected GDM → Niri/Noctalia or Plasma sessions;
+- `session`: necessary for the selected PLM → Niri/Noctalia or Plasma sessions;
 - `feature`: required by an intentionally configured workflow;
 - `optional`: supported but deliberately non-default;
 - `development`: research/development tooling that does not gate the desktop.
@@ -79,10 +79,11 @@ sources.
 
 ## Selected sources
 
-- Official Fedora DNF supplies GDM, Niri, Noctalia, Plasma through the
-  `kde-desktop` group, portals, OpenSSH clients, GitHub CLI, GCR, Git LFS,
-  desktop applications, Helix, Node/npm, uv, Rust/Cargo, and build
-  prerequisites. An inbound OpenSSH server is not selected.
+- Official Fedora DNF supplies Plasma Login Manager, Niri, Noctalia, Plasma
+  through the `kde-desktop` group, both desktops' PAM/keyring and portal
+  integration, OpenSSH clients, GitHub CLI, GCR, Git LFS, desktop applications,
+  Helix, Node/npm, uv, Rust/Cargo, and build prerequisites. GDM, GNOME Shell,
+  and an inbound OpenSSH server are not selected.
 - Flathub supplies Zen, Discord, Obsidian, the sole GPU Screen Recorder provider,
   and Sioyek. Vesktop is the only optional application alternative.
 - Google Chrome uses Google's signed RPM repository. Visual Studio Code uses
@@ -112,7 +113,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
-| `DESKTOPS.md` | Niri/Plasma topology, GDM decision, portal boundaries, and staged GNOME reduction |
+| `DESKTOPS.md` | Niri/Plasma topology, PLM/KWallet decision, portal boundaries, and reviewed GNOME reduction |
 | `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

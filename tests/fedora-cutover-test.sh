@@ -22,7 +22,7 @@ for package in openssh-clients gcr gh git-lfs nodejs22 nodejs22-npm rust cargo g
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
-for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid; do
+for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid gdm gnome-shell gnome-session; do
   ! awk -F '\t' -v package="$obsolete" '$1 == package { found=1 } END { exit !found }' "$DNF" ||
     fail "non-selected DNF provider remains: $obsolete"
 done
@@ -53,19 +53,30 @@ for package in plasma-desktop plasma-workspace kwin xdg-desktop-portal-kde polki
     END { exit !found }
   ' "$DNF" || fail "required Plasma anchor is absent: $package"
 done
-awk -F '\t' '$1 == "gdm" && $2 == "session" && $5 == "system:gdm.service" { found=1 } END { exit !found }' \
-  "$DNF" || fail 'GDM is not the selected display-manager anchor'
-awk -F '\t' '$1 == "plasma-login-manager" && $2 == "optional" { found=1 } END { exit !found }' \
-  "$DNF" || fail 'inactive Plasma Login Manager group member is not documented as optional'
+awk -F '\t' '$1 == "plasma-login-manager" && $2 == "session" && $5 == "system:plasmalogin.service" { found=1 } END { exit !found }' \
+  "$DNF" || fail 'Plasma Login Manager is not the selected display-manager anchor'
+for package in pam-kwallet gnome-keyring-pam; do
+  awk -F '\t' -v package="$package" '$1 == package && $2 == "session" { found=1 } END { exit !found }' \
+    "$DNF" || fail "selected login PAM package is absent: $package"
+done
 awk -F '\t' '$1 == "plasma-setup" && $2 == "optional" && $5 == "system:plasma-setup.service" { found=1 } END { exit !found }' \
   "$DNF" || fail 'disabled Plasma OOBE group member is not documented'
 grep -Fq 'sudo dnf group install kde-desktop' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install does not install Fedora KDE as a coherent comps group'
-grep -Fq 'GDM remains the selected display manager' "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
-  fail 'desktop runbook does not record the reviewed GDM decision'
+grep -Fq 'This repository targets two supported Wayland desktops behind Plasma Login' \
+  "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+  fail 'desktop runbook does not record the reviewed Plasma Login Manager decision'
 grep -Fq 'sudo systemctl disable plasma-setup.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install would leave Plasma OOBE enabled on an existing Workstation'
-pass 'Fedora KDE group anchors Plasma while proven GDM remains selected'
+grep -Fq 'sudo systemctl disable gdm.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean install never stages the reviewed GDM to PLM cutover'
+grep -Fq 'sudo systemctl enable plasmalogin.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean install never selects Plasma Login Manager'
+grep -Fq -- '--setopt=protected_packages=' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean install does not document the bounded Workstation protection override'
+grep -Fq 'Do not run a general autoremove' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'clean install does not protect retained cross-desktop dependencies'
+pass 'Fedora KDE group anchors Plasma Login Manager with both PAM integrations'
 
 portal_dir="$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal"
 [[ ! -e "$portal_dir/portals.conf" ]] ||
@@ -74,7 +85,7 @@ grep -Fxq 'default=gnome;gtk;' "$portal_dir/niri-portals.conf" ||
   fail 'Niri lost its explicit GNOME/GTK portal preference'
 grep -Fxq 'org.freedesktop.impl.portal.Secret=gnome-keyring;' "$portal_dir/niri-portals.conf" ||
   fail 'Niri lost GNOME Keyring Secret Service selection'
-pass 'desktop-specific portal policy preserves Niri while allowing native Plasma and GNOME defaults'
+pass 'desktop-specific portal policy preserves Niri while allowing native Plasma policy'
 
 awk -F '\t' '$1 == "wl-clipboard" && $2 == "feature" && $3 == "wl-copy,wl-paste" { found=1 } END { exit !found }' \
   "$DNF" || fail 'wl-clipboard does not own both CLI copy/paste commands'
