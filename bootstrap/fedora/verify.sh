@@ -559,17 +559,6 @@ verify_tracked_user_outputs() {
   done < <(git -C "$REPO_DIR" ls-files -z -- 'desktop/.local/share/applications/*.desktop')
 
   while IFS= read -r -d '' source; do
-    target_relative="${source#desktop/}"
-    target="$HOME/$target_relative"
-    identifier="${source##*/}"
-    if [[ -f "$target" ]]; then
-      record_present autostart feature "$identifier" dotfiles:desktop
-    else
-      record_missing autostart feature "$identifier" 'dotfiles:desktop — run install.sh'
-    fi
-  done < <(git -C "$REPO_DIR" ls-files -z -- 'desktop/.config/autostart/*.desktop')
-
-  while IFS= read -r -d '' source; do
     identifier="${source##*/}"
     if unit_file_exists "$identifier" user; then
       record_present service feature "$identifier" "dotfiles:automation; $(unit_state "$identifier" user)"

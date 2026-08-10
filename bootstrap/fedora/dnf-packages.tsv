@@ -18,7 +18,6 @@ dolphin	feature	dolphin	application:org.kde.dolphin.desktop	-	Plasma fallback fi
 konsole	feature	konsole	application:org.kde.konsole.desktop	-	Plasma fallback terminal	all
 plasma-login-manager	session	plasmalogin	-	system:plasmalogin.service	Active login manager offering GNOME, primary Niri, and fallback Plasma	all
 pam-kwallet	session	-	-	-	Plasma Login Manager PAM module for canonical KDE wallet login unlock	all
-ksshaskpass	feature	ksshaskpass	-	-	Graphical passphrase prompt for Plasma's package-owned OpenSSH agent	all
 plasma-setup	optional	-	-	system:plasma-setup.service	Fedora KDE group OOBE retained but disabled on an already-provisioned Workstation	all
 pipewire	session	pipewire	-	user:pipewire.service	Audio and Noctalia runtime	all
 wireplumber	session	wireplumber	-	user:wireplumber.service	PipeWire session policy	all

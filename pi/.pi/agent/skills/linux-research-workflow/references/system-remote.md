@@ -92,13 +92,10 @@ Retain Fedora's session-native agents: Niri/GNOME use GCR with GNOME Keyring,
 while Plasma exports `$XDG_RUNTIME_DIR/ssh-agent.socket` and pulls
 `ssh-agent.service` through `plasma-core.target`. Do not globally set
 `SSH_AUTH_SOCK`, add a Fish universal override, or shadow package-owned Plasma
-hooks. The tracked Plasma-only XDG autostart invokes `ssh-add` and Fedora
-KSSHAskPass after the package-owned agent is selected, but it must not alter the
-socket or run in Niri/GNOME. Before repository synchronization is enabled,
-verify the ambient Bash, Fish, and systemd-manager socket, require `ssh-add -T`
-for the public key to pass, and run a systemd Git operation using the current
-session's
-agent.
+hooks. In Plasma, load the passphrase-protected key with `ssh-add` once per agent
+lifetime. Before repository synchronization is enabled, verify the ambient
+Bash, Fish, and systemd-manager socket and pass a systemd Git operation using the
+current session's agent.
 
 Before a potentially disconnecting operation:
 

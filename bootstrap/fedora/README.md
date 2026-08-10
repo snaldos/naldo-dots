@@ -85,8 +85,8 @@ sources.
 - Official Fedora DNF supplies and retains the Workstation GNOME desktop and
   GDM, then adds Plasma Login Manager, Niri, Noctalia, and Plasma through the
   `kde-desktop` group. It also supplies all sessions' PAM/keyring and portal
-  integration, OpenSSH clients, KSSHAskPass, GitHub CLI, GCR, Git LFS, desktop
-  applications, Helix, Node/npm, uv, Rust/Cargo, and build prerequisites. PLM is active; GDM
+  integration, OpenSSH clients, GitHub CLI, GCR, Git LFS, desktop applications,
+  Helix, Node/npm, uv, Rust/Cargo, and build prerequisites. PLM is active; GDM
   is installed only for rollback. An inbound OpenSSH server is not selected.
 - Flathub supplies Zen, Discord, Obsidian, the sole GPU Screen Recorder provider,
   and Sioyek. Vesktop is the only optional application alternative.
@@ -117,9 +117,9 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
-| `DESKTOPS.md` | Workstation/Niri/Plasma topology, PLM/KWallet and session-agent decisions, portal boundaries, and rollback |
+| `DESKTOPS.md` | Workstation/Niri/Plasma topology, PLM/KWallet decision, portal boundaries, and rollback |
 | `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
-| `REMOTE-ACCESS.md` | OpenSSH agents, KSSHAskPass loading, Tailscale trust, and private state |
+| `REMOTE-ACCESS.md` | OpenSSH/Tailscale trust, private state and manual activation |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |
 | `verify.sh` | read-only installed package/output report |
 

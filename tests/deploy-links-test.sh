@@ -46,9 +46,6 @@ run_successfully "$workspace/clean-apply.log" "$DEPLOY_LINKS" --target "$clean_t
 [[ -L "$clean_target/.config/helix/config.toml" ]] || fail 'Helix source was not linked'
 [[ -L "$clean_target/.local/bin/sync-all" ]] || fail 'sync-all source was not linked'
 [[ -L "$clean_target/.local/bin/naldo-update" ]] || fail 'naldo-update source was not linked'
-[[ -L "$clean_target/.local/bin/naldo-plasma-ssh-add" ]] || fail 'Plasma SSH loader was not linked'
-[[ -L "$clean_target/.config/autostart/naldo-plasma-ssh-add.desktop" ]] ||
-  fail 'Plasma SSH autostart was not linked'
 [[ -L "$clean_target/.local/share/applications/yazi.desktop" ]] || fail 'Yazi desktop source was not linked'
 first_link="$(readlink "$clean_target/.config/helix/config.toml")"
 run_successfully "$workspace/clean-repeat.log" "$DEPLOY_LINKS" --target "$clean_target"
