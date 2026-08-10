@@ -14,8 +14,8 @@ systemctl --user --no-pager --type=service --state=running
 
 The primary login path is Plasma Login Manager → the package-provided Niri
 session → native Noctalia. The same chooser exposes Fedora's package-provided
-KDE Plasma session as the full fallback desktop. GDM and GNOME Shell are absent;
-GNOME Keyring, GCR, and GNOME/GTK portals remain deliberate Niri dependencies.
+KDE Plasma session as the full fallback and the intact Workstation GNOME
+session. GDM remains installed but inactive as a rollback display manager.
 The bootstrap runbooks document that topology, while the user installers never
 switch display managers or remove desktops. Read `bootstrap/fedora/DESKTOPS.md`
 before a desktop-stack change. Separate compositor, shell, systemd-user
@@ -45,14 +45,15 @@ For shared changes, validate isolated copies with both machine profiles. Use
 JSON and `jq` for nontrivial IPC inspection. Do not restart the session merely
 to validate a static edit.
 
-Niri uses GNOME and GTK portal backends selected by the tracked,
-desktop-specific portal config. Retain Nautilus even though Yazi is the default
-file manager: Fedora 44's GNOME `FileChooser` backend delegates browser uploads
-to `org.gnome.Nautilus`. Plasma uses Fedora's KDE portal backend. Do not add a
-generic user `portals.conf`, which would mask Fedora's desktop-specific policy.
-Noctalia supplies Niri's user-facing PolicyKit agent; the system authority
-remains separate. GNOME Keyring supplies Niri's Secret Service. Verify backend
-selection and service state rather than adding manual startup commands.
+Niri uses the GNOME and GTK portal backends selected by Fedora's
+package-provided `/usr/share/xdg-desktop-portal/niri-portals.conf`. Retain
+Nautilus even though Yazi is the default file manager: Fedora 44's GNOME
+`FileChooser` delegates browser uploads to `org.gnome.Nautilus`. Plasma uses
+Fedora's KDE portal backend. Do not add generic or Niri-specific user portal
+configuration that would mask package-owned desktop policy. Noctalia supplies
+Niri's user-facing PolicyKit agent; the system authority remains separate.
+GNOME Keyring supplies Niri's Secret Service. Verify backend selection and
+service state rather than adding manual startup commands.
 
 ## Native Noctalia v5
 

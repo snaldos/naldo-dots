@@ -75,8 +75,9 @@ In GCR's dialog, first check **Automatically unlock this key whenever I'm logged
 in**, then enter the passphrase and click **Unlock**. Without that check, the key
 is available only for the current agent lifetime. Plasma Login Manager's PAM
 stack unlocks the GNOME login keyring for Niri and canonical `kdewallet` for
-Plasma. The two Secret Service backends store separate items, so enroll and test
-both desktops if the Plasma fallback must sign silently. Prove persistence by
+Plasma. GNOME shares Niri's GNOME Keyring item; the Plasma Secret Service
+backend stores a separate item. Enroll and test both secret stores if the Plasma
+fallback must sign silently. Prove persistence by
 restarting GCR and using the key from a transient systemd unit:
 
 ```bash

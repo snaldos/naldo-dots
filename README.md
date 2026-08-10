@@ -1,8 +1,9 @@
 # Dotfiles
 
-Fedora 44 Workstation configuration for Plasma Login Manager with
-Niri → Noctalia as the primary desktop and KDE Plasma as the full fallback,
-deployed as explicit GNU Stow packages under `$HOME`.
+Fedora 44 Workstation configuration with its GNOME desktop retained, Niri →
+Noctalia as the preferred session, and KDE Plasma as a full fallback, all
+selected through Plasma Login Manager and deployed as explicit GNU Stow
+packages under `$HOME`.
 
 ![Niri desktop with Helix, Pi, and Noctalia](assets/screenshots/desktop-overview.png)
 
@@ -11,7 +12,7 @@ deployed as explicit GNU Stow packages under `$HOME`.
 | Task                                    | Entry point                                                              |
 | --------------------------------------- | ------------------------------------------------------------------------ |
 | Install a fresh desktop or laptop       | [`bootstrap/fedora/CLEAN-INSTALL.md`](bootstrap/fedora/CLEAN-INSTALL.md) |
-| Review the Niri/Plasma/PLM boundaries   | [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md)           |
+| Review the GNOME/Niri/Plasma boundaries | [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md)           |
 | Review selected providers               | [`bootstrap/fedora/README.md`](bootstrap/fedora/README.md)               |
 | Deploy an existing checkout             | `./install.sh --profile desktop` or `./install.sh --profile laptop`      |
 | Install the root-owned keyd integration | [`system/keyd/README.md`](system/keyd/README.md)                         |
@@ -43,16 +44,15 @@ credentials, and account enrollment remain machine-local.
 
 ## Desktop stack
 
-The supported Fedora 44 topology is Plasma Login Manager → Niri/Noctalia or
-KDE Plasma. Niri is the preferred session; Fedora's complete `kde-desktop`
-group supplies the stable fallback. The cutover passed independent Niri and
-Plasma login, hardware, portal, keyring, lock/suspend, and SSH-secret tests
-before GDM and the GNOME desktop session were removed.
+The supported Fedora 44 topology is an intact Workstation installation plus
+Niri and Fedora's complete `kde-desktop` group. Plasma Login Manager offers the
+package-provided GNOME, Niri, and Plasma sessions; Niri is preferred. GDM stays
+installed as a disabled rollback display manager rather than being removed.
 
-Niri continues to use explicit GNOME/GTK portal backends and GNOME Keyring.
-Plasma uses Fedora's KDE portal policy and canonical `kdewallet`. The retained
-GNOME integration packages are functional dependencies, not a third desktop.
-The acceptance, cleanup, and recovery boundaries are in
+Niri and GNOME use Fedora's package-owned GNOME/GTK portal policy and GNOME
+Keyring. Plasma uses Fedora's KDE portal policy and canonical `kdewallet`.
+There is no user portal override and no desktop-removal phase. The acceptance
+and recovery boundaries are in
 [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md).
 
 ## Deployment model
@@ -65,7 +65,7 @@ Stow packages mirror their paths under `$HOME`:
 
 ```text
 ghostty fish starship herdr helix zathura yazi niri lazygit noctalia
-xdg-desktop-portal pi desktop automation git
+pi desktop automation git
 ```
 
 `assets`, `bootstrap`, `system`, and `tests` are not Stow packages. Before any

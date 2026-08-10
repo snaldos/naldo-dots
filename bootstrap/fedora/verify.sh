@@ -531,7 +531,7 @@ verify_tracked_user_outputs() {
   local source repository_relative target_relative target identifier
   local -a stow_packages=(
     ghostty fish starship herdr helix zathura yazi niri lazygit noctalia
-    xdg-desktop-portal pi desktop automation git
+    pi desktop automation git
   )
 
   printf '\n== Tracked user executables ==\n'

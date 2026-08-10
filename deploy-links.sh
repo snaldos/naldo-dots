@@ -7,7 +7,7 @@ TARGET_DIR="${HOME:?HOME is not set}"
 DRY_RUN=0
 packages=(
   ghostty fish starship herdr helix zathura yazi niri lazygit noctalia
-  xdg-desktop-portal pi desktop automation git
+  pi desktop automation git
 )
 non_stow_directories=(assets bootstrap system tests)
 

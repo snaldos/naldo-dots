@@ -22,7 +22,7 @@ for package in openssh-clients gcr gh git-lfs nodejs22 nodejs22-npm rust cargo g
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
-for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid gdm gnome-shell gnome-session; do
+for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid; do
   ! awk -F '\t' -v package="$obsolete" '$1 == package { found=1 } END { exit !found }' "$DNF" ||
     fail "non-selected DNF provider remains: $obsolete"
 done
@@ -46,6 +46,16 @@ for ownership in \
 done
 pass 'Fedora manifest owns selected SSH GCR LFS development and clean-install commands'
 
+for package in fedora-release-workstation gdm gnome-shell \
+  gnome-session-wayland-session mutter; do
+  awk -F '\t' -v package="$package" '
+    $1 == package && ($2 == "session" || $2 == "feature") { found=1 }
+    END { exit !found }
+  ' "$DNF" || fail "required Workstation anchor is absent: $package"
+done
+awk -F '\t' '$1 == "gdm" && $2 == "feature" && $5 == "system:gdm.service" { found=1 } END { exit !found }' \
+  "$DNF" || fail 'installed rollback GDM is not represented without selecting it as active'
+
 for package in plasma-desktop plasma-workspace kwin xdg-desktop-portal-kde polkit-kde \
   plasma-systemsettings dolphin konsole; do
   awk -F '\t' -v package="$package" '
@@ -63,33 +73,31 @@ awk -F '\t' '$1 == "plasma-setup" && $2 == "optional" && $5 == "system:plasma-se
   "$DNF" || fail 'disabled Plasma OOBE group member is not documented'
 grep -Fq 'sudo dnf group install kde-desktop' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install does not install Fedora KDE as a coherent comps group'
-grep -Fq 'This repository targets two supported Wayland desktops behind Plasma Login' \
+grep -Fq 'Keep Fedora Workstation intact and add Niri and KDE' \
   "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
-  fail 'desktop runbook does not record the reviewed Plasma Login Manager decision'
+  fail 'desktop runbook does not preserve the Workstation/Niri/KDE composition'
 grep -Fq 'sudo systemctl disable plasma-setup.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install would leave Plasma OOBE enabled on an existing Workstation'
 grep -Fq 'sudo systemctl disable gdm.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install never stages the reviewed GDM to PLM cutover'
 grep -Fq 'sudo systemctl enable plasmalogin.service' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install never selects Plasma Login Manager'
-grep -Fq -- '--setopt=protected_packages=' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
-  fail 'clean install does not document the bounded Workstation protection override'
+if rg -n 'gnome_surface_candidates|redundant_workstation_candidates|--setopt=protected_packages=' \
+  "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" >/dev/null; then
+  fail 'clean install still removes or overrides protection for the Workstation desktop'
+fi
 grep -Fq 'Do not run a general autoremove' "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install does not protect retained cross-desktop dependencies'
-pass 'Fedora KDE group anchors Plasma Login Manager with both PAM integrations'
+pass 'intact Workstation and Fedora KDE group anchor PLM with both PAM integrations'
 
-portal_dir="$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal"
-[[ ! -e "$portal_dir/portals.conf" ]] ||
-  fail 'generic user portal policy still masks desktop-specific Fedora policy'
-grep -Fxq 'default=gnome;gtk;' "$portal_dir/niri-portals.conf" ||
-  fail 'Niri lost its explicit GNOME/GTK portal preference'
+[[ ! -e "$REPO_DIR/xdg-desktop-portal" ]] ||
+  fail 'a user portal-policy Stow package still masks Fedora desktop defaults'
+grep -Fq '/usr/share/xdg-desktop-portal/niri-portals.conf' \
+  "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+  fail 'Niri package-owned portal policy is not documented'
 awk -F '\t' '$1 == "nautilus" && $2 == "session" && $4 == "application:org.gnome.Nautilus.desktop" { found=1 } END { exit !found }' \
   "$DNF" || fail 'Nautilus is not retained as the GNOME portal FileChooser delegate'
-! grep -Fq 'org.freedesktop.impl.portal.FileChooser=gtk;' "$portal_dir/niri-portals.conf" ||
-  fail 'Niri unexpectedly replaces the selected Nautilus chooser with GTK'
-grep -Fxq 'org.freedesktop.impl.portal.Secret=gnome-keyring;' "$portal_dir/niri-portals.conf" ||
-  fail 'Niri lost GNOME Keyring Secret Service selection'
-pass 'desktop-specific portal policy preserves the Niri chooser and native Plasma policy'
+pass 'package-owned desktop portal policies preserve native Niri GNOME and Plasma behavior'
 
 awk -F '\t' '$1 == "wl-clipboard" && $2 == "feature" && $3 == "wl-copy,wl-paste" { found=1 } END { exit !found }' \
   "$DNF" || fail 'wl-clipboard does not own both CLI copy/paste commands'

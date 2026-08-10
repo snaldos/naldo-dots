@@ -24,12 +24,11 @@ the laptop or committed.
 
 ## 1. Install Fedora Workstation
 
-Install the current stable Fedora Workstation. Its installer initially supplies
-GNOME and GDM; treat them as a bootstrap and rollback path, not the final
-desktop topology. Do not remove either until packaged Niri, Plasma, and Plasma
-Login Manager pass the staged checks below. Do not manually create a Niri
-session. Before erasing an existing installation, confirm GitHub browser access,
-2FA, and offline recovery methods.
+Install the current stable Fedora Workstation. Keep its GNOME desktop,
+applications, integration packages, and GDM intact. This guide adds packaged
+Niri, Plasma, and Plasma Login Manager; it does not replace Workstation's package
+composition or manually create a Niri session. Before erasing an existing
+installation, confirm GitHub browser access, 2FA, and offline recovery methods.
 
 - **Desktop only:** preserve the secondary HDD filesystem; do not format it.
 - **Laptop only:** use the internal SSD and do not create `/mnt/data`.
@@ -149,7 +148,7 @@ Do not configure another SSH agent, agent forwarding, `authorized_keys`,
 
 First review and install Fedora 44's coherent KDE Plasma desktop group. The
 group also installs Plasma Login Manager. Fedora's first-installed-wins preset
-leaves the current GDM rollback path selected until both desktops pass their
+leaves the current GDM path selected until GNOME, Niri, and Plasma pass their
 baseline checks:
 
 ```bash
@@ -188,6 +187,7 @@ a PAM module as an obsolete GNOME dependency:
 
 ```bash
 sudo dnf -y mark user \
+  gdm gnome-shell gnome-session-wayland-session mutter \
   plasma-login-manager pam-kwallet \
   gnome-keyring gnome-keyring-pam gcr \
   xdg-desktop-portal xdg-desktop-portal-gnome \
@@ -196,13 +196,13 @@ sudo dnf -y mark user \
   xwayland-satellite
 ```
 
-Together the group and manifest provide full Plasma/KWin, Dolphin, Konsole,
-System Settings, KDE portals and PolicyKit integration, both login PAM modules,
-plus GitHub CLI, Thunderbird, Helix, GCR, Git LFS, Noctalia, Niri, PipeWire,
-scientific build tools, and selected applications. They do not include GDM,
-GNOME Shell, `openssh-server`, or Conda as final selected packages. Read
-[`DESKTOPS.md`](DESKTOPS.md) before the display-manager cutover or any GNOME
-component removal.
+Together Workstation, the group, and the manifest provide retained GNOME/GDM;
+full Plasma/KWin, Dolphin, Konsole, System Settings, KDE portals and PolicyKit;
+both login PAM modules; plus GitHub CLI, Thunderbird, Helix, GCR, Git LFS,
+Noctalia, Niri, PipeWire, scientific build tools, and selected applications.
+They do not select `openssh-server` or Conda. Read
+[`DESKTOPS.md`](DESKTOPS.md) before the display-manager cutover. Do not remove
+Workstation components.
 
 ## 5. Install reviewed RPM/COPR providers
 
@@ -836,6 +836,7 @@ test "$(xdg-mime query default x-scheme-handler/mailto)" = \
 for extension in ms-python.python ms-toolsai.jupyter charliermarsh.ruff; do
   code --list-extensions | grep -Fxi "$extension"
 done
+test -f /usr/share/wayland-sessions/gnome.desktop
 test -f /usr/share/wayland-sessions/niri.desktop
 test -f /usr/share/wayland-sessions/plasma.desktop
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
@@ -903,11 +904,13 @@ on a fresh machine.
 10. log out, select **Plasma** in GDM, and complete the login, display, input,
     network, Bluetooth, audio, lock/unlock, suspend/resume, portal, PolicyKit,
     Dolphin, Konsole, and System Settings baseline in
-    [`DESKTOPS.md`](DESKTOPS.md); and
-11. log out of Plasma, return to Niri, and confirm unchanged Noctalia, keyring,
+    [`DESKTOPS.md`](DESKTOPS.md);
+11. log out, select **GNOME**, and verify GNOME Shell, Nautilus open/save/upload,
+    keyring, networking, audio, lock, and suspend/resume; and
+12. log out of GNOME, return to Niri, and confirm unchanged Noctalia, keyring,
     clipboard, recording, and portal behavior.
 
-Only after both baseline sessions pass, stage Plasma Login Manager for the next
+Only after all three sessions pass, stage Plasma Login Manager for the next
 boot. These commands must not stop the current Niri session. Do not use
 `systemctl --dry-run`; inspect the alias after each real operation:
 
@@ -920,8 +923,8 @@ systemctl is-enabled plasmalogin.service
 test "$(systemctl is-enabled gdm.service 2>/dev/null || true)" = disabled
 ```
 
-GDM remains installed as rollback until PLM has started both desktops after a
-reboot.
+GDM remains installed permanently as an inactive rollback option. PLM must start
+all three sessions after reboot before the display-manager cutover is accepted.
 
 ## 17. Enroll Tailscale and keep inbound SSH disabled
 
@@ -944,7 +947,7 @@ test "$(systemctl is-active sshd.service 2>/dev/null || true)" = inactive
 No reusable auth key, Tailscale SSH, firewall opening, or inbound OpenSSH server
 is selected.
 
-## 18. Reboot, accept PLM, and reduce the old desktop surface
+## 18. Reboot, accept PLM, and preserve the Workstation composition
 
 ### Common
 
@@ -1004,8 +1007,8 @@ case "$profile" in
 esac
 ```
 
-Before removing the GDM rollback, log out, select **Plasma** in PLM, and repeat
-the Plasma acceptance gate. Do not manually unlock a wallet at login. In
+With GDM still installed but inactive, log out, select **Plasma** in PLM, and
+repeat the Plasma acceptance gate. Do not manually unlock a wallet at login. In
 Konsole, enter Bash and verify the canonical PAM-opened wallet:
 
 ```bash
@@ -1045,9 +1048,25 @@ test -s "$signature"
 rm -f -- "$signature"
 ```
 
-Log out and return to **Niri**. This both rechecks the primary path and makes
-Niri PLM's remembered default. Open Ghostty, enter Bash, restore the profile,
-and prepare the explicit old-desktop transaction:
+Log out, select **GNOME** in PLM, and verify the retained Workstation session.
+Open a terminal, enter Bash, and check the real login path:
+
+```bash
+bash
+test -n "$BASH_VERSION"
+test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
+case ":${XDG_CURRENT_DESKTOP-}:" in *:GNOME:*) ;; *) exit 1 ;; esac
+systemctl --user is-active xdg-desktop-portal.service
+systemctl --user is-active gcr-ssh-agent.socket
+systemd-run --user --wait --collect \
+  --unit=naldo-gnome-gcr-check.service \
+  /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
+```
+
+Test Nautilus open/save/upload, networking, audio, lock/unlock, and
+suspend/resume. Then log out and return to **Niri**. This rechecks the primary
+path and makes Niri PLM's remembered default. Open Ghostty, enter Bash, and
+restore the profile:
 
 ```bash
 bash
@@ -1055,141 +1074,55 @@ test -n "$BASH_VERSION"
 profile=laptop  # use profile=desktop only on the desktop
 case "$profile" in desktop|laptop) ;; *) exit 2 ;; esac
 cd "$HOME/dotfiles"
-protected_packages='dnf5,NetworkManager,grub2-efi-ia32,grub2-efi-x64,grub2-pc,grub2-tools-minimal,selinux-policy-targeted,setup,shim-aa64,shim-arm,shim-ia32,shim-x64,sudo,systemd,systemd-udev'
-gnome_surface_candidates=(
-  gdm
-  gnome-shell gnome-shell-common
-  gnome-session gnome-session-wayland-session gnome-classic-session
-  gnome-initial-setup gnome-tour gnome-remote-desktop
-  gnome-shell-extension-apps-menu
-  gnome-shell-extension-background-logo
-  gnome-shell-extension-common
-  gnome-shell-extension-launch-new-instance
-  gnome-shell-extension-places-menu
-  gnome-shell-extension-window-list
-  gnome-browser-connector mutter mutter-common
-)
-installed_gnome_surface=()
-for package in "${gnome_surface_candidates[@]}"; do
-  rpm -q "$package" >/dev/null 2>&1 && installed_gnome_surface+=("$package")
-done
-printf '  %s\n' "${installed_gnome_surface[@]}"
-```
-
-Fedora Workstation protects `gnome-shell`. The following command clears the
-append-list only for this invocation and restores every inspected core
-protection except `gnome-shell`. Preview first and stop if DNF proposes Niri,
-Noctalia, Plasma, PLM, a PAM/keyring/portal package, or anything else outside the
-printed old-desktop set:
-
-```bash
-dnf \
-  --setopt=protected_packages= \
-  --setopt="protected_packages=$protected_packages" \
-  remove --assumeno --no-autoremove "${installed_gnome_surface[@]}"
-```
-
-After reviewing that preview, run the same bounded transaction for real:
-
-```bash
-sudo dnf \
-  --setopt=protected_packages= \
-  --setopt="protected_packages=$protected_packages" \
-  remove --no-autoremove "${installed_gnome_surface[@]}"
-```
-
-Remove the reviewed duplicate Workstation applications and their dedicated
-support stacks. This keeps Nautilus as Fedora 44's GNOME portal chooser
-delegate while Yazi remains the default file manager. It also keeps Disks,
-Calculator, Simple Scan, Snapshot, Boxes, and Connections because no selected
-replacement currently provides those exact capabilities:
-
-```bash
-redundant_workstation_candidates=(
-  baobab
-  gnome-calendar gnome-characters gnome-clocks gnome-contacts
-  gnome-control-center gnome-font-viewer gnome-logs gnome-maps
-  gnome-software gnome-system-monitor gnome-text-editor gnome-weather
-  loupe papers showtime
-  dnf5daemon-server dnf5daemon-server-polkit epiphany-runtime
-  evolution-data-server evolution-data-server-langpacks
-  evolution-ews-core evolution-ews-langpacks folks
-  gnome-app-list gnome-control-center-filesystem
-  gnome-menus gnome-online-accounts
-  libgtop2 libical-glib libphonenumber libshumate libspelling
-  malcontent malcontent-control malcontent-ui-libs
-  papers-libs papers-previewer papers-thumbnailer tecla
-)
-installed_redundant_workstation=()
-for package in "${redundant_workstation_candidates[@]}"; do
-  rpm -q "$package" >/dev/null 2>&1 &&
-    installed_redundant_workstation+=("$package")
-done
-printf '  %s\n' "${installed_redundant_workstation[@]}"
-dnf remove --assumeno --no-autoremove \
-  "${installed_redundant_workstation[@]}"
-```
-
-Stop if the preview includes a session, PAM/keyring/portal package, PackageKit,
-fwupd, or a retained application. Otherwise run the same explicit list:
-
-```bash
-sudo dnf remove --no-autoremove \
-  "${installed_redundant_workstation[@]}"
 ```
 
 ### Desktop only
 
-The selected i5-13400F desktop is not a mobile thermal platform. Remove
-`thermald` only on that profile; leave the laptop's thermal policy intact:
+Keep the Workstation-owned `thermald` package installed. The selected i5-13400F
+desktop is not a mobile thermal platform, so disable only its inapplicable
+service rather than removing the package:
 
 ```bash
 test "$profile" = desktop
-if rpm -q thermald >/dev/null 2>&1; then
-  sudo dnf remove --no-autoremove thermald
-  sudo systemctl reset-failed thermald.service
-fi
+rpm -q thermald
+sudo systemctl disable --now thermald.service
+test "$(systemctl is-enabled thermald.service 2>/dev/null || true)" = disabled
 ```
 
 ### Laptop only
 
-Do not remove `thermald` on the laptop.
-
-### Common final reboot
-
-Do not run a general autoremove. Validate the retained integration closure and
-reboot once more with GDM absent:
+Retain and enable the Workstation thermal service on supported laptop hardware:
 
 ```bash
-for package in gdm gnome-shell gnome-session gnome-session-wayland-session mutter; do
-  ! rpm -q "$package" >/dev/null 2>&1
-done
-rpm -q \
-  niri noctalia plasma-login-manager plasma-workspace pam-kwallet nautilus \
-  gnome-keyring gnome-keyring-pam gcr \
-  xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-desktop-portal-kde
-find /usr/share/wayland-sessions -maxdepth 1 -type f -printf '%f\n' | sort
-test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
-  /usr/lib/systemd/system/plasmalogin.service
-dnf check
-sudo systemctl reboot
+test "$profile" = laptop
+rpm -q thermald
+sudo systemctl enable --now thermald.service
+systemctl is-active thermald.service
 ```
 
-Select Niri, open Ghostty, enter Bash, and perform the final boot check:
+### Common final verification
+
+Do not remove Workstation packages. Do not run a general autoremove. Verify the
+complete three-desktop closure, package-owned portal policy, and inactive GDM:
 
 ```bash
-bash
-test -n "$BASH_VERSION"
-profile=laptop  # use profile=desktop only on the desktop
-case "$profile" in desktop|laptop) ;; *) exit 2 ;; esac
-cd "$HOME/dotfiles"
-test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
+rpm -q \
+  gdm gnome-shell gnome-session gnome-session-wayland-session mutter nautilus \
+  niri noctalia plasma-login-manager plasma-workspace pam-kwallet \
+  gnome-keyring gnome-keyring-pam gcr \
+  xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-desktop-portal-kde
+for session in gnome.desktop niri.desktop plasma.desktop; do
+  test -f "/usr/share/wayland-sessions/$session"
+done
+test ! -e "$HOME/.config/xdg-desktop-portal/portals.conf"
+test ! -e "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
+rpm -qf /usr/share/xdg-desktop-portal/niri-portals.conf
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
   /usr/lib/systemd/system/plasmalogin.service
+systemctl is-enabled plasmalogin.service
 systemctl is-active plasmalogin.service
-for package in gdm gnome-shell gnome-session; do
-  ! rpm -q "$package" >/dev/null 2>&1
-done
+test "$(systemctl is-active gdm.service 2>/dev/null || true)" = inactive
+dnf check
 systemd-run --user --wait --collect \
   --unit=naldo-final-gcr-check.service \
   /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
@@ -1250,10 +1183,10 @@ The machine is complete when:
   working machine-local logins, and Pi doctor has zero failures;
 - Helix TypeScript/JavaScript LSP, BasedPyright, project-opt-in `ty`, Ruff, and
   Prettier are healthy;
-- Plasma Login Manager offers both package-provided Niri and Plasma Wayland
-  sessions, remembers Niri as preferred, and GDM/GNOME Shell are absent;
-- Niri, Noctalia, Plasma, both PAM/keyring paths, keyd/Bongo Cat,
-  desktop-specific portals, Tailscale, and storage survive reboot;
+- Plasma Login Manager offers package-provided GNOME, Niri, and Plasma Wayland
+  sessions, remembers Niri as preferred, and installed GDM remains inactive;
+- GNOME, Niri, Noctalia, Plasma, both PAM/keyring paths, keyd/Bongo Cat,
+  package-owned desktop portals, Tailscale, and storage survive reboot;
 - `openssh-server` is absent and Tailscale SSH is false;
 - Notes and Wallpapers pass LFS checks;
 - all three repositories are clean and synchronized; and

@@ -2,18 +2,22 @@
 
 ## Selected topology
 
-This repository targets two supported Wayland desktops behind Plasma Login
-Manager:
+Keep Fedora Workstation intact and add Niri and KDE rather than subtracting the
+original desktop:
 
 ```text
-Fedora boot → Plasma Login Manager → Niri → Noctalia      (primary)
-                                  └→ KDE Plasma on KWin   (full fallback)
+Fedora boot → Plasma Login Manager → Niri → Noctalia      (preferred)
+                                  ├→ KDE Plasma on KWin   (full fallback)
+                                  └→ Workstation GNOME    (retained)
+
+Installed inactive rollback display manager: GDM
 ```
 
-Plasma is the coherent recovery desktop; Niri remains the preferred daily
-session. Plasma Login Manager remembers the last session selected for each
-user, so log into **Niri** once after Plasma maintenance to restore it as the
-login-screen default.
+This composition is intentionally ordinary: Fedora Workstation owns GNOME and
+its application/integration closure, the `niri` package owns Niri's session and
+portal policy, and Fedora's `kde-desktop` group owns Plasma's complete closure.
+Plasma Login Manager changes only the greeter and active display-manager alias.
+It does not require removing GDM or GNOME.
 
 Install Plasma as Fedora's complete desktop composition rather than a
 hand-picked shell subset:
@@ -33,19 +37,20 @@ keep the package as a group member but leave that service disabled.
 The selected boot alias and expected service state are:
 
 ```bash
+rpm -q gdm plasma-login-manager
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
   /usr/lib/systemd/system/plasmalogin.service
 systemctl is-enabled plasmalogin.service
 systemctl is-active plasmalogin.service
-! rpm -q gdm >/dev/null 2>&1
+test "$(systemctl is-active gdm.service 2>/dev/null || true)" = inactive
 ```
 
-For a staged transition while GDM is still installed, switch only after Niri
-and Plasma have both passed their acceptance checks:
+Switch from GDM only after GNOME, Niri, and Plasma have passed their baseline
+checks through the currently active greeter:
 
 ```bash
 sudo systemctl disable gdm.service
-sudo systemctl enable plasmalogin.service
+sudo systemctl enable --force plasmalogin.service
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
   /usr/lib/systemd/system/plasmalogin.service
 sudo systemctl reboot
@@ -54,32 +59,27 @@ sudo systemctl reboot
 Do **not** use `systemctl --dry-run` to preview display-manager enable/disable
 operations. On the inspected system it still changed the
 `display-manager.service` alias. Always inspect that alias after either command.
+Only one display manager may own it; keeping GDM installed does not run two
+login managers.
 
-Fedora's `/usr/lib/pam.d/plasmalogin` integrates both `pam_gnome_keyring.so` and
-`pam_kwallet5.so`. Keep all of these explicit package anchors:
+Fedora's `/usr/lib/pam.d/plasmalogin` integrates both
+`pam_gnome_keyring.so` and `pam_kwallet5.so`. Keep these explicit anchors:
 
-- `plasma-login-manager` and `pam-kwallet`;
-- `gnome-keyring`, `gnome-keyring-pam`, and `gcr`;
-- `xdg-desktop-portal`, `xdg-desktop-portal-gnome`,
+- Workstation/GNOME: `gdm`, `gnome-shell`, `gnome-session`, and `mutter`;
+- PLM/Plasma: `plasma-login-manager` and `pam-kwallet`;
+- Niri/GNOME secrets: `gnome-keyring`, `gnome-keyring-pam`, and `gcr`;
+- portals: `xdg-desktop-portal`, `xdg-desktop-portal-gnome`,
   `xdg-desktop-portal-gtk`, and `xdg-desktop-portal-kde`.
 
-Marking them as user-selected prevents a later `dnf autoremove` from treating
-login-keyring integration as an obsolete GNOME dependency:
-
-```bash
-sudo dnf mark user \
-  plasma-login-manager pam-kwallet \
-  gnome-keyring gnome-keyring-pam gcr \
-  xdg-desktop-portal xdg-desktop-portal-gnome \
-  xdg-desktop-portal-gtk xdg-desktop-portal-kde
-```
+The clean-install manifest installs those anchors explicitly. Do not run a
+general `dnf autoremove` across this cross-desktop composition.
 
 ## Keyring behavior
 
-Niri and Plasma deliberately use different Secret Service implementations:
+The sessions deliberately use their native Secret Service implementation:
 
-- **Niri:** GNOME Keyring owns `org.freedesktop.secrets`; GCR retrieves the SSH
-  key passphrase from the login keyring.
+- **Niri and GNOME:** GNOME Keyring owns `org.freedesktop.secrets`; GCR
+  retrieves the SSH key passphrase from the login keyring.
 - **Plasma:** KSecretD owns `org.freedesktop.secrets`; GCR retrieves the
   separately enrolled SSH key passphrase from KWallet.
 
@@ -99,7 +99,7 @@ PAM stack; recreate the wallet under the canonical name and use the login
 password with Classic Blowfish when no OpenPGP secret key is available.
 
 KWallet 6.28 can initially expose an already PAM-opened collection as
-`Locked=true` through the Secret Service façade. This is stale collection
+`Locked=true` through the Secret Service facade. This is stale collection
 bookkeeping, not a PAM failure, when the native backend reports
 `isOpen(kdewallet)=true`. A real libsecret/GCR request performs the standard
 Secret Service unlock protocol silently and changes the collection to unlocked.
@@ -108,86 +108,89 @@ signing, not the initial `Locked` property alone.
 
 ## Portal boundaries
 
-Desktop-specific portal policy remains required:
+Use Fedora's package-owned desktop policies without a user override:
 
-- Niri uses the tracked `niri-portals.conf`, preferring GNOME and GTK backends
-  and GNOME Keyring for Secret Service. Retain Nautilus even though Yazi is the
-  default file manager: Fedora 44's GNOME `FileChooser` portal delegates browser
-  uploads to the `org.gnome.Nautilus` D-Bus service.
-- Plasma uses Fedora's package-provided `kde-portals.conf` and
-  `xdg-desktop-portal-kde`.
+- Niri loads `/usr/share/xdg-desktop-portal/niri-portals.conf`, owned by the
+  `niri` package. Fedora 44 selects GNOME first, GTK second, and GNOME Keyring
+  for Secret Service.
+- GNOME uses its native GNOME portal stack.
+- Plasma loads Fedora's `kde-portals.conf` and uses
+  `xdg-desktop-portal-kde`, KWallet, and Plasma notifications.
 
-Do not add a user-level generic `portals.conf`: its higher-precedence fallback
-would mask Fedora's desktop-specific policy. Do not export KDE session variables
-globally or replace working Niri components merely to make the primary desktop
-look KDE-native.
+Fedora 44's GNOME `FileChooser` implementation delegates to
+`org.gnome.Nautilus`, so retain Nautilus even when Yazi is the default file
+manager and Dolphin is available. Do not replace that chooser with GTK merely
+to compensate for a removed Workstation package.
 
-## Acceptance evidence and regression gate
+Verify that no higher-precedence user policy masks Fedora:
 
-The Fedora 44 cutover was accepted only after both PLM paths passed real tests:
+```bash
+test ! -e "$HOME/.config/xdg-desktop-portal/portals.conf"
+test ! -e "$HOME/.config/xdg-desktop-portal/niri-portals.conf"
+rpm -qf /usr/share/xdg-desktop-portal/niri-portals.conf
+```
 
-1. PLM offered the packaged Niri and Plasma sessions and remembered the last
-   choice.
-2. PLM → Niri started Niri/Noctalia with GNOME/GTK portals, GNOME Keyring,
-   silent GCR signing, NVIDIA, display, networking, Bluetooth, PipeWire, and
-   WirePlumber intact.
-3. PLM → Plasma started KWin/Plasma with KDE portals, PolicyKit, networking,
-   Bluetooth, audio, removable storage, Discover, notifications, lock/unlock,
-   and suspend/resume intact.
-4. The canonical `kdewallet` was created and PAM-opened without error `-9`.
-5. After a complete Plasma relogin and GCR restart, SSH signing retrieved its
-   passphrase silently from KWallet.
+Do not export KDE session variables globally or replace working Niri components
+merely to make the primary desktop look KDE-native.
 
-After a release upgrade or display-manager change, repeat both login paths,
-portal checks, lock/suspend, and a GCR restart plus authenticated operation.
+## Acceptance gate
 
-## Reviewed GNOME reduction
+After a clean installation, release upgrade, or display-manager change, test all
+three sessions through PLM:
 
-Removing a desktop session is different from purging every package with
-`gnome` in its name. The selected target removes GDM, GNOME Shell/session,
-Mutter, the GNOME Shell extensions, initial setup/tour, and GNOME Remote
-Desktop. It also removes reviewed duplicate Workstation applications and their
-now-ownerless support stacks where the declared defaults already provide Yazi
-or Dolphin, Zathura or Okular, imv, mpv, Helix, Discover, Plasma System Monitor,
-Filelight, KCharSelect, Thunderbird, or Noctalia.
+1. **Niri:** Noctalia, GNOME/GTK portals, browser open/save/upload, GNOME
+   Keyring, silent GCR signing, NVIDIA where applicable, networking, Bluetooth,
+   PipeWire/WirePlumber, recording, lock, and suspend/resume.
+2. **Plasma:** KWin/Plasma, KDE portals, PolicyKit, networking, Bluetooth,
+   audio, removable storage, Discover, notifications, lock/suspend, canonical
+   `kdewallet`, and silent GCR signing after a fresh agent restart.
+3. **GNOME:** GNOME Shell/Mutter, GNOME portals, Nautilus chooser, keyring,
+   networking, audio, lock, and suspend/resume.
+4. Return to **Niri** so PLM remembers the preferred daily session.
 
-It deliberately retains the Niri integration packages listed above, including
-Nautilus solely for the GNOME portal chooser; Yazi remains the default file
-manager and Dolphin the graphical fallback. The current standalone capability
-set also retains GNOME Disks, Calculator, Simple Scan, Snapshot, Boxes, and
-Connections; those are applications, not a third desktop.
+The inspected machine already passed the Niri and Plasma gates before GNOME was
+restored. A real PLM → GNOME login remains required before claiming the new
+three-session topology is fully accepted.
 
-Never run `dnf group remove gnome-desktop` or an unreviewed `dnf autoremove`.
-Fedora Workstation protects `gnome-shell` because it assumes GNOME is the only
-graphical shell. The clean-install guide documents the one audited transaction
-that clears that command-local list and immediately restores every core
-protection except `gnome-shell`; do not persistently edit the package-owned
-protection file.
+## Workstation retention policy
 
-Preview explicit batches with `--assumeno --no-autoremove`. Require zero
-removals from Niri, Noctalia, Plasma, PLM, KWallet PAM, GNOME Keyring/GCR,
-portals, graphics, audio, networking, or deliberately retained applications.
-Standalone application cleanup remains preference-driven rather than a desktop
-purity requirement.
+Do not remove Workstation applications or support libraries merely because a
+KDE or preferred application overlaps them. Desktop files consume little
+operational complexity; hidden portal, preview, online-account, printing, and
+file-manager integrations are more important than package-count reduction.
+
+Specifically:
+
+- do not remove GDM, GNOME Shell/session, Mutter, Nautilus, Papers, GNOME
+  Software, Evolution Data Server, GNOME Online Accounts, or their support
+  stacks as part of this setup;
+- do not run `dnf group remove gnome-desktop`;
+- do not run an unreviewed `dnf autoremove`;
+- keep only one *active* display manager by controlling the systemd alias.
+
+Preference remains separate from installation: Yazi, Zathura, imv, mpv, Helix,
+and Thunderbird can remain MIME defaults while Workstation and KDE applications
+stay available.
 
 ## Recovery
 
-Before GDM is removed, rollback is only a service switch:
+Because GDM remains installed, rollback is only a service switch:
 
 ```bash
 sudo systemctl disable plasmalogin.service
-sudo systemctl enable gdm.service
+sudo systemctl enable --force gdm.service
+test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
+  /usr/lib/systemd/system/gdm.service
 sudo systemctl reboot
 ```
 
-After the reviewed cleanup, reinstall the rollback stack first:
+Return to PLM with the inverse operation after correcting the problem:
 
 ```bash
-sudo dnf install gdm gnome-shell gnome-session-wayland-session
-sudo systemctl disable plasmalogin.service
-sudo systemctl enable gdm.service
+sudo systemctl disable gdm.service
+sudo systemctl enable --force plasmalogin.service
 test "$(readlink -f /etc/systemd/system/display-manager.service)" = \
-  /usr/lib/systemd/system/gdm.service
+  /usr/lib/systemd/system/plasmalogin.service
 sudo systemctl reboot
 ```
 

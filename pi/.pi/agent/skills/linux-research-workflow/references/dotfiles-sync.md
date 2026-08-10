@@ -16,7 +16,7 @@ Declared packages are:
 
 ```text
 ghostty fish starship herdr helix zathura yazi niri lazygit noctalia
-xdg-desktop-portal pi desktop automation git
+pi desktop automation git
 ```
 
 `assets`, `bootstrap`, `system`, and `tests` are explicitly non-Stow directories.

@@ -1,6 +1,11 @@
 # package	classification	executables	desktop_files	units	purpose	profile
 # desktop_files use application: or wayland: prefixes; units use user: or system: prefixes.
 # profile is exactly all, desktop, or laptop.
+fedora-release-workstation	session	-	-	-	Fedora Workstation base retained intact beneath the added desktops	all
+gdm	feature	-	-	system:gdm.service	Installed inactive rollback display manager; PLM owns the boot alias	all
+gnome-shell	session	gnome-shell	-	-	Retained Workstation GNOME shell	all
+gnome-session-wayland-session	session	-	wayland:gnome.desktop	-	Retained Workstation GNOME Wayland session	all
+mutter	session	-	-	-	Retained Workstation GNOME compositor	all
 niri	session	niri	wayland:niri.desktop	user:niri.service	Primary compositor and package-provided Wayland session	all
 noctalia	session	noctalia	application:dev.noctalia.Noctalia.desktop	-	Native shell for the Niri session	all
 plasma-desktop	session	-	-	-	Fedora KDE group anchor for the full Plasma fallback desktop	all
@@ -11,7 +16,7 @@ polkit-kde	session	-	-	user:plasma-polkit-agent.service	PolicyKit authentication
 plasma-systemsettings	feature	systemsettings	application:systemsettings.desktop	-	Plasma desktop configuration interface	all
 dolphin	feature	dolphin	application:org.kde.dolphin.desktop	-	Plasma fallback file manager	all
 konsole	feature	konsole	application:org.kde.konsole.desktop	-	Plasma fallback terminal	all
-plasma-login-manager	session	plasmalogin	-	system:plasmalogin.service	Selected login manager offering primary Niri and fallback Plasma	all
+plasma-login-manager	session	plasmalogin	-	system:plasmalogin.service	Active login manager offering GNOME, primary Niri, and fallback Plasma	all
 pam-kwallet	session	-	-	-	Plasma Login Manager PAM module for canonical KDE wallet login unlock	all
 plasma-setup	optional	-	-	system:plasma-setup.service	Fedora KDE group OOBE retained but disabled on an already-provisioned Workstation	all
 pipewire	session	pipewire	-	user:pipewire.service	Audio and Noctalia runtime	all
