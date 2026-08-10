@@ -54,6 +54,10 @@ assert_link_to "$HOME_TEST/.config/ghostty/fallbacks/noctalia" \
 assert_link_to "$HOME_TEST/.config/git/naldo.conf" "$REPO_DIR/git/.config/git/naldo.conf"
 assert_link_to "$HOME_TEST/.local/bin/sync-all" "$REPO_DIR/automation/.local/bin/sync-all"
 assert_link_to "$HOME_TEST/.local/bin/naldo-update" "$REPO_DIR/automation/.local/bin/naldo-update"
+assert_link_to "$HOME_TEST/.config/autostart/org.kde.xwaylandvideobridge.desktop" \
+  "$REPO_DIR/desktop/.config/autostart/org.kde.xwaylandvideobridge.desktop"
+desktop-file-validate "$HOME_TEST/.config/autostart/org.kde.xwaylandvideobridge.desktop" ||
+  fail 'XWayland Video Bridge autostart policy is invalid'
 [[ -f "$HOME_TEST/.config/niri/machine.kdl" && ! -L "$HOME_TEST/.config/niri/machine.kdl" ]] ||
   fail 'Niri machine selector is not real machine-local state'
 grep -Fq 'profiles/desktop.kdl' "$HOME_TEST/.config/niri/machine.kdl" ||

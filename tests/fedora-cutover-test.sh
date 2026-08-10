@@ -18,7 +18,7 @@ pass() {
   printf 'ok %d - %s\n' "$checks" "$1"
 }
 
-for package in openssh-clients gcr gh git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig gnupg2 tar evtest; do
+for package in openssh-clients gcr xwaylandvideobridge gh git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig gnupg2 tar evtest; do
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
@@ -71,6 +71,25 @@ grep -Fq 'key-loading autostart; key loading in Plasma is manual' \
   "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
   fail 'desktop runbook does not make Plasma key loading explicitly manual'
 pass 'native SSH agents retain manual Plasma key loading without tracked overrides'
+
+video_bridge_autostart="$REPO_DIR/desktop/.config/autostart/org.kde.xwaylandvideobridge.desktop"
+[[ -f "$video_bridge_autostart" && ! -L "$video_bridge_autostart" ]] ||
+  fail 'XWayland Video Bridge autostart policy is not a regular tracked source'
+desktop-file-validate "$video_bridge_autostart" ||
+  fail 'XWayland Video Bridge autostart policy is invalid'
+grep -Fqx 'OnlyShowIn=KDE;GNOME;' "$video_bridge_autostart" ||
+  fail 'XWayland Video Bridge is not excluded from the Niri session'
+! grep -Eq '^(Hidden=true|NotShowIn=)' "$video_bridge_autostart" ||
+  fail 'XWayland Video Bridge policy disables more than the selected session scope'
+awk -F '\t' '
+  $1 == "xwaylandvideobridge" && $2 == "feature" &&
+  $3 == "xwaylandvideobridge" &&
+  $4 == "application:org.kde.xwaylandvideobridge.desktop" { found=1 }
+  END { exit !found }
+' "$DNF" || fail 'XWayland Video Bridge source is not owned by the Fedora manifest'
+grep -Fq 'OnlyShowIn=KDE;GNOME;' "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+  fail 'desktop runbook omits the session-scoped video-bridge policy'
+pass 'XWayland Video Bridge remains installed for legacy sharing without entering Niri'
 
 for package in fedora-release-workstation gdm gnome-shell \
   gnome-session-wayland-session mutter; do

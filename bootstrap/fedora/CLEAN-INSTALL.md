@@ -731,7 +731,16 @@ esac
 sync-control status
 test "$(systemctl --user is-active sync-all.timer 2>/dev/null || true)" = inactive
 test ! -e "$HOME/.config/systemd/user/timers.target.wants/sync-all.timer"
+test "$(readlink -f "$HOME/.config/autostart/org.kde.xwaylandvideobridge.desktop")" = \
+  "$HOME/dotfiles/desktop/.config/autostart/org.kde.xwaylandvideobridge.desktop"
+desktop-file-validate \
+  "$HOME/.config/autostart/org.kde.xwaylandvideobridge.desktop"
 ```
+
+The same-ID XDG autostart entry retains XWayland Video Bridge for legacy X11
+screen sharing in KDE/GNOME but excludes it from Niri with
+`OnlyShowIn=KDE;GNOME;`. Native Niri portal capture does not require the bridge,
+and no package-owned file is changed.
 
 The desktop package owns no SSH-agent selection or key-loading policy.
 Niri/GNOME and Plasma inherit their different package-owned agent sockets from
@@ -976,6 +985,10 @@ systemctl is-active keyd.service
 systemctl is-active tailscaled.service
 systemctl --user is-active niri.service
 systemctl --user is-active gcr-ssh-agent.socket
+test "$(systemctl --user is-active \
+  'app-org.kde.xwaylandvideobridge@autostart.service' 2>/dev/null || true)" = inactive
+test "$(niri msg -j windows | \
+  jq '[.[] | select(.app_id == "xwaylandvideobridge")] | length')" = 0
 test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = "$XDG_RUNTIME_DIR/gcr/ssh"
 systemd-run --user --wait --collect \
   --unit=naldo-post-reboot-git-check.service \
@@ -1016,6 +1029,8 @@ test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = \
 systemctl --user show-environment | \
   grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket"
 systemctl --user is-active ssh-agent.socket ssh-agent.service
+systemctl --user is-active \
+  'app-org.kde.xwaylandvideobridge@autostart.service'
 grep -Fx 'Default Wallet=kdewallet' "$HOME/.config/kwalletrc"
 test "$(qdbus-qt6 org.kde.ksecretd /ksecretd org.kde.KWallet.isOpen kdewallet)" = true
 ! journalctl --user -b --no-pager | \
@@ -1048,6 +1063,8 @@ test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalog
 case ":${XDG_CURRENT_DESKTOP-}:" in *:GNOME:*) ;; *) exit 1 ;; esac
 systemctl --user is-active xdg-desktop-portal.service
 systemctl --user is-active gcr-ssh-agent.socket
+systemctl --user is-active \
+  'app-org.kde.xwaylandvideobridge@autostart.service'
 systemd-run --user --wait --collect \
   --unit=naldo-gnome-gcr-check.service \
   /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main

@@ -55,6 +55,14 @@ Niri's user-facing PolicyKit agent; the system authority remains separate.
 GNOME Keyring supplies Niri's Secret Service. Verify backend selection and
 service state rather than adding manual startup commands.
 
+Fedora's KDE group retains XWayland Video Bridge for legacy X11 screen sharing,
+but its unrestricted vendor autostart can expose an idle full-output bridge
+window as a black tile through Niri's xwayland-satellite integration. The
+tracked same-ID XDG autostart entry uses `OnlyShowIn=KDE;GNOME;`: keep the
+package and package-owned desktop files intact, do not hide the surface with a
+Niri opacity rule, and expect native Niri portal capture to work without the
+bridge.
+
 ## Native Noctalia v5
 
 Noctalia v5 is a native Wayland shell configured by TOML and controlled with

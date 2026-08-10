@@ -53,8 +53,10 @@ Niri and GNOME use Fedora's package-owned GNOME/GTK portal policy, GNOME
 Keyring, and GCR SSH agent. Plasma uses Fedora's KDE portal policy, canonical
 `kdewallet`, and OpenSSH agent. Plasma deliberately has no custom key-loading
 autostart: after reboot, run `ssh-add ~/.ssh/id_ed25519` once in a terminal.
-There is no user portal override or desktop-removal phase. The acceptance and
-recovery boundaries are in
+The KDE group's XWayland Video Bridge remains available for legacy screen
+sharing in Plasma/GNOME but its idle virtual window is excluded from Niri
+through a session-scoped XDG autostart entry. There is no user portal override
+or desktop-removal phase. The acceptance and recovery boundaries are in
 [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md).
 
 ## Deployment model

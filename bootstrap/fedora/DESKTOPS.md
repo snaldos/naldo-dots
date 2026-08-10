@@ -145,6 +145,42 @@ synchronization in Plasma. An active but unselected GCR socket may remain
 available for the retained Niri/GNOME sessions; `SSH_AUTH_SOCK` identifies the
 agent the session uses.
 
+## X11 screen-sharing bridge boundary
+
+Fedora's complete KDE group includes XWayland Video Bridge for legacy X11
+applications that cannot consume native Wayland screen-cast portals. Niri,
+Noctalia, native browsers, and portal-aware recording applications do not need
+this bridge. Keep the package installed for Plasma/GNOME compatibility.
+
+The package-owned `/etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop` has
+no desktop restriction. On the inspected Intel laptop, its idle full-output X11
+surface is mapped through xwayland-satellite as a persistent black Niri tile;
+the same versions remain hidden on the NVIDIA desktop. This is runtime
+interop—not a wallpaper or layer-shell surface—and an opacity/window rule would
+leave the unwanted client alive.
+
+The tracked `desktop` package therefore shadows only the XDG autostart metadata
+with the same desktop-file ID and this explicit session scope:
+
+```ini
+OnlyShowIn=KDE;GNOME;
+```
+
+It does not replace the executable, remove the KDE group member, or change any
+package-owned file. Validate both the source and deployed link:
+
+```bash
+desktop-file-validate \
+  "$HOME/.config/autostart/org.kde.xwaylandvideobridge.desktop"
+test "$(readlink -f "$HOME/.config/autostart/org.kde.xwaylandvideobridge.desktop")" = \
+  "$HOME/dotfiles/desktop/.config/autostart/org.kde.xwaylandvideobridge.desktop"
+```
+
+In Niri, systemd may generate the autostart unit, but its `KDE:GNOME`
+`ExecCondition` must skip execution: the service stays inactive and no bridge
+process or window exists. Plasma and GNOME may run the service for legacy
+screen-sharing compatibility.
+
 ## Portal boundaries
 
 Use Fedora's package-owned desktop policies without a user override:

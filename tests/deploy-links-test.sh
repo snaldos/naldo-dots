@@ -47,6 +47,8 @@ run_successfully "$workspace/clean-apply.log" "$DEPLOY_LINKS" --target "$clean_t
 [[ -L "$clean_target/.local/bin/sync-all" ]] || fail 'sync-all source was not linked'
 [[ -L "$clean_target/.local/bin/naldo-update" ]] || fail 'naldo-update source was not linked'
 [[ -L "$clean_target/.local/share/applications/yazi.desktop" ]] || fail 'Yazi desktop source was not linked'
+[[ -L "$clean_target/.config/autostart/org.kde.xwaylandvideobridge.desktop" ]] ||
+  fail 'session-scoped XWayland Video Bridge autostart was not linked'
 first_link="$(readlink "$clean_target/.config/helix/config.toml")"
 run_successfully "$workspace/clean-repeat.log" "$DEPLOY_LINKS" --target "$clean_target"
 [[ "$(readlink "$clean_target/.config/helix/config.toml")" == "$first_link" ]] ||
