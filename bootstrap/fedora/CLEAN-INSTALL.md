@@ -127,9 +127,9 @@ git clone git@github.com:snaldos/naldo-dots.git "$HOME/dotfiles"
 cd "$HOME/dotfiles"
 ```
 
-Niri/GNOME retain GCR; Plasma later uses Fedora's OpenSSH agent and requires one
-`ssh-add` per agent lifetime. Do not configure agent forwarding,
-`authorized_keys`, `sshd`, or Tailscale SSH.
+Niri/GNOME retain GCR; Plasma later uses Fedora's OpenSSH agent and a scoped
+KSSHAskPass autostart to load the key once per login. Do not configure agent
+forwarding, `authorized_keys`, `sshd`, or Tailscale SSH.
 
 ## 4. Install selected Fedora packages
 
@@ -731,10 +731,17 @@ esac
 sync-control status
 test "$(systemctl --user is-active sync-all.timer 2>/dev/null || true)" = inactive
 test ! -e "$HOME/.config/systemd/user/timers.target.wants/sync-all.timer"
+test "$(readlink -f "$HOME/.local/bin/naldo-plasma-ssh-add")" = \
+  "$HOME/dotfiles/desktop/.local/bin/naldo-plasma-ssh-add"
+test "$(readlink -f "$HOME/.config/autostart/naldo-plasma-ssh-add.desktop")" = \
+  "$HOME/dotfiles/desktop/.config/autostart/naldo-plasma-ssh-add.desktop"
+bash -n "$HOME/.local/bin/naldo-plasma-ssh-add"
+desktop-file-validate "$HOME/.config/autostart/naldo-plasma-ssh-add.desktop"
 ```
 
-The desktop package owns no SSH-agent policy. Niri/GNOME and Plasma inherit
-their different package-owned agent sockets from a fresh session.
+The desktop package owns no SSH-agent selection policy. Niri/GNOME and Plasma
+inherit their different package-owned sockets from a fresh session; the
+Plasma-only autostart merely loads the key after OpenSSH has been selected.
 
 Set machine-local Git identity:
 
@@ -1021,21 +1028,23 @@ test "$(qdbus-qt6 org.kde.ksecretd /ksecretd org.kde.KWallet.isOpen kdewallet)" 
   grep -F 'Wallet failed to get opened by PAM, error code is -9'
 ```
 
-OpenSSH keeps an unlocked key only in memory. Load it once per agent lifetime,
-entering the passphrase in the local terminal or Fedora's KSSHAskPass prompt,
-then prove that a user service inherits the same agent:
+The Plasma-only XDG autostart now calls `naldo-plasma-ssh-add`. It validates the
+selected socket and uses Fedora's KSSHAskPass to request the passphrase only when
+this device's key is absent from the agent. Enter it once in that local dialog.
+Then prove that the exact key and a user service inherit the same agent:
 
 ```bash
-ssh-add -l >/dev/null 2>&1 || ssh-add "$HOME/.ssh/id_ed25519"
-ssh-add -l
+ssh-add -T "$HOME/.ssh/id_ed25519.pub"
 systemd-run --user --wait --collect \
   --unit=naldo-plasma-openssh-check.service \
   /usr/bin/git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 ```
 
-Repeat `ssh-add` after an agent restart or reboot. KWallet remains available for
-Plasma application secrets, but standard OpenSSH-agent use does not store the
-SSH passphrase there.
+If the dialog was cancelled, run `naldo-plasma-ssh-add` to reopen it and repeat
+the checks. OpenSSH keeps an unlocked key only in memory, so the autostart asks
+once after each fresh Plasma login. KWallet remains available for Plasma
+application secrets, but standard OpenSSH-agent use does not store the SSH
+passphrase there.
 
 Log out, select **GNOME** in PLM, and verify the retained Workstation session.
 Open a terminal, enter Bash, and check the real login path:
@@ -1165,8 +1174,9 @@ The machine is complete when:
 
 - the selected profile verifier has zero missing required items;
 - all repository tests pass;
-- GCR unlocks silently in Niri/GNOME, Plasma's OpenSSH key is loaded with
-  `ssh-add`, and systemd Git access succeeds in the selected session;
+- GCR unlocks silently in Niri/GNOME, Plasma's KSSHAskPass autostart loads the
+  OpenSSH key once per login, and systemd Git access succeeds in the selected
+  session;
 - `gh`, `gh-dash`, Tuicr, Thunderbird, VS Code, and the selected VS Code
   extensions are present;
 - Herdr's generated Pi integration is current, Codex CLI and Pi have separate

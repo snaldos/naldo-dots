@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Unlock SSH key
+Comment=Load the passphrase-protected SSH key into Plasma's OpenSSH agent
+Exec=naldo-plasma-ssh-add
+TryExec=naldo-plasma-ssh-add
+OnlyShowIn=KDE;
+Terminal=false
+NoDisplay=true
+StartupNotify=false

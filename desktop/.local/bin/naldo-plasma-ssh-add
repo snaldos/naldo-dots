@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+case ":${XDG_CURRENT_DESKTOP-}:" in
+  *:KDE:*) ;;
+  *) exit 0 ;;
+esac
+
+readonly expected_socket="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}/ssh-agent.socket"
+if [[ "${SSH_AUTH_SOCK-}" != "$expected_socket" ]]; then
+  printf 'Plasma did not select Fedora OpenSSH agent: %s\n' \
+    "${SSH_AUTH_SOCK-<unset>}" >&2
+  exit 1
+fi
+if [[ ! -S "$expected_socket" ]]; then
+  printf 'Fedora OpenSSH agent socket is absent: %s\n' "$expected_socket" >&2
+  exit 1
+fi
+
+readonly private_key="$HOME/.ssh/id_ed25519"
+readonly public_key="$private_key.pub"
+if [[ ! -r "$private_key" || ! -r "$public_key" ]]; then
+  printf 'SSH identity is absent or unreadable: %s\n' "$private_key" >&2
+  exit 1
+fi
+
+if /usr/bin/ssh-add -T "$public_key" >/dev/null 2>&1; then
+  exit 0
+fi
+
+export SSH_ASKPASS=/usr/bin/ksshaskpass
+export SSH_ASKPASS_REQUIRE=force
+exec /usr/bin/ssh-add "$private_key" </dev/null

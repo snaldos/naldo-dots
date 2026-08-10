@@ -18,7 +18,7 @@ pass() {
   printf 'ok %d - %s\n' "$checks" "$1"
 }
 
-for package in openssh-clients gcr gh git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig gnupg2 tar evtest; do
+for package in openssh-clients gcr ksshaskpass gh git-lfs nodejs22 nodejs22-npm rust cargo gcc gcc-c++ make cmake pkgconf-pkg-config fontconfig gnupg2 tar evtest; do
   [[ "$(awk -F '\t' -v package="$package" '$1 == package { count++ } END { print count+0 }' "$DNF")" == 1 ]] ||
     fail "missing exact Fedora package: $package"
 done
@@ -28,6 +28,8 @@ for obsolete in openssh-server npm nodejs nodejs-npm typst ruff celluloid; do
 done
 awk -F '\t' '$1 == "gcr" && $2 == "feature" && $5 == "user:gcr-ssh-agent.socket" { found=1 } END { exit !found }' \
   "$DNF" || fail 'GCR does not own the selected Niri/GNOME SSH-agent socket'
+awk -F '\t' '$1 == "ksshaskpass" && $2 == "feature" && $3 == "ksshaskpass" { found=1 } END { exit !found }' \
+  "$DNF" || fail 'Plasma SSH autostart has no Fedora KSSHAskPass provider'
 awk -F '\t' '$1 == "git-lfs" && $2 == "feature" && $3 == "git-lfs" { found=1 } END { exit !found }' \
   "$DNF" || fail 'Git LFS is not a selected Fedora feature'
 for ownership in \
@@ -59,14 +61,35 @@ done
 for session_check in \
   '$XDG_RUNTIME_DIR/gcr/ssh' \
   '$XDG_RUNTIME_DIR/ssh-agent.socket' \
-  'ssh-add "$HOME/.ssh/id_ed25519"'; do
+  'ssh-add -T "$HOME/.ssh/id_ed25519.pub"'; do
   grep -Fq "$session_check" "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
     fail "clean install omits native session-agent check: $session_check"
 done
 grep -Fq "Retain Fedora's session-native agent selection" \
   "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
   fail 'desktop runbook does not preserve Fedora session-native agents'
-pass 'Niri GNOME and Plasma retain Fedora session-native SSH agents without tracked overrides'
+
+plasma_loader="$REPO_DIR/desktop/.local/bin/naldo-plasma-ssh-add"
+plasma_autostart="$REPO_DIR/desktop/.config/autostart/naldo-plasma-ssh-add.desktop"
+[[ -x "$plasma_loader" && -f "$plasma_autostart" ]] ||
+  fail 'tracked Plasma SSH loader or autostart is absent'
+bash -n "$plasma_loader" || fail 'Plasma SSH loader is not valid Bash'
+desktop-file-validate "$plasma_autostart" || fail 'Plasma SSH autostart is invalid'
+# The variables belong literally to the tracked loader source.
+# shellcheck disable=SC2016
+for loader_policy in \
+  'expected_socket="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}/ssh-agent.socket"' \
+  '/usr/bin/ssh-add -T "$public_key"' \
+  'SSH_ASKPASS=/usr/bin/ksshaskpass' \
+  'SSH_ASKPASS_REQUIRE=force'; do
+  grep -Fq "$loader_policy" "$plasma_loader" ||
+    fail "Plasma SSH loader omits: $loader_policy"
+done
+grep -Fqx 'Exec=naldo-plasma-ssh-add' "$plasma_autostart" ||
+  fail 'Plasma autostart does not invoke the tracked loader'
+grep -Fqx 'OnlyShowIn=KDE;' "$plasma_autostart" ||
+  fail 'SSH loader autostart is not restricted to Plasma'
+pass 'Fedora session-native SSH agents retain one scoped Plasma key-loading prompt'
 
 for package in fedora-release-workstation gdm gnome-shell \
   gnome-session-wayland-session mutter; do

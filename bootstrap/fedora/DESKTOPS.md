@@ -111,7 +111,8 @@ across every desktop:
 
 Do not track replacements for those Plasma files, export `SSH_AUTH_SOCK` through
 `environment.d`, or set it as a Fish universal variable. A fresh session must
-inherit its package-owned socket naturally.
+inherit its package-owned socket naturally. The tracked Plasma-only autostart
+loads the key into that selected agent; it does not select or replace an agent.
 
 Verify Niri/GNOME with GCR. The first command may open GCR's local prompt; after
 remembering the passphrase in GNOME Keyring, the post-restart command must be
@@ -124,7 +125,9 @@ systemctl --user restart gcr-ssh-agent.service
 git -C "$HOME/dotfiles" ls-remote origin refs/heads/main
 ```
 
-Verify Plasma with Fedora's OpenSSH agent:
+Verify Plasma with Fedora's OpenSSH agent. The XDG autostart calls
+`naldo-plasma-ssh-add`, which checks the public key with `ssh-add -T` and uses
+Fedora's KSSHAskPass only when loading is required:
 
 ```bash
 test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/ssh-agent.socket"
@@ -133,14 +136,14 @@ test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = \
 systemctl --user show-environment | \
   grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/ssh-agent.socket"
 systemctl --user is-active ssh-agent.socket ssh-agent.service
-ssh-add "$HOME/.ssh/id_ed25519"
-ssh-add -l
+ssh-add -T "$HOME/.ssh/id_ed25519.pub"
 ```
 
-OpenSSH forgets the unlocked key when its agent or user manager stops. Load it
-again after reboot before enabling or relying on unattended synchronization in
-Plasma. An active but unselected GCR socket may remain available for the retained
-Niri/GNOME sessions; `SSH_AUTH_SOCK` identifies the agent the session uses.
+OpenSSH forgets the unlocked key when its agent or user manager stops, so the
+autostart presents one local passphrase dialog after each fresh Plasma login.
+If it was cancelled, rerun `naldo-plasma-ssh-add`. An active but unselected GCR
+socket may remain available for the retained Niri/GNOME sessions;
+`SSH_AUTH_SOCK` identifies the agent the session uses.
 
 ## Portal boundaries
 
@@ -179,7 +182,8 @@ three sessions through PLM:
    PipeWire/WirePlumber, recording, lock, and suspend/resume.
 2. **Plasma:** KWin/Plasma, KDE portals, PolicyKit, networking, Bluetooth,
    audio, removable storage, Discover, notifications, lock/suspend, canonical
-   `kdewallet`, Fedora's OpenSSH agent, and signing after an explicit `ssh-add`.
+   `kdewallet`, Fedora's OpenSSH agent, the one-time KSSHAskPass autostart
+   prompt, and signing from both the session and a user service.
 3. **GNOME:** GNOME Shell/Mutter, GNOME portals, Nautilus chooser, keyring,
    networking, audio, lock, and suspend/resume.
 4. Return to **Niri** so PLM remembers the preferred daily session.
