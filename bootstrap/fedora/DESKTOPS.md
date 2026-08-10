@@ -106,6 +106,41 @@ Secret Service unlock protocol silently and changes the collection to unlocked.
 The acceptance test is therefore a fresh GCR restart followed by real SSH
 signing, not the initial `Locked` property alone.
 
+## SSH agent boundary
+
+Fedora 44's Plasma composition otherwise selects a second OpenSSH agent through
+two package-owned files:
+
+- `/etc/xdg/plasma-workspace/env/ssh-agent.sh` fills an empty
+  `SSH_AUTH_SOCK` with `$XDG_RUNTIME_DIR/ssh-agent.socket`;
+- `/usr/lib/systemd/user/plasma-core.target.d/ssh-agent.conf` pulls
+  `ssh-agent.service` into every Plasma session.
+
+That conflicts with the selected single GCR agent. The tracked `desktop` Stow
+package therefore owns two higher-precedence user files:
+
+- `~/.config/plasma-workspace/env/ssh-agent.sh` exports
+  `$XDG_RUNTIME_DIR/gcr/ssh` inside Plasma;
+- `~/.config/systemd/user/plasma-core.target.d/ssh-agent.conf` shadows only the
+  same-named vendor drop-in, without editing or masking a package file.
+
+After a fresh Plasma login, verify the ambient route rather than hiding a wrong
+session environment with a per-command override:
+
+```bash
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/gcr/ssh"
+test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = "$XDG_RUNTIME_DIR/gcr/ssh"
+systemctl --user show-environment | \
+  grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh"
+test "$(systemctl --user is-active ssh-agent.service 2>/dev/null || true)" = inactive
+test "$(systemctl --user is-active ssh-agent.socket 2>/dev/null || true)" = inactive
+test "$(systemctl --user show ssh-agent.service -p MainPID --value)" = 0
+```
+
+A signing command prefixed with `SSH_AUTH_SOCK=...` proves only that GCR itself
+works; it does not prove that Bash, Fish, applications, or `sync-all.service`
+will select GCR naturally.
+
 ## Portal boundaries
 
 Use Fedora's package-owned desktop policies without a user override:

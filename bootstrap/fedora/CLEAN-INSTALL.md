@@ -742,7 +742,17 @@ esac
 sync-control status
 test "$(systemctl --user is-active sync-all.timer 2>/dev/null || true)" = inactive
 test ! -e "$HOME/.config/systemd/user/timers.target.wants/sync-all.timer"
+test "$(readlink -f "$HOME/.config/plasma-workspace/env/ssh-agent.sh")" = \
+  "$HOME/dotfiles/desktop/.config/plasma-workspace/env/ssh-agent.sh"
+test "$(readlink -f "$HOME/.config/systemd/user/plasma-core.target.d/ssh-agent.conf")" = \
+  "$HOME/dotfiles/desktop/.config/systemd/user/plasma-core.target.d/ssh-agent.conf"
+sh -n "$HOME/.config/plasma-workspace/env/ssh-agent.sh"
 ```
+
+Those two tracked Plasma files form one policy: the environment hook selects
+Fedora GCR, while the higher-precedence same-named user drop-in shadows only
+Plasma's vendor dependency on `ssh-agent.service`. Do not edit package files or
+run a second OpenSSH agent beside GCR.
 
 Set machine-local Git identity:
 
@@ -1016,6 +1026,13 @@ bash
 test -n "$BASH_VERSION"
 test "$(loginctl show-session "$XDG_SESSION_ID" -p Service --value)" = plasmalogin
 test "$(loginctl show-session "$XDG_SESSION_ID" -p Desktop --value)" = KDE
+test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/gcr/ssh"
+test "$(fish -lc 'printf %s "$SSH_AUTH_SOCK"')" = "$XDG_RUNTIME_DIR/gcr/ssh"
+systemctl --user show-environment | \
+  grep -Fx "SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/gcr/ssh"
+test "$(systemctl --user is-active ssh-agent.service 2>/dev/null || true)" = inactive
+test "$(systemctl --user is-active ssh-agent.socket 2>/dev/null || true)" = inactive
+test "$(systemctl --user show ssh-agent.service -p MainPID --value)" = 0
 grep -Fx 'Default Wallet=kdewallet' "$HOME/.config/kwalletrc"
 test "$(qdbus-qt6 org.kde.ksecretd /ksecretd org.kde.KWallet.isOpen kdewallet)" = true
 ! journalctl --user -b --no-pager | \
@@ -1024,12 +1041,12 @@ test "$(qdbus-qt6 org.kde.ksecretd /ksecretd org.kde.KWallet.isOpen kdewallet)" 
 
 If GCR has never stored this key in Plasma's separate KWallet backend, the first
 signing request opens a local SSH-passphrase dialog. Enable its remember option
-and enter the passphrase only there:
+and enter the passphrase only there. Do not prefix this command with an explicit
+`SSH_AUTH_SOCK`: the ambient Plasma route is part of the acceptance test.
 
 ```bash
 signature="$(mktemp "${TMPDIR:-/tmp}/naldo-plasma-sign.XXXXXX")"
 printf 'plasma-wallet-enrollment\n' | \
-  SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/gcr/ssh" \
   ssh-keygen -Y sign -f "$HOME/.ssh/id_ed25519.pub" -n file >"$signature"
 test -s "$signature"
 rm -f -- "$signature"
@@ -1042,7 +1059,6 @@ dialog even if KWallet's initial Secret Service `Locked` property was stale:
 systemctl --user restart gcr-ssh-agent.service
 signature="$(mktemp "${TMPDIR:-/tmp}/naldo-plasma-resign.XXXXXX")"
 printf 'plasma-wallet-persistence\n' | \
-  SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/gcr/ssh" \
   ssh-keygen -Y sign -f "$HOME/.ssh/id_ed25519.pub" -n file >"$signature"
 test -s "$signature"
 rm -f -- "$signature"

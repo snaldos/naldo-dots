@@ -46,6 +46,42 @@ for ownership in \
 done
 pass 'Fedora manifest owns selected SSH GCR LFS development and clean-install commands'
 
+plasma_gcr_env="$REPO_DIR/desktop/.config/plasma-workspace/env/ssh-agent.sh"
+plasma_agent_dropin="$REPO_DIR/desktop/.config/systemd/user/plasma-core.target.d/ssh-agent.conf"
+for source in "$plasma_gcr_env" "$plasma_agent_dropin"; do
+  [[ -f "$source" && ! -L "$source" ]] ||
+    fail "Plasma GCR policy is not a tracked regular source: $source"
+done
+sh -n "$plasma_gcr_env" || fail 'Plasma GCR environment hook is not valid POSIX shell'
+# The variables belong literally to the tracked environment-hook source.
+# shellcheck disable=SC2016
+grep -Fqx 'export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/gcr/ssh"' "$plasma_gcr_env" ||
+  fail 'Plasma environment hook does not select the Fedora GCR socket'
+grep -Fqx '[Unit]' "$plasma_agent_dropin" ||
+  fail 'Plasma target override is not a valid same-named unit drop-in'
+! grep -Eq '^[[:space:]]*(Wants|Requires)=.*ssh-agent' "$plasma_agent_dropin" ||
+  fail 'Plasma target override still pulls the competing OpenSSH agent'
+for vendor_path in \
+  /etc/xdg/plasma-workspace/env/ssh-agent.sh \
+  /usr/lib/systemd/user/plasma-core.target.d/ssh-agent.conf; do
+  grep -Fq "$vendor_path" "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
+    fail "desktop runbook omits Fedora Plasma agent source: $vendor_path"
+done
+# These variables belong literally to the documented commands.
+# shellcheck disable=SC2016
+for ambient_check in \
+  'test "$SSH_AUTH_SOCK" = "$XDG_RUNTIME_DIR/gcr/ssh"' \
+  'systemctl --user is-active ssh-agent.service' \
+  'systemctl --user show ssh-agent.service -p MainPID --value'; do
+  grep -Fq "$ambient_check" "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+    fail "clean install omits ambient Plasma agent check: $ambient_check"
+done
+if grep -A3 -F "printf 'plasma-wallet-" "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" |
+  grep -Fq 'SSH_AUTH_SOCK='; then
+  fail 'Plasma signing acceptance still hides session policy with a socket override'
+fi
+pass 'Plasma suppresses the competing OpenSSH agent and validates ambient GCR routing'
+
 for package in fedora-release-workstation gdm gnome-shell \
   gnome-session-wayland-session mutter; do
   awk -F '\t' -v package="$package" '

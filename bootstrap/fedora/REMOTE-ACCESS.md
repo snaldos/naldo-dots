@@ -63,6 +63,14 @@ fish -c 'set -Ux SSH_AUTH_SOCK "$XDG_RUNTIME_DIR/gcr/ssh"'
 export SSH_AUTH_SOCK="$ssh_socket"
 ```
 
+Fedora 44 Plasma also ships a session hook and `plasma-core.target` dependency
+that would select a separate OpenSSH `ssh-agent`. The tracked `desktop` Stow
+package overrides only that Plasma behavior: its environment hook exports the
+GCR socket, and its same-named user drop-in shadows the vendor
+`ssh-agent.service` dependency. See [`DESKTOPS.md`](DESKTOPS.md) for the ambient
+Bash, Fish, and systemd acceptance checks. A per-command `SSH_AUTH_SOCK=...`
+override is not a substitute for fixing the session-wide route.
+
 Do not use `ssh-add` as the enrollment test: a terminal passphrase prompt can
 load a key for only the current agent lifetime. Instead trigger an authenticated
 Git-over-SSH operation:

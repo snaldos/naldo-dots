@@ -91,6 +91,14 @@ Service—GNOME Keyring under Niri and canonical `kdewallet` under Plasma—and 
 a post-restart systemd Git operation before repository synchronization is
 enabled.
 
+Fedora 44 Plasma otherwise exports `$XDG_RUNTIME_DIR/ssh-agent.socket` and pulls
+`ssh-agent.service` through `plasma-core.target`. The tracked `desktop` package
+shadows only that vendor target drop-in and exports `$XDG_RUNTIME_DIR/gcr/ssh`
+from Plasma's user environment hook. In a fresh Plasma login, verify the ambient
+Bash, Fish, and systemd-manager socket, require the OpenSSH agent service/socket
+to be inactive, and run signing without a per-command socket override. An
+explicit `SSH_AUTH_SOCK=...` can hide a broken session policy.
+
 Before a potentially disconnecting operation:
 
 1. determine whether access is local, SSH, Tailscale, or Herdr-mediated;

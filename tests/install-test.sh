@@ -54,6 +54,12 @@ assert_link_to "$HOME_TEST/.config/ghostty/fallbacks/noctalia" \
 assert_link_to "$HOME_TEST/.config/git/naldo.conf" "$REPO_DIR/git/.config/git/naldo.conf"
 assert_link_to "$HOME_TEST/.local/bin/sync-all" "$REPO_DIR/automation/.local/bin/sync-all"
 assert_link_to "$HOME_TEST/.local/bin/naldo-update" "$REPO_DIR/automation/.local/bin/naldo-update"
+assert_link_to "$HOME_TEST/.config/plasma-workspace/env/ssh-agent.sh" \
+  "$REPO_DIR/desktop/.config/plasma-workspace/env/ssh-agent.sh"
+assert_link_to "$HOME_TEST/.config/systemd/user/plasma-core.target.d/ssh-agent.conf" \
+  "$REPO_DIR/desktop/.config/systemd/user/plasma-core.target.d/ssh-agent.conf"
+sh -n "$HOME_TEST/.config/plasma-workspace/env/ssh-agent.sh" ||
+  fail 'deployed Plasma GCR environment hook is not valid POSIX shell'
 [[ -f "$HOME_TEST/.config/niri/machine.kdl" && ! -L "$HOME_TEST/.config/niri/machine.kdl" ]] ||
   fail 'Niri machine selector is not real machine-local state'
 grep -Fq 'profiles/desktop.kdl' "$HOME_TEST/.config/niri/machine.kdl" ||
