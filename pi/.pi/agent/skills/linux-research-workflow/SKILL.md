@@ -4,7 +4,7 @@ description: "Inspect, debug, validate, maintain, or configure Naldo's Fedora-ta
 compatibility: "Fedora 44 KDE Plasma Desktop Edition target; Linux; Plasma Login Manager to primary Niri/Noctalia and fallback KDE Plasma; retained GNOME infrastructure without GNOME Shell/session or GDM; GNU Stow; systemd user services; Fish; Ghostty; Helix hx; Herdr."
 ---
 
-# Linux Research Workstation
+# Linux Research System
 
 ## Verified architecture, not assumptions
 
@@ -17,8 +17,9 @@ Fedora release and application versions:
   GNOME Keyring, GCR, GNOME/GTK portals, Nautilus, and useful GNOME/GTK
   application infrastructure remain
 - Niri running through `niri-session`/`niri.service`, with native Noctalia as the shell
-- Fish, Ghostty, Starship, Helix (`hx`), Yazi, Zen as
-  `app.zen_browser.zen`, and Herdr; Neovim is only an optional stock fallback
+- Fish, Ghostty, Starship, Helix (`hx`), terminal-only Yazi without a desktop
+  entry or MIME override, Zen as `app.zen_browser.zen`, and Herdr; Neovim is
+  only an optional stock fallback
 - portable user configuration in `~/dotfiles`, deployed by GNU Stow with
   `--no-folding`
 - explicit `install.sh --profile desktop|laptop` selection rendered into Niri's machine-local selector
@@ -28,11 +29,10 @@ Fedora release and application versions:
 - root-owned keyd mapping and Bongo Cat udev rule under `system/`, installed only by `install-system.sh`
 - Noctalia templates as durable sources; rendered outputs remain machine-local
 
-The bootstrap runbooks document the selected desktop topology and the explicit,
-reviewed Workstation-to-KDE identity and GNOME session-removal transactions.
-User deployment scripts do not switch the login manager, remove desktops, alter
-the boot path, enable repositories, update packages, or change graphics
-drivers.
+The bootstrap runbooks document the selected KDE Edition, Niri, and Plasma
+topology. User deployment scripts do not switch the login manager, remove
+desktops, alter the boot path, enable repositories, update packages, or change
+graphics drivers.
 
 ## Load the matching reference
 

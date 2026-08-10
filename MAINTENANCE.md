@@ -1,7 +1,7 @@
-# Fedora KDE workstation maintenance
+# Fedora KDE system maintenance
 
 Run `naldo-update` manually from a terminal when there is time to review prompts
-and failures. It updates the normal workstation providers while leaving VS Code
+and failures. It updates the normal system providers while leaving VS Code
 extension maintenance to VS Code itself. It works on both profiles because
 each package manager updates only its locally installed packages. It never
 synchronizes repositories, reboots, enables services, removes software, or

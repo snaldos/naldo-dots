@@ -107,8 +107,11 @@ awk -F '\t' '$1 == "wl-clipboard" && $3 == "wl-copy,wl-paste" && $6 ~ /Yazi file
   "$DNF_MANIFEST" || fail 'Yazi clipboard yanking lacks its selected Wayland provider'
 awk -F '\t' '$1 == "git-core" && $3 == "git" { found=1 } END { exit !found }' \
   "$DNF_MANIFEST" || fail 'Yazi repository-root navigation lacks its Git provider'
-awk -F '\t' '$1 == "yazi" && $5 == "yazi,ya" { found=1 } END { exit !found }' \
-  "$EXTERNAL_MANIFEST" || fail 'Yazi keymap lacks both required Yazi executables'
+awk -F '\t' '
+  $1 == "yazi" && $5 == "yazi,ya" && $6 == "-" && $10 ~ /terminal-only/ { found=1 }
+  END { exit !found }
+' "$EXTERNAL_MANIFEST" ||
+  fail 'Yazi lacks its required executables or has gained desktop integration'
 pass 'Yazi y mirrors selected file URIs to Wayland and g r returns to the Git root'
 
 excluded_annotator='sa'"tty"
@@ -170,7 +173,10 @@ awk '
   fail 'Noctalia Notes does not target the State directory'
 pass 'Noctalia Notes targets State Space current state'
 
-mime_default_is inode/directory yazi.desktop
+! grep -q '^inode/directory=' "$MIMEAPPS" ||
+  fail 'user MIME policy overrides Fedora session-native directory handlers'
+[[ ! -e "$REPO_DIR/desktop/.local/share/applications/yazi.desktop" ]] ||
+  fail 'terminal-only Yazi still has a tracked desktop entry'
 for mime in text/html application/xhtml+xml x-scheme-handler/http x-scheme-handler/https; do
   mime_default_is "$mime" app.zen_browser.zen.desktop
 done
@@ -198,7 +204,7 @@ grep -Fxq 'image/svg+xml=imv.desktop;org.inkscape.Inkscape.desktop;' "$MIMEAPPS"
   fail 'SVG association order differs from policy'
 ! rg -n 'Celluloid|celluloid' "$MIMEAPPS" "$REPO_DIR/yazi/.config/yazi/yazi.toml" >/dev/null ||
   fail 'removed Celluloid alternative remains configured'
-pass 'MIME and Yazi policies contain selected defaults and named additions only'
+pass 'MIME policy leaves directory opens session-native and contains only selected overrides'
 
 python3 - "$REPO_DIR" <<'PY'
 from pathlib import Path

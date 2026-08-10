@@ -1,6 +1,6 @@
 # GitHub identity, GCR, Tailscale, and inbound-access policy
 
-This workstation uses two independent mechanisms:
+This setup uses two independent mechanisms:
 
 - a device-specific OpenSSH key for GitHub Git transport; and
 - Tailscale for private network connectivity.

@@ -80,7 +80,7 @@ pixi run experiment --seed 0
 ```
 
 Use only commands supported by the existing project configuration. BasedPyright
-is the workstation editor default and `ty` is available for project-local
+is the system editor default and `ty` is available for project-local
 opt-in; run the checker selected by the project (`uv run basedpyright` or
 `uv run ty check`) rather than treating both as simultaneous authorities.
 

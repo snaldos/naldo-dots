@@ -72,6 +72,9 @@ color fragment. Never point a rendering hook at a tracked seed or symlink.
 
 ### Yazi
 
+Yazi is a terminal-only file manager invoked explicitly from a terminal, Fish,
+Helix, or Herdr. Do not add a desktop entry or user `inode/directory` override;
+Fedora's session-native handlers remain Nautilus in Niri and Dolphin in Plasma.
 `yazi --debug` may report missing optional openers while exiting successfully.
 Inspect diagnostics. imv, Swappy, Inkscape, and Okular come from Fedora; Sioyek
 is the selected community-maintained, unverified Flatpak alternative.

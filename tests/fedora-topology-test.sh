@@ -4,7 +4,7 @@ set -Eeuo pipefail
 REPO_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 DNF="$REPO_DIR/bootstrap/fedora/dnf-packages.tsv"
 EXTERNAL="$REPO_DIR/bootstrap/fedora/external-tools.tsv"
-workspace="$(mktemp -d "${TMPDIR:-/tmp}/fedora-cutover-test.XXXXXX")"
+workspace="$(mktemp -d "${TMPDIR:-/tmp}/fedora-topology-test.XXXXXX")"
 checks=0
 trap 'rm -rf -- "$workspace"' EXIT
 
@@ -130,20 +130,12 @@ grep -Fq 'sudo systemctl disable plasma-setup.service' "$REPO_DIR/bootstrap/fedo
 grep -Fq '/usr/lib/systemd/system/plasmalogin.service' \
   "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
   fail 'clean install does not verify Plasma Login Manager ownership'
-# The release-version variable belongs literally to the documented conversion command.
-# shellcheck disable=SC2016
-for conversion_guard in \
-  'dnf swap --assumeno --allowerasing' \
-  'dnf swap -y --allowerasing' \
-  'dnf remove --assumeno --no-autoremove' \
-  'dnf remove -y --no-autoremove' \
-  'fedora-release-kde-desktop-$release_version'; do
-  grep -Fq "$conversion_guard" "$REPO_DIR/bootstrap/fedora/DESKTOPS.md" ||
-    fail "desktop conversion runbook omits: $conversion_guard"
-done
-if rg -n 'dnf[[:space:]]+group[[:space:]]+remove[[:space:]]+gnome-desktop|dnf[[:space:]]+autoremove|gnome-\\\*' \
-  "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" >/dev/null; then
-  fail 'clean install contains a broad GNOME or autoremove transaction'
+if rg -n --glob '*.md' \
+  'fedora-release-workstation|Existing Workstation conversion|Workstation-to-KDE|Converted Workstation' \
+  "$REPO_DIR/README.md" "$REPO_DIR/bootstrap/fedora" \
+  "$REPO_DIR/pi/.pi/agent/AGENTS.md" \
+  "$REPO_DIR/pi/.pi/agent/skills/linux-research-workflow" >/dev/null; then
+  fail 'current-state documentation still contains a desktop migration path'
 fi
 for retained_package in gnome-keyring gnome-keyring-pam gcr \
   xdg-desktop-portal xdg-desktop-portal-gnome xdg-desktop-portal-gtk nautilus; do
@@ -324,7 +316,7 @@ pass 'clean install enters Bash explicitly, preserves only Stow conflicts, and c
 
 for scope in 'reusable, human-run Fedora clean-install guide' 'later clean installations' \
   'not a snapshot of every installed package' 'record of transitive' \
-  'system-changing commands remain explicit steps for a human'; do
+  'System-changing commands remain' 'explicit clean-install steps for a human'; do
   grep -Fq "$scope" "$REPO_DIR/bootstrap/fedora/README.md" ||
     fail "Fedora bootstrap scope omits: $scope"
 done

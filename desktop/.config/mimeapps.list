@@ -1,5 +1,4 @@
 [Default Applications]
-inode/directory=yazi.desktop
 text/html=app.zen_browser.zen.desktop
 application/xhtml+xml=app.zen_browser.zen.desktop
 x-scheme-handler/http=app.zen_browser.zen.desktop
@@ -64,7 +63,6 @@ text/vcard=net.thunderbird.Thunderbird.desktop
 text/x-vcard=net.thunderbird.Thunderbird.desktop
 
 [Added Associations]
-inode/directory=yazi.desktop;
 application/pdf=org.pwmt.zathura.desktop;org.kde.okular.desktop;okularApplication_pdf.desktop;com.github.ahrm.sioyek.desktop;
 image/png=imv.desktop;
 image/jpeg=imv.desktop;

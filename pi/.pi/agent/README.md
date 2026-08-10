@@ -1,6 +1,6 @@
 # Naldo's Pi configuration
 
-A quiet, scientific Pi harness for a Tübingen machine-learning master's workflow: mathematics, tutoring, Typst, scientific Python/ML, paper work, neuroscience/cognition, and a Fedora-targeted Linux workstation.
+A quiet, scientific Pi harness for a Tübingen machine-learning master's workflow: mathematics, tutoring, Typst, scientific Python/ML, paper work, neuroscience/cognition, and a Fedora-targeted Linux system.
 
 ## Architecture
 
@@ -129,7 +129,7 @@ The 12 focused skills are:
 - Python, statistics, and ML: `scientific-python`, `statistical-data-analysis`, `ml-experimentation`
 - research sources: `paper-reading-reproduction`, `scientific-documents`
 - cognition: `computational-neuroscience`
-- workstation: `linux-research-workflow`
+- Linux system: `linux-research-workflow`
 - personal knowledge base: `vault-notes`
 
 There is no umbrella research skill, generated project scaffold, custom compaction policy, automatic session naming, or autonomous agent loop.

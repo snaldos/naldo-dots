@@ -21,7 +21,7 @@ wireplumber	session	wireplumber	-	user:wireplumber.service	PipeWire session poli
 xdg-desktop-portal	session	-	-	user:xdg-desktop-portal.service	Portal broker	all
 xdg-desktop-portal-gnome	session	-	-	user:xdg-desktop-portal-gnome.service	GNOME portal backend selected by Fedora's Niri policy	all
 xdg-desktop-portal-gtk	session	-	-	user:xdg-desktop-portal-gtk.service	GTK portal fallback selected by Fedora's Niri policy	all
-nautilus	session	nautilus	application:org.gnome.Nautilus.desktop	-	Niri GNOME portal FileChooser delegate; Yazi remains the default file manager	all
+nautilus	session	nautilus	application:org.gnome.Nautilus.desktop	-	Niri GNOME portal FileChooser delegate and Fedora-default directory handler	all
 gnome-keyring	feature	-	-	user:gnome-keyring-daemon.service	Niri Secret Service and login keyring	all
 gnome-keyring-pam	session	-	-	-	Plasma Login Manager PAM module for Niri login-keyring unlock	all
 gcr	feature	-	-	user:gcr-ssh-agent.socket	Fedora GCR SSH agent backed by GNOME Keyring in Niri	all

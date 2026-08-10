@@ -599,6 +599,7 @@ verify_tracked_user_outputs() {
 
   printf '\n== Tracked user desktop files and units ==\n'
   while IFS= read -r -d '' source; do
+    [[ -f "$REPO_DIR/$source" ]] || continue
     identifier="${source##*/}"
     if desktop_file_exists "$identifier" application; then
       record_present desktop feature "$identifier" dotfiles:desktop
@@ -608,6 +609,7 @@ verify_tracked_user_outputs() {
   done < <(git -C "$REPO_DIR" ls-files -z -- 'desktop/.local/share/applications/*.desktop')
 
   while IFS= read -r -d '' source; do
+    [[ -f "$REPO_DIR/$source" ]] || continue
     identifier="${source##*/}"
     if unit_file_exists "$identifier" user; then
       record_present service feature "$identifier" "dotfiles:automation; $(unit_state "$identifier" user)"

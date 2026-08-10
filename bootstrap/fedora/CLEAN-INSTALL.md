@@ -1074,9 +1074,10 @@ rpm -q \
   gnome-keyring gnome-keyring-pam gcr nautilus \
   xdg-desktop-portal xdg-desktop-portal-gnome \
   xdg-desktop-portal-gtk xdg-desktop-portal-kde
-! rpm -q fedora-release-workstation fedora-release-identity-workstation \
-  gdm gnome-shell gnome-session gnome-session-wayland-session \
-  gnome-classic-session mutter >/dev/null 2>&1
+for package in gdm gnome-shell gnome-session \
+  gnome-session-wayland-session gnome-classic-session mutter; do
+  ! rpm -q "$package" >/dev/null 2>&1
+done
 dnf check
 ```
 
@@ -1117,8 +1118,6 @@ rpm -q \
   pam-kwallet gnome-keyring gnome-keyring-pam gcr \
   xdg-desktop-portal xdg-desktop-portal-gnome \
   xdg-desktop-portal-gtk xdg-desktop-portal-kde
-! rpm -q fedora-release-workstation fedora-release-identity-workstation \
-  >/dev/null 2>&1
 for package in gdm gnome-shell gnome-session \
   gnome-session-wayland-session gnome-classic-session mutter; do
   ! rpm -q "$package" >/dev/null 2>&1

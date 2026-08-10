@@ -3,7 +3,7 @@
 This directory is a reusable, human-run Fedora clean-install guide, curated
 installation inventory, and read-only verifier. It supports desktop and laptop
 fresh installations, later clean installations, and occasional audits when
-Fedora, providers, or workstation requirements change.
+Fedora, providers, or system requirements change.
 
 The manifests list software deliberately selected for a clean installation.
 Fedora's `kde-desktop` comps group additionally owns Plasma's complete,
@@ -14,10 +14,8 @@ dependencies, an automatic desired-state reconciler, the normal update
 mechanism, or a requirement that desktop and laptop contain identical software.
 Repository scripts do not install packages, enable repositories, switch the
 display manager, remove desktops, change graphics, mount storage, activate
-SSH/Tailscale, or authenticate services. The documented GNOME session
-transition and other system-changing commands remain explicit steps for a human
-to review and run.
-Start with
+SSH/Tailscale, or authenticate services. System-changing commands remain
+explicit clean-install steps for a human to review and run. Start with
 [`CLEAN-INSTALL.md`](CLEAN-INSTALL.md) and the desktop boundary in
 [`DESKTOPS.md`](DESKTOPS.md).
 
@@ -53,8 +51,7 @@ row.
 
 The verifier reads these six files directly. There is no second command,
 desktop-file, or service inventory to keep synchronized. Tracked user
-executables, the Yazi desktop entry, and synchronization units are discovered
-from their Stow sources.
+executables and synchronization units are discovered from their Stow sources.
 
 For `uv-tools.tsv`, `active` means install the tool on a clean machine; it does
 not mean every installed language server is attached globally in Helix. The
@@ -85,10 +82,7 @@ sources.
 
 - Official Fedora DNF supplies the KDE Plasma Desktop Edition identity/defaults,
   complete `kde-desktop` group, Plasma Login Manager, Niri, Noctalia, and all
-  selected GNOME/GTK infrastructure. Converted Workstation systems switch only
-  the release identity/defaults and remove GNOME Shell/session, Mutter, and GDM
-  through separately reviewed transactions; they do not purge retained
-  applications or infrastructure. Fedora also supplies both sessions'
+  selected GNOME/GTK infrastructure. Fedora also supplies both sessions'
   PAM/keyring and portal integration, OpenSSH clients, GitHub CLI, GCR, Git LFS,
   desktop applications, Helix, Node/npm, uv, Rust/Cargo, and build prerequisites.
   An inbound OpenSSH server is not selected.
@@ -121,7 +115,7 @@ not invent missing package names or add fallback providers.
 | File | Purpose |
 |---|---|
 | `CLEAN-INSTALL.md` | single complete desktop/laptop profile-aware execution sequence |
-| `DESKTOPS.md` | KDE-Edition/Niri/Plasma topology, Workstation conversion, PLM/KWallet, portals, and recovery |
+| `DESKTOPS.md` | KDE-Edition/Niri/Plasma topology, PLM/KWallet, portals, and recovery |
 | `EDITOR-TOOLS.md` | Helix/VS Code responsibilities, provider boundaries, and health checks |
 | `REMOTE-ACCESS.md` | OpenSSH agents, manual Plasma key loading, Tailscale trust, and private state |
 | `WALLPAPERS.md` | desktop HDD guard and laptop direct worktree |

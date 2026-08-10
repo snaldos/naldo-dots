@@ -64,67 +64,6 @@ rpm -q fedora-release-kde-desktop fedora-release-identity-kde-desktop
 test "$(cat /etc/dnf/protected.d/plasma-desktop.conf)" = plasma-desktop
 ```
 
-Do not retain the Workstation release identity beside the KDE identity:
-
-```bash
-! rpm -q fedora-release-workstation \
-  fedora-release-identity-workstation >/dev/null 2>&1
-```
-
-## Existing Workstation conversion
-
-A fresh machine should install Fedora KDE Plasma Desktop Edition directly. For
-an existing Workstation machine, first validate Niri and Plasma through PLM and
-stop repository synchronization. Then review the identity transaction before
-applying it:
-
-```bash
-release_version="$(rpm -q --qf '%{VERSION}-%{RELEASE}' fedora-release-common)"
-sudo dnf swap --assumeno --allowerasing \
-  fedora-release-workstation "fedora-release-kde-desktop-$release_version"
-```
-
-For Fedora 44 release `44-18`, the transaction must remove only
-`fedora-release-workstation` and
-`fedora-release-identity-workstation`; install the two corresponding KDE Desktop
-release packages plus `breeze-icon-theme-fedora`; and perform no downgrade. It
-must not remove Niri, Plasma, GNOME/GTK portals, keyrings, GCR, Nautilus, or
-applications. If it matches, apply the same pinned swap:
-
-```bash
-sudo dnf swap -y --allowerasing \
-  fedora-release-workstation "fedora-release-kde-desktop-$release_version"
-unset release_version
-```
-
-Switching identity first removes Workstation's `gnome-shell` protection and
-installs KDE's `plasma-desktop` protection. Only after both replacement sessions
-are accepted may the old GNOME session layer be reviewed:
-
-```bash
-sudo dnf remove --assumeno --no-autoremove \
-  gnome-shell gnome-session gnome-session-wayland-session \
-  gnome-classic-session mutter
-```
-
-On the inspected Fedora 44 systems, the expected transaction contains those five
-requested packages plus inactive GDM, GNOME Initial Setup, GNOME Browser
-Connector, the GNOME Shell extension common package, and five extensions: 14
-removals total. It
-must not contain any retained infrastructure. Apply only that exact transaction:
-
-```bash
-sudo dnf remove -y --no-autoremove \
-  gnome-shell gnome-session gnome-session-wayland-session \
-  gnome-classic-session mutter
-```
-
-Do not run `dnf group remove gnome-desktop`, a general `dnf autoremove`, a
-wildcard such as `gnome-*`, or a package-name cleanup. Existing Workstation
-applications and support packages remain unless a separate concrete decision
-changes them. Ordinary DNF upgrades do not reinstall intentionally removed
-packages; explicitly reinstalling/synchronizing the GNOME desktop group can.
-
 ## Display manager and PAM boundary
 
 Only PLM owns the display-manager alias:
@@ -250,8 +189,9 @@ Use Fedora's package-owned policies without a user override:
   `xdg-desktop-portal-kde`, KWallet, and Plasma notifications.
 
 Fedora 44's GNOME `FileChooser` delegates to `org.gnome.Nautilus`, so Nautilus
-is a selected Niri dependency even when Yazi is the default and Dolphin is
-available. Do not replace that chooser merely to reduce GNOME-named packages.
+is a selected Niri dependency. No user `inode/directory` override is tracked:
+Fedora resolves ordinary directory opens to Nautilus in Niri and Dolphin in
+Plasma. Yazi remains terminal-only and is launched explicitly.
 
 ```bash
 test ! -e "$HOME/.config/xdg-desktop-portal/portals.conf"
@@ -261,8 +201,8 @@ rpm -qf /usr/share/xdg-desktop-portal/niri-portals.conf
 
 ## Acceptance gate
 
-After a clean installation, conversion, release upgrade, or display-manager
-change, test both sessions through PLM:
+After a clean installation, release upgrade, or display-manager change, test
+both sessions through PLM:
 
 1. **Niri:** Noctalia, GNOME/GTK portals, browser open/save/upload, GNOME
    Keyring, silent GCR signing, NVIDIA where applicable, networking, Bluetooth,
@@ -278,13 +218,9 @@ The final session directory contains package-provided `niri.desktop` and
 ## Retention policy
 
 Keep GNOME/GTK packages that provide a selected Niri or application capability.
-On converted machines, also leave existing applications and support libraries
-alone unless a separately reviewed requirement justifies removing one. Hidden
-portal, preview, online-account, printing, keyring, and file-manager integration
-matters more than reducing package count.
-
-The selected exception is only the reviewed GNOME Shell/session/display-manager
-transaction. Never infer removability from a package name.
+Hidden portal, preview, online-account, printing, keyring, and file-manager
+integration matters more than reducing package count. Never infer removability
+from a package name.
 
 ## Recovery
 

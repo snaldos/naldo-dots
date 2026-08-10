@@ -38,19 +38,17 @@ Responsibilities are deliberately separate:
   policy, synchronization safety, and Pi extensions.
 
 The repository documents but does not make unprompted display-manager or desktop
-changes. The reviewed Workstation conversion and other package transactions
-remain explicit transition or clean-install steps; user deployment never
-performs them. Disk mounts, credentials, and account enrollment remain
-machine-local.
+changes. Package installation and other system-changing commands remain
+explicit clean-install steps; user deployment never performs them. Disk mounts,
+credentials, and account enrollment remain machine-local.
 
 ## Desktop stack
 
 The supported Fedora 44 topology uses the KDE Plasma Desktop Edition identity
 and Fedora's complete `kde-desktop` group, with Niri added as the preferred
 session. Plasma Login Manager offers package-provided Niri and Plasma sessions.
-Converted Workstation installations remove GNOME Shell/session plus GDM only
-after both replacement sessions pass through PLM; useful GNOME/GTK application
-infrastructure remains.
+GNOME Shell/session, Mutter, and GDM are intentionally absent; useful GNOME/GTK
+application infrastructure remains.
 
 Niri uses Fedora's package-owned GNOME/GTK portal policy, GNOME Keyring, and GCR
 SSH agent without requiring a GNOME login session. Plasma uses Fedora's KDE
@@ -60,7 +58,7 @@ no custom key-loading autostart: after reboot, run
 Bridge remains available for legacy screen sharing in Plasma, while its idle
 virtual window is excluded from Niri through a session-scoped XDG autostart
 entry. There is no user portal override or GNOME-name-based package purge. The
-acceptance, removal, and recovery boundaries are in
+acceptance and recovery boundaries are in
 [`bootstrap/fedora/DESKTOPS.md`](bootstrap/fedora/DESKTOPS.md).
 
 ## Deployment model

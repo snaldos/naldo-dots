@@ -18,9 +18,8 @@ KDE Plasma session as the full fallback. GNOME Shell/session, Mutter, and GDM
 are intentionally absent; the Fedora KDE Plasma Desktop Edition identity is
 selected, while GNOME Keyring, GCR, GNOME/GTK portals, Nautilus, and useful
 GNOME/GTK application infrastructure remain. The bootstrap runbooks document
-that topology and the reviewed conversion transaction, while user installers
-never switch display managers or remove desktops. Read
-`bootstrap/fedora/DESKTOPS.md`
+that topology, while user installers never switch display managers or remove
+desktops. Read `bootstrap/fedora/DESKTOPS.md`
 before a desktop-stack change. Separate compositor, shell, systemd-user
 lifecycle, portals, PipeWire/WirePlumber, and kernel/device support when
 diagnosing a symptom.
@@ -50,9 +49,11 @@ to validate a static edit.
 
 Niri uses the GNOME and GTK portal backends selected by Fedora's
 package-provided `/usr/share/xdg-desktop-portal/niri-portals.conf`. Retain
-Nautilus even though Yazi is the default file manager: Fedora 44's GNOME
-`FileChooser` delegates browser uploads to `org.gnome.Nautilus`. Plasma uses
-Fedora's KDE portal backend. Do not add generic or Niri-specific user portal
+Nautilus because Fedora 44's GNOME `FileChooser` delegates browser uploads to
+`org.gnome.Nautilus`. No user directory-handler override is tracked: Fedora
+uses Nautilus for ordinary directory opens in Niri and Dolphin in Plasma. Yazi
+is terminal-only and runs when invoked explicitly. Plasma uses Fedora's KDE
+portal backend. Do not add generic or Niri-specific user portal
 configuration that would mask package-owned desktop policy. Noctalia supplies
 Niri's user-facing PolicyKit agent; the system authority remains separate.
 GNOME Keyring supplies Niri's Secret Service. Verify backend selection and
