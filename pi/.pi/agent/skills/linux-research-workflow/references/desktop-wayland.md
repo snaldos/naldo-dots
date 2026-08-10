@@ -46,12 +46,13 @@ JSON and `jq` for nontrivial IPC inspection. Do not restart the session merely
 to validate a static edit.
 
 Niri uses GNOME and GTK portal backends selected by the tracked,
-desktop-specific portal config. Plasma uses Fedora's KDE portal backend. Do not
-add a generic user `portals.conf`, which would mask Fedora's desktop-specific
-Plasma and GNOME defaults. Noctalia supplies Niri's user-facing PolicyKit agent;
-the system authority remains separate. GNOME Keyring supplies Niri's Secret
-Service. Verify backend selection and service state rather than adding manual
-startup commands.
+desktop-specific portal config. Retain Nautilus even though Yazi is the default
+file manager: Fedora 44's GNOME `FileChooser` backend delegates browser uploads
+to `org.gnome.Nautilus`. Plasma uses Fedora's KDE portal backend. Do not add a
+generic user `portals.conf`, which would mask Fedora's desktop-specific policy.
+Noctalia supplies Niri's user-facing PolicyKit agent; the system authority
+remains separate. GNOME Keyring supplies Niri's Secret Service. Verify backend
+selection and service state rather than adding manual startup commands.
 
 ## Native Noctalia v5
 

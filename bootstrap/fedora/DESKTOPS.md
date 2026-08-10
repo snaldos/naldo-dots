@@ -111,7 +111,9 @@ signing, not the initial `Locked` property alone.
 Desktop-specific portal policy remains required:
 
 - Niri uses the tracked `niri-portals.conf`, preferring GNOME and GTK backends
-  and GNOME Keyring for Secret Service.
+  and GNOME Keyring for Secret Service. Retain Nautilus even though Yazi is the
+  default file manager: Fedora 44's GNOME `FileChooser` portal delegates browser
+  uploads to the `org.gnome.Nautilus` D-Bus service.
 - Plasma uses Fedora's package-provided `kde-portals.conf` and
   `xdg-desktop-portal-kde`.
 
@@ -149,9 +151,11 @@ now-ownerless support stacks where the declared defaults already provide Yazi
 or Dolphin, Zathura or Okular, imv, mpv, Helix, Discover, Plasma System Monitor,
 Filelight, KCharSelect, Thunderbird, or Noctalia.
 
-It deliberately retains the Niri integration packages listed above. The current
-standalone capability set also retains GNOME Disks, Calculator, Simple Scan,
-Snapshot, Boxes, and Connections; those are applications, not a third desktop.
+It deliberately retains the Niri integration packages listed above, including
+Nautilus solely for the GNOME portal chooser; Yazi remains the default file
+manager and Dolphin the graphical fallback. The current standalone capability
+set also retains GNOME Disks, Calculator, Simple Scan, Snapshot, Boxes, and
+Connections; those are applications, not a third desktop.
 
 Never run `dnf group remove gnome-desktop` or an unreviewed `dnf autoremove`.
 Fedora Workstation protects `gnome-shell` because it assumes GNOME is the only

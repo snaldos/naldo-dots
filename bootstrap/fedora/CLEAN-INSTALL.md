@@ -191,7 +191,7 @@ sudo dnf -y mark user \
   plasma-login-manager pam-kwallet \
   gnome-keyring gnome-keyring-pam gcr \
   xdg-desktop-portal xdg-desktop-portal-gnome \
-  xdg-desktop-portal-gtk xdg-desktop-portal-kde \
+  xdg-desktop-portal-gtk xdg-desktop-portal-kde nautilus \
   niri noctalia plasma-desktop plasma-workspace kwin polkit-kde \
   xwayland-satellite
 ```
@@ -1099,9 +1099,10 @@ sudo dnf \
 ```
 
 Remove the reviewed duplicate Workstation applications and their dedicated
-support stacks. This keeps Disks, Calculator, Simple Scan, Snapshot, Boxes, and
-Connections because no selected replacement currently provides those exact
-capabilities:
+support stacks. This keeps Nautilus as Fedora 44's GNOME portal chooser
+delegate while Yazi remains the default file manager. It also keeps Disks,
+Calculator, Simple Scan, Snapshot, Boxes, and Connections because no selected
+replacement currently provides those exact capabilities:
 
 ```bash
 redundant_workstation_candidates=(
@@ -1109,15 +1110,14 @@ redundant_workstation_candidates=(
   gnome-calendar gnome-characters gnome-clocks gnome-contacts
   gnome-control-center gnome-font-viewer gnome-logs gnome-maps
   gnome-software gnome-system-monitor gnome-text-editor gnome-weather
-  loupe nautilus papers showtime
+  loupe papers showtime
   dnf5daemon-server dnf5daemon-server-polkit epiphany-runtime
   evolution-data-server evolution-data-server-langpacks
   evolution-ews-core evolution-ews-langpacks folks
-  gnome-app-list gnome-autoar gnome-control-center-filesystem
-  gnome-menus gnome-online-accounts kde-connect-nautilus
+  gnome-app-list gnome-control-center-filesystem
+  gnome-menus gnome-online-accounts
   libgtop2 libical-glib libphonenumber libshumate libspelling
   malcontent malcontent-control malcontent-ui-libs
-  nautilus-extensions nautilus-python
   papers-libs papers-previewer papers-thumbnailer tecla
 )
 installed_redundant_workstation=()
@@ -1165,7 +1165,7 @@ for package in gdm gnome-shell gnome-session gnome-session-wayland-session mutte
   ! rpm -q "$package" >/dev/null 2>&1
 done
 rpm -q \
-  niri noctalia plasma-login-manager plasma-workspace pam-kwallet \
+  niri noctalia plasma-login-manager plasma-workspace pam-kwallet nautilus \
   gnome-keyring gnome-keyring-pam gcr \
   xdg-desktop-portal-gnome xdg-desktop-portal-gtk xdg-desktop-portal-kde
 find /usr/share/wayland-sessions -maxdepth 1 -type f -printf '%f\n' | sort

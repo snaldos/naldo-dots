@@ -83,9 +83,13 @@ portal_dir="$REPO_DIR/xdg-desktop-portal/.config/xdg-desktop-portal"
   fail 'generic user portal policy still masks desktop-specific Fedora policy'
 grep -Fxq 'default=gnome;gtk;' "$portal_dir/niri-portals.conf" ||
   fail 'Niri lost its explicit GNOME/GTK portal preference'
+awk -F '\t' '$1 == "nautilus" && $2 == "session" && $4 == "application:org.gnome.Nautilus.desktop" { found=1 } END { exit !found }' \
+  "$DNF" || fail 'Nautilus is not retained as the GNOME portal FileChooser delegate'
+! grep -Fq 'org.freedesktop.impl.portal.FileChooser=gtk;' "$portal_dir/niri-portals.conf" ||
+  fail 'Niri unexpectedly replaces the selected Nautilus chooser with GTK'
 grep -Fxq 'org.freedesktop.impl.portal.Secret=gnome-keyring;' "$portal_dir/niri-portals.conf" ||
   fail 'Niri lost GNOME Keyring Secret Service selection'
-pass 'desktop-specific portal policy preserves Niri while allowing native Plasma policy'
+pass 'desktop-specific portal policy preserves the Niri chooser and native Plasma policy'
 
 awk -F '\t' '$1 == "wl-clipboard" && $2 == "feature" && $3 == "wl-copy,wl-paste" { found=1 } END { exit !found }' \
   "$DNF" || fail 'wl-clipboard does not own both CLI copy/paste commands'
