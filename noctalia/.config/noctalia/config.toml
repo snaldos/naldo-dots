@@ -170,7 +170,7 @@ color_1 = "primary"
 color_2 = "secondary"
 mirrored = true
 show_when_idle = true
-# width = 2048 local override in order to fit screen's width
+width = 700
 
 [widget.battery]
 show_label = false
