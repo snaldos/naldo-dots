@@ -31,6 +31,9 @@ args = ["--stdio"]
 [language-server.harper-ls.config.harper-ls]
 dialect = "American"
 
+[language-server.marksman]
+command = "marksman"
+
 [language-server.markdown-oxide]
 command = "markdown-oxide"
 
@@ -79,11 +82,12 @@ formatter = { command = "typstyle" }
 auto-format = true
 soft-wrap = { enable = true }
 
-# Markdown Oxide supplies vault/PKM semantics, Harper supplies prose diagnostics,
-# and Prettier performs formatting; none duplicates another server's role.
+# Marksman supplies general Markdown links and symbols, Harper supplies prose
+# diagnostics, and Prettier performs formatting. State Space selects Markdown
+# Oxide instead through its project-local .helix/languages.toml.
 [[language]]
 name = "markdown"
-language-servers = ["markdown-oxide", "harper-ls"]
+language-servers = ["marksman", "harper-ls"]
 formatter = { command = "prettier", args = ["--stdin-filepath", "%{buffer_name}"] }
 soft-wrap = { enable = true }
 
