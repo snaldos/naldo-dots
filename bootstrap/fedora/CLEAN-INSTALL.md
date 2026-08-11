@@ -312,7 +312,9 @@ rm -f -- "$pixi_installer"
 
 Pixi supplies reproducible conda-forge/native/CUDA environments; do not install
 Conda alongside it unless an external workflow explicitly requires the `conda`
-command. Do not introduce mise or a generic GitHub binary updater.
+command. `naldo-update` uses Pixi's own self-updater only while the command still
+resolves to `~/.pixi/bin/pixi`.
+Do not introduce mise or a generic GitHub binary updater.
 
 ### Common Marksman
 
@@ -340,6 +342,8 @@ trap - EXIT
 
 Marksman is the global Helix Markdown server. The State Space repository uses a
 project-local `.helix/languages.toml` to select Markdown Oxide instead.
+`naldo-update` reports a newer Marksman release but leaves this pinned,
+checksum-verified replacement manual.
 
 ### Common Tuicr
 
@@ -414,6 +418,9 @@ fc-cache -f "$font_target"
 rm -rf -- "$font_work"
 fc-match 'JetBrainsMono Nerd Font'
 ```
+
+`naldo-update` reports a newer Nerd Fonts release but leaves archive verification
+and font replacement manual.
 
 ## 7. Install selected Flatpaks
 

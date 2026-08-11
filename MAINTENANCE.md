@@ -1,11 +1,11 @@
 # Fedora KDE system maintenance
 
-Run `naldo-update` manually from a terminal when there is time to review prompts
-and failures. It updates the normal system providers while leaving VS Code
-extension maintenance to VS Code itself. It works on both profiles because
-each package manager updates only its locally installed packages. It never
-synchronizes repositories, reboots, enables services, removes software, or
-installs a missing provider.
+Run `naldo-update` manually from a terminal when there is time to review prompts,
+release reports, and failures. It updates the normal system providers while
+leaving VS Code extension maintenance to VS Code itself. It works on both
+profiles because each package manager updates only its locally installed
+packages. It never synchronizes repositories, reboots, enables services, removes
+software, or installs a missing provider.
 
 Provider order:
 
@@ -16,18 +16,36 @@ Provider order:
 5. `npm install --global 'typescript@6'`, only when TypeScript is already installed
 6. `uv tool upgrade --all`
 7. `cargo install-update -a`
-8. `tuicr update`, only with a valid official-installer receipt
-9. `herdr update`, only with a valid stable-channel official-installer receipt
+8. `pixi self-update`, only for the official-installer-owned binary
+9. read-only release reports for the manually reviewed GitHub tools and font
+10. `tuicr update`, only with a valid official-installer receipt
+11. `herdr update`, only with a valid stable-channel official-installer receipt
 
 An unavailable/unrecognized provider is reported and skipped. Any attempted
-update failure stops the command. DNF owns Fedora, COPR, Microsoft VS Code,
+update failure stops the command; a failed read-only release query is reported
+without blocking unrelated providers. DNF owns Fedora, COPR, Microsoft VS Code,
 Google Chrome, and Tailscale RPMs; all installed RPMs follow the ordinary DNF
 transaction. The updater does not replace packages through a generic GitHub
 downloader.
 
-Pixi self-update and the two Git-tagged Cargo tools remain deliberate manual
-operations because they replace environment/session infrastructure or bypass
-the Cargo registry update mechanism.
+Marksman, the two Git-tagged Cargo tools, and the Nerd Font remain deliberate
+manual replacements. `naldo-update` reports their selected and latest release
+tags but never downloads their assets.
+
+## Manual release report
+
+`naldo-update` makes a read-only GitHub release report for Marksman, Tinymist,
+Markdown Oxide, and the JetBrainsMono Nerd Font. It follows each repository's `releases/latest`
+redirect and prints one of:
+
+- `CURRENT (manual)` when the selected release equals the latest release;
+- `MANUAL UPDATE AVAILABLE` with both release tags when they differ;
+- `CHECK FAILED` when GitHub cannot be queried, without failing later providers.
+
+This report downloads no release asset and changes no executable, Cargo package,
+or font. For the tagged Cargo tools and font, the selected baselines embedded in
+`naldo-update` mirror the manifests; update both together after review. Then
+follow the pinned manual procedure below.
 
 ## npm and TypeScript
 
@@ -83,8 +101,9 @@ configuration is separate.
 ## Marksman upstream binary
 
 Marksman is pinned under `~/.local/bin` because Fedora 44 does not provide it in
-the enabled repositories. Review a stable upstream release, update the release
-tag and GitHub-published SHA-256 in
+the enabled repositories. `naldo-update` compares its installed version with the
+latest GitHub release but does not replace it. Review a new stable release,
+update the release tag and GitHub-published SHA-256 in
 `bootstrap/fedora/CLEAN-INSTALL.md`, and repeat its checksum-verified installation
 block. Confirm both Markdown scopes afterward:
 
@@ -106,8 +125,9 @@ as the `cargo install-update` subcommand.
 
 `naldo-update` runs exactly `cargo install-update -a` for registry binaries.
 It never passes `--git` or its short form `-g`, so Git-originating tools are not
-silently moved to a new commit/tag. Update the two selected tagged tools only
-after reviewing a new stable tag and editing their manifest command:
+silently moved to a new commit/tag. It reports the latest Tinymist and Markdown
+Oxide releases against the selected tags. Update either tagged tool only after
+reviewing a new stable release and editing its manifest command:
 
 ```bash
 cargo install --locked --git https://github.com/Myriad-Dreamin/tinymist.git --tag v0.15.2 tinymist-cli
@@ -132,16 +152,18 @@ integrations, and session state are separate.
 
 ## Pixi
 
-The official installer owns `~/.pixi/bin/pixi`.
-For this installation, use `pixi self-update` after reviewing its release.
-Do not run that command for a package-manager-owned Pixi. Conda is not selected
-because Pixi already covers conda-forge/native/CUDA environments without
-another base environment, solver, cache, or shell activation layer.
+The official installer owns `~/.pixi/bin/pixi`. `naldo-update` runs
+`pixi self-update` only when `pixi` resolves to that exact path; it skips a
+missing or package-manager-owned Pixi. The official self-updater displays release
+notes and replaces only the Pixi binary. Conda is not selected because Pixi
+already covers conda-forge/native/CUDA environments without another base
+environment, solver, cache, or shell activation layer.
 
 ## JetBrainsMono Nerd Font
 
 The selected font is the official Nerd Fonts `v3.5.0` JetBrainsMono release,
-installed under `~/.local/share/fonts/JetBrainsMonoNerdFont`. Font updates are
-occasional reviewed replacements, not part of `naldo-update`: verify the release
-archive, replace only that directory, run `fc-cache`, and confirm the exact
-configured family with `fc-list`/`fc-match`.
+installed under `~/.local/share/fonts/JetBrainsMonoNerdFont`. `naldo-update`
+reports whether a newer Nerd Fonts release exists but does not replace fonts.
+For an occasional reviewed update, verify the release archive, replace only that
+directory, run `fc-cache`, and confirm the exact configured family with
+`fc-list`/`fc-match`.

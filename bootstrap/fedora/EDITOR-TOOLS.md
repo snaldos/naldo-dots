@@ -110,8 +110,9 @@ Check both scopes from their roots:
 Cargo rows contain reviewed, locked installation commands. Routine registry
 updates use `cargo install-update -a`. Tinymist and Markdown Oxide come from
 reviewed upstream tags and therefore remain deliberate manual updates. Marksman
-is not Cargo-owned; update its pinned upstream binary and digest through the
-clean-install procedure.
+is not Cargo-owned and its pinned binary also remains manual. `naldo-update`
+reports newer releases for all three without replacing them; apply reviewed
+updates through their documented tagged or checksum-verified procedures.
 
 Taplo must remain the Cargo `taplo-cli` build with its `lsp` feature; the npm
 package with the same name does not provide the required LSP build.

@@ -23,6 +23,33 @@ installer_receipt_is_valid() {
   [[ "${lines[1]}" == "binary=$resolved" ]]
 }
 
+github_latest_release_tag() {
+  local repository="$1" effective_url prefix latest
+  effective_url="$(
+    curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error --head \
+      --connect-timeout 10 --max-time 30 --output /dev/null \
+      --write-out '%{url_effective}' \
+      "https://github.com/$repository/releases/latest"
+  )" || return 1
+  prefix="https://github.com/$repository/releases/tag/"
+  [[ "$effective_url" == "$prefix"* ]] || return 1
+  latest="${effective_url#"$prefix"}"
+  [[ -n "$latest" && "$latest" != */* ]] || return 1
+  printf '%s\n' "$latest"
+}
+
+report_manual_release() {
+  local label="$1" repository="$2" selected="$3" latest
+  if ! latest="$(github_latest_release_tag "$repository")"; then
+    printf 'CHECK FAILED: %s — could not resolve the latest GitHub release.\n' "$label"
+  elif [[ "$selected" == "$latest" ]]; then
+    printf 'CURRENT (manual): %s %s\n' "$label" "$selected"
+  else
+    printf 'MANUAL UPDATE AVAILABLE: %s selected=%s latest=%s\n' \
+      "$label" "$selected" "$latest"
+  fi
+}
+
 section 'DNF packages'
 if command -v sudo >/dev/null 2>&1 && command -v dnf >/dev/null 2>&1; then
   sudo dnf upgrade --refresh
@@ -94,6 +121,59 @@ if command -v cargo >/dev/null 2>&1 && command -v cargo-install-update >/dev/nul
   cargo install-update -a
 else
   skip 'cargo or cargo-install-update is unavailable'
+fi
+
+section 'Pixi official installer'
+pixi_resolved=""
+pixi_expected=""
+if command -v pixi >/dev/null 2>&1 && command -v readlink >/dev/null 2>&1; then
+  pixi_resolved="$(readlink -f -- "$(command -v pixi)")"
+  pixi_expected="$(readlink -m -- "$HOME/.pixi/bin/pixi")"
+fi
+if [[ -n "$pixi_resolved" && "$pixi_resolved" == "$pixi_expected" ]]; then
+  (cd "$HOME" && pixi self-update --no-config)
+else
+  skip 'official-installer-managed Pixi is unavailable'
+fi
+
+section 'Manual release report'
+if ! command -v curl >/dev/null 2>&1; then
+  skip 'curl is unavailable; manual GitHub release checks were not run'
+else
+  marksman_resolved=""
+  marksman_expected=""
+  if command -v marksman >/dev/null 2>&1 && command -v readlink >/dev/null 2>&1; then
+    marksman_resolved="$(readlink -f -- "$(command -v marksman)")"
+    marksman_expected="$(readlink -m -- "$HOME/.local/bin/marksman")"
+  fi
+  if [[ -n "$marksman_resolved" && "$marksman_resolved" == "$marksman_expected" ]]; then
+    marksman_version="$(marksman --version 2>/dev/null || true)"
+    if [[ -n "$marksman_version" ]]; then
+      report_manual_release Marksman artempyanykh/marksman "$marksman_version"
+    else
+      skip 'Marksman did not report an installed version'
+    fi
+  else
+    skip 'upstream-release-managed Marksman is unavailable'
+  fi
+
+  if command -v tinymist >/dev/null 2>&1; then
+    report_manual_release 'Tinymist tagged source' Myriad-Dreamin/tinymist v0.15.2
+  else
+    skip 'tagged-source Tinymist is unavailable'
+  fi
+
+  if command -v markdown-oxide >/dev/null 2>&1; then
+    report_manual_release 'Markdown Oxide tagged source' Feel-ix-343/markdown-oxide v0.25.12
+  else
+    skip 'tagged-source Markdown Oxide is unavailable'
+  fi
+
+  if [[ -d "$HOME/.local/share/fonts/JetBrainsMonoNerdFont" ]]; then
+    report_manual_release 'JetBrainsMono Nerd Font' ryanoasis/nerd-fonts v3.5.0
+  else
+    skip 'manually installed JetBrainsMono Nerd Font is unavailable'
+  fi
 fi
 
 section 'Tuicr official installer'

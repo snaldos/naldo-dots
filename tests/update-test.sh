@@ -11,9 +11,12 @@ checks=0
 installer_home="$workspace/home"
 installer_data="$workspace/data"
 installer_bin="$installer_home/.local/bin"
+pixi_bin="$installer_home/.pixi/bin"
+font_dir="$installer_home/.local/share/fonts/JetBrainsMonoNerdFont"
 herdr_receipt="$installer_data/naldo/provider-receipts/herdr-official-installer"
 tuicr_receipt="$installer_data/naldo/provider-receipts/tuicr-official-installer"
-mkdir -p "$fake_bin" "$workspace/away" "$workspace/empty-bin" "$installer_bin" "${herdr_receipt%/*}"
+mkdir -p "$fake_bin" "$workspace/away" "$workspace/empty-bin" "$installer_bin" \
+  "$pixi_bin" "$font_dir" "${herdr_receipt%/*}"
 trap 'rm -rf -- "$workspace"' EXIT
 
 fail() {
@@ -80,7 +83,24 @@ printf ' %s' "$@" >>"$NALDO_UPDATE_TEST_LOG"
 printf '\n' >>"$NALDO_UPDATE_TEST_LOG"
 [[ "${NALDO_UPDATE_FAIL:-}" != gh ]] || exit "${NALDO_UPDATE_FAIL_STATUS:-23}"
 EOF
-chmod 0755 "$fake_bin/npm" "$fake_bin/gh"
+cat >"$fake_bin/curl" <<'EOF'
+#!/bin/bash
+url="${!#}"
+repository="${url#https://github.com/}"
+repository="${repository%/releases/latest}"
+if [[ "${NALDO_UPDATE_RELEASE_CHECK_FAIL:-}" == "$repository" ]]; then
+  exit 22
+fi
+case "$repository" in
+artempyanykh/marksman) latest="${NALDO_UPDATE_MARKSMAN_LATEST:-2026-02-08}" ;;
+Myriad-Dreamin/tinymist) latest="${NALDO_UPDATE_TINYMIST_LATEST:-v0.15.2}" ;;
+Feel-ix-343/markdown-oxide) latest="${NALDO_UPDATE_MARKDOWN_OXIDE_LATEST:-v0.25.12}" ;;
+ryanoasis/nerd-fonts) latest="${NALDO_UPDATE_NERD_FONTS_LATEST:-v3.5.0}" ;;
+*) exit 22 ;;
+esac
+printf 'https://github.com/%s/releases/tag/%s' "$repository" "$latest"
+EOF
+chmod 0755 "$fake_bin/npm" "$fake_bin/gh" "$fake_bin/curl"
 cat >"$installer_bin/tuicr" <<'EOF'
 #!/bin/bash
 printf 'tuicr' >>"$NALDO_UPDATE_TEST_LOG"
@@ -103,12 +123,28 @@ if [[ "${NALDO_UPDATE_FAIL:-}" == herdr ]]; then
 fi
 EOF
 chmod 0755 "$installer_bin/herdr"
+cat >"$pixi_bin/pixi" <<'EOF'
+#!/bin/bash
+printf 'pixi' >>"$NALDO_UPDATE_TEST_LOG"
+printf ' %s' "$@" >>"$NALDO_UPDATE_TEST_LOG"
+printf '\n' >>"$NALDO_UPDATE_TEST_LOG"
+[[ "${NALDO_UPDATE_FAIL:-}" != pixi ]] || exit "${NALDO_UPDATE_FAIL_STATUS:-23}"
+EOF
+cat >"$installer_bin/marksman" <<'EOF'
+#!/bin/bash
+[[ "${1:-}" == --version ]] && printf '%s\n' '2026-02-08'
+EOF
+for command in tinymist markdown-oxide; do
+  printf '%s\n' '#!/bin/bash' 'exit 0' >"$fake_bin/$command"
+done
+chmod 0755 "$pixi_bin/pixi" "$installer_bin/marksman" \
+  "$fake_bin/tinymist" "$fake_bin/markdown-oxide"
 printf 'source=https://herdr.dev/install.sh\nbinary=%s\n' \
   "$(readlink -f "$installer_bin/herdr")" >"$herdr_receipt"
 printf 'source=https://tuicr.dev/install.sh\nbinary=%s\n' \
   "$(readlink -f "$installer_bin/tuicr")" >"$tuicr_receipt"
 chmod 0600 "$herdr_receipt" "$tuicr_receipt"
-provider_path="$installer_bin:$fake_bin"
+provider_path="$installer_bin:$pixi_bin:$fake_bin"
 
 : >"$workspace/providers.log"
 (
@@ -125,19 +161,27 @@ npm update --global prettier
 npm install --global typescript@6
 uv tool upgrade --all
 cargo install-update -a
+pixi self-update --no-config
 tuicr update
 herdr update
 EOF
 diff -u "$workspace/providers.expected" "$workspace/providers.log" ||
   fail 'update providers did not run once in the required order'
 for label in 'DNF packages' 'Flatpak applications' 'GitHub CLI extensions' 'global npm packages' \
-  'uv tools' 'Cargo registry binaries' 'Tuicr official installer' \
-  'Herdr official installer'; do
+  'uv tools' 'Cargo registry binaries' 'Pixi official installer' \
+  'Manual release report' 'Tuicr official installer' 'Herdr official installer'; do
   grep -Fq "== $label ==" "$workspace/providers.out" || fail "missing provider section: $label"
 done
 grep -Fq 'protocol-changing update may require restarting the active Herdr session' "$workspace/providers.out" ||
   fail 'Herdr update did not warn about an active-session protocol change'
-pass 'available providers run once in labeled DNF Flatpak GitHub npm uv Cargo Tuicr and Herdr order'
+for report in \
+  'CURRENT (manual): Marksman 2026-02-08' \
+  'CURRENT (manual): Tinymist tagged source v0.15.2' \
+  'CURRENT (manual): Markdown Oxide tagged source v0.25.12' \
+  'CURRENT (manual): JetBrainsMono Nerd Font v3.5.0'; do
+  grep -Fq "$report" "$workspace/providers.out" || fail "missing manual release report: $report"
+done
+pass 'available providers run once and manual GitHub releases report in the required order'
 
 : >"$workspace/constrained.log"
 HOME="$installer_home" XDG_DATA_HOME="$installer_data" PATH="$provider_path" \
@@ -162,11 +206,25 @@ printf 'source=https://tuicr.dev/install.sh\nbinary=%s\n' \
 chmod 0600 "$tuicr_receipt"
 pass 'constrained TypeScript and receipt-owned Tuicr updates cannot install missing providers'
 
+: >"$workspace/manual-report.log"
+HOME="$installer_home" XDG_DATA_HOME="$installer_data" PATH="$provider_path" \
+  NALDO_UPDATE_TEST_LOG="$workspace/manual-report.log" \
+  NALDO_UPDATE_MARKSMAN_LATEST=2026-03-01 \
+  NALDO_UPDATE_RELEASE_CHECK_FAIL=Feel-ix-343/markdown-oxide \
+  /bin/bash "$workspace/naldo-update" >"$workspace/manual-report.out"
+diff -u "$workspace/providers.expected" "$workspace/manual-report.log" ||
+  fail 'read-only manual release reporting changed the update provider sequence'
+grep -Fq 'MANUAL UPDATE AVAILABLE: Marksman selected=2026-02-08 latest=2026-03-01' \
+  "$workspace/manual-report.out" || fail 'newer Marksman release was not reported'
+grep -Fq 'CHECK FAILED: Markdown Oxide tagged source' "$workspace/manual-report.out" ||
+  fail 'failed manual release query was not reported without aborting updates'
+pass 'manual release checks distinguish current available and failed reports without mutation'
+
 : >"$workspace/skipped.log"
 PATH="$workspace/empty-bin" NALDO_UPDATE_TEST_LOG="$workspace/skipped.log" \
   /bin/bash "$workspace/naldo-update" >"$workspace/skipped.out"
 [[ ! -s "$workspace/skipped.log" ]] || fail 'an unavailable provider was executed'
-[[ "$(grep -c '^SKIP:' "$workspace/skipped.out")" == 8 ]] ||
+[[ "$(grep -c '^SKIP:' "$workspace/skipped.out")" == 10 ]] ||
   fail 'unavailable providers were not all reported clearly'
 pass 'unavailable providers are reported and skipped'
 
@@ -186,7 +244,22 @@ diff -u "$workspace/failure.expected" "$workspace/failure.log" ||
   fail 'updates continued after a provider failed'
 pass 'provider failures propagate immediately without running later providers'
 
-head -n 8 "$workspace/providers.expected" >"$workspace/no-herdr.expected"
+: >"$workspace/pixi-failure.log"
+set +e
+HOME="$installer_home" XDG_DATA_HOME="$installer_data" PATH="$provider_path" \
+  NALDO_UPDATE_TEST_LOG="$workspace/pixi-failure.log" \
+  NALDO_UPDATE_FAIL=pixi NALDO_UPDATE_FAIL_STATUS=31 \
+  /bin/bash "$workspace/naldo-update" >"$workspace/pixi-failure.out" 2>&1
+pixi_failure_status=$?
+set -e
+[[ "$pixi_failure_status" == 31 ]] ||
+  fail "Pixi failure became status $pixi_failure_status instead of 31"
+head -n 8 "$workspace/providers.expected" >"$workspace/pixi-failure.expected"
+diff -u "$workspace/pixi-failure.expected" "$workspace/pixi-failure.log" ||
+  fail 'Pixi self-update failure did not stop later providers'
+pass 'official-installer-managed Pixi self-update propagates failure'
+
+grep -Fv 'herdr update' "$workspace/providers.expected" >"$workspace/no-herdr.expected"
 rm -f -- "$herdr_receipt"
 : >"$workspace/no-receipt.log"
 HOME="$installer_home" XDG_DATA_HOME="$installer_data" PATH="$provider_path" \
@@ -251,7 +324,24 @@ grep -Fq 'npm list --global --depth=0 --json typescript' "$UPDATER" ||
   fail 'TypeScript major constraint is not guarded by installed-package presence'
 [[ "$(grep -Fc "npm install --global 'typescript@6'" "$UPDATER")" == 1 ]] ||
   fail 'TypeScript compatibility update is absent or duplicated'
-pass 'naldo-update has no noninteractive removal service reboot sync or automatic Git-update behavior'
+grep -Fq 'pixi self-update --no-config' "$UPDATER" ||
+  fail 'official-installer-managed Pixi is not updated through its self-updater'
+# The updater source intentionally retains its runtime repository variable.
+# shellcheck disable=SC2016
+grep -Fq 'https://github.com/$repository/releases/latest' "$UPDATER" ||
+  fail 'manual GitHub release reporting is absent'
+grep -Fq -- '--show-error --head' "$UPDATER" ||
+  fail 'manual GitHub release reporting does not use metadata-only HEAD requests'
+! rg -n 'releases/download|browser_download_url' "$UPDATER" >/dev/null ||
+  fail 'manual release reporting can download release assets'
+for release_check in \
+  "report_manual_release Marksman artempyanykh/marksman \"\$marksman_version\"" \
+  "report_manual_release 'Tinymist tagged source' Myriad-Dreamin/tinymist v0.15.2" \
+  "report_manual_release 'Markdown Oxide tagged source' Feel-ix-343/markdown-oxide v0.25.12" \
+  "report_manual_release 'JetBrainsMono Nerd Font' ryanoasis/nerd-fonts v3.5.0"; do
+  grep -Fq "$release_check" "$UPDATER" || fail "missing selected manual release check: $release_check"
+done
+pass 'naldo-update has no noninteractive removal service reboot sync or automatic Git-binary update behavior'
 
 for command in \
   'cargo install --locked --git https://github.com/Myriad-Dreamin/tinymist.git --tag v0.15.2 tinymist-cli' \
@@ -269,13 +359,14 @@ for policy in \
   'It never passes `--git` or its short form `-g`' \
   '`herdr update` only when that receipt exactly names the' \
   'protocol-changing update may require restarting the active Herdr session' \
-  'use `pixi self-update`' \
+  '`pixi self-update` only when `pixi` resolves to' \
+  'read-only GitHub release report for Marksman, Tinymist' \
   '`naldo-update` does not inspect or update its extensions' \
   'official Nerd Fonts `v3.5.0`'; do
   grep -Fq "$policy" "$MAINTENANCE" || fail "maintenance guide omits: $policy"
 done
-! rg -n 'curl|wget|github.*update' "$UPDATER" >/dev/null ||
+! rg -n 'wget|github.*download|curl.*releases/download' "$UPDATER" >/dev/null ||
   fail 'naldo-update contains a generic network/binary updater'
-pass 'permanent maintenance guidance preserves Cargo Herdr Pixi font and local-provider policy'
+pass 'permanent maintenance guidance preserves automatic and report-only provider boundaries'
 
 printf '1..%d\n' "$checks"

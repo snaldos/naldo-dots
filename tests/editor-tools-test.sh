@@ -95,7 +95,7 @@ assert tinymist_rows == [[
     "feature",
     "https://github.com/Myriad-Dreamin/tinymist",
     "cargo install --locked --git https://github.com/Myriad-Dreamin/tinymist.git --tag v0.15.2 tinymist-cli",
-    "audit a new stable upstream tag, update the manifest --tag, and repeat the locked tagged install",
+    "naldo-update reports the latest release; audit a new stable upstream tag, update the manifest --tag, and repeat the locked tagged install",
     "cargo uninstall tinymist-cli",
     "Stable Typst language server",
     "all",
