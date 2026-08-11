@@ -12,7 +12,7 @@ sequence.
 |---|---|---|
 | Python | BasedPyright types/completion/navigation + Ruff lint/fixes/imports by default; ty + Ruff per project | Ruff |
 | Typst | Tinymist + Harper prose diagnostics | Typstyle |
-| Markdown | Markdown Oxide vault/PKM + Harper prose diagnostics | Prettier |
+| Markdown | Marksman links/symbols + Harper prose diagnostics globally; Markdown Oxide + Harper in State Space | Prettier |
 | JavaScript, JSX, TypeScript, TSX | TypeScript Language Server | Prettier |
 | Bash | Bash Language Server | shfmt |
 | TOML | Taplo LSP | Taplo |
@@ -28,13 +28,15 @@ No Helix debug adapter is selected.
 - User-prefix npm owns Pi, Codex, Prettier, and the selected web/shell language
   servers under `~/.npm-global`.
 - uv tool environments own BasedPyright, `ty`, and Ruff globally for Helix.
-- Cargo owns the pinned Typst, TOML, Markdown, and prose tools.
+- Cargo owns the pinned Typst, TOML, Markdown Oxide, and prose tools.
+- A pinned, checksum-verified upstream release owns Marksman under
+  `~/.local/bin`; Fedora 44 has no package for it in the enabled repositories.
 - VS Code comes from Microsoft's signed RPM repository; its extension manager
   owns the selected Python, Jupyter, and Ruff extensions.
 
 Every active command has one row in `dnf-packages.tsv`, `npm-packages.tsv`,
-`uv-tools.tsv`, or `cargo-tools.tsv`. The active Helix mapping is
-`helix/.config/helix/languages.toml`.
+`uv-tools.tsv`, `cargo-tools.tsv`, or `external-tools.tsv`. The active Helix
+mapping is `helix/.config/helix/languages.toml`.
 
 Never run global npm installation through sudo. The selected prefix is
 `~/.npm-global`, which Fish adds to `PATH`.
@@ -80,11 +82,36 @@ Use Pixi when native, conda-forge, CUDA, or cross-platform dependencies justify
 it. Conda is not installed beside Pixi unless an external workflow requires the
 `conda` executable or a provider Pixi cannot support.
 
+## Markdown workspaces
+
+Marksman is the global Markdown server for ordinary repositories and standalone
+project work. Harper remains the prose checker and Prettier remains the formatter.
+The global configuration also defines Markdown Oxide without activating it so a
+project can select it by name.
+
+State Space needs vault-aware wikilinks, backlinks, and note completion. Its
+tracked `.helix/languages.toml` replaces the Markdown server list locally:
+
+```toml
+[[language]]
+name = "markdown"
+language-servers = ["markdown-oxide", "harper-ls"]
+```
+
+Check both scopes from their roots:
+
+```bash
+(cd "$HOME/dotfiles" && hx --health markdown)
+(cd "$HOME/Vaults/state-space" && hx --health markdown)
+```
+
 ## Cargo tools
 
 Cargo rows contain reviewed, locked installation commands. Routine registry
 updates use `cargo install-update -a`. Tinymist and Markdown Oxide come from
-reviewed upstream tags and therefore remain deliberate manual updates.
+reviewed upstream tags and therefore remain deliberate manual updates. Marksman
+is not Cargo-owned; update its pinned upstream binary and digest through the
+clean-install procedure.
 
 Taplo must remain the Cargo `taplo-cli` build with its `lsp` feature; the npm
 package with the same name does not provide the required LSP build.
@@ -111,12 +138,15 @@ while extension maintenance is initiated from VS Code itself.
 basedpyright --version
 ty --version
 ruff --version
+marksman --version
 for language in bash json yaml toml python typst markdown html css \
   javascript typescript jsx tsx; do
   hx --health "$language"
 done
+(cd "$HOME/Vaults/state-space" && hx --health markdown)
 ```
 
-A missing unselected debug adapter does not invalidate LSP, parser, or formatter
-health. Investigate red entries only when they correspond to a responsibility in
-the table above.
+The loop reports the global Marksman mapping; the final command reports State
+Space's project-local Markdown Oxide mapping. A missing unselected debug adapter
+does not invalidate LSP, parser, or formatter health. Investigate red entries
+only when they correspond to a responsibility in the table above.

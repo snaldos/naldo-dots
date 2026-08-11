@@ -512,6 +512,31 @@ verify_official_installer_provider() {
   esac
 }
 
+verify_upstream_release_provider() {
+  local tool="$1" classification="$2" source="$3" purpose="$4"
+  local resolved expected version expected_version
+  case "$tool" in
+  marksman)
+    resolved=""
+    command -v marksman >/dev/null 2>&1 &&
+      resolved="$(readlink -f -- "$(command -v marksman)")"
+    expected="$(readlink -m -- "$HOME/.local/bin/marksman")"
+    version="$(marksman --version 2>/dev/null || true)"
+    expected_version="${source##*/}"
+    if [[ "$resolved" == "$expected" && "$version" == "$expected_version" ]]; then
+      record_present provider "$classification" "$tool" official-upstream-release
+    else
+      record_missing provider "$classification" "$tool" \
+        "official-upstream-release — expected $expected at version $expected_version — $purpose"
+    fi
+    ;;
+  *)
+    printf 'verify-fedora: no upstream-release ownership check for %q\n' "$tool" >&2
+    exit 2
+    ;;
+  esac
+}
+
 verify_gh_extension_provider() {
   local tool="$1" classification="$2" purpose="$3"
   local extension_dir manifest binary configured_path
@@ -559,6 +584,11 @@ verify_external_tools() {
       ;;
     official-upstream-installer)
       verify_official_installer_provider "$tool" "$classification" "$purpose"
+      ;;
+    official-upstream-release)
+      if [[ "$tool" == marksman ]]; then
+        verify_upstream_release_provider "$tool" "$classification" "$source" "$purpose"
+      fi
       ;;
     reviewed-gh-extension)
       verify_gh_extension_provider "$tool" "$classification" "$purpose"

@@ -128,10 +128,11 @@ push.
 
 ## Tool policy
 
-Helix (`hx`) is primary. JavaScript and TypeScript use TypeScript Language Server
-plus Prettier. Python defaults to BasedPyright and Ruff, with `ty` installed for
-project-local opt-in. VS Code is a minimal scientific fallback with Python,
-Jupyter, and Ruff selected directly. See
+Helix (`hx`) is primary. Markdown defaults to Marksman and Harper, while State
+Space selects Markdown Oxide and Harper project-locally. JavaScript and
+TypeScript use TypeScript Language Server plus Prettier. Python defaults to
+BasedPyright and Ruff, with `ty` installed for project-local opt-in. VS Code is a
+minimal scientific fallback with Python, Jupyter, and Ruff selected directly. See
 [`bootstrap/fedora/EDITOR-TOOLS.md`](bootstrap/fedora/EDITOR-TOOLS.md).
 
 Application providers come from the six Fedora manifests; defaults come from

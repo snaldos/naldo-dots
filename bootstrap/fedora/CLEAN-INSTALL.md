@@ -314,6 +314,33 @@ Pixi supplies reproducible conda-forge/native/CUDA environments; do not install
 Conda alongside it unless an external workflow explicitly requires the `conda`
 command. Do not introduce mise or a generic GitHub binary updater.
 
+### Common Marksman
+
+Fedora 44 does not provide Marksman in the enabled DNF repositories. Install the
+reviewed upstream x86-64 release as a user-owned binary and verify GitHub's
+published SHA-256 digest before placing it on `PATH`:
+
+```bash
+test "$(uname -m)" = x86_64
+marksman_version=2026-02-08
+marksman_asset=marksman-linux-x64
+marksman_sha=be5098e8213219269c47fc0d916a66fa31ce0602ec967475c722260aabf26087
+marksman_work="$(mktemp -d "${TMPDIR:-/tmp}/marksman-install.XXXXXX")"
+trap 'rm -rf -- "$marksman_work"' EXIT
+curl --proto '=https' --tlsv1.2 --fail --location \
+  --output "$marksman_work/$marksman_asset" \
+  "https://github.com/artempyanykh/marksman/releases/download/${marksman_version}/${marksman_asset}"
+printf '%s  %s\n' "$marksman_sha" "$marksman_work/$marksman_asset" | sha256sum --check -
+install -d -m 0755 "$HOME/.local/bin"
+install -m 0755 "$marksman_work/$marksman_asset" "$HOME/.local/bin/marksman"
+rm -rf -- "$marksman_work"
+trap - EXIT
+"$HOME/.local/bin/marksman" --version
+```
+
+Marksman is the global Helix Markdown server. The State Space repository uses a
+project-local `.helix/languages.toml` to select Markdown Oxide instead.
+
 ### Common Tuicr
 
 Install the reviewed `v0.20.0` release through the official installer and prove
@@ -465,6 +492,7 @@ Expose all user binaries in this provisioning shell:
 
 ```bash
 export PATH="$HOME/.npm-global/bin:$HOME/.cargo/bin:$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
+marksman --version
 taplo --version
 typescript-language-server --version
 tsc --version

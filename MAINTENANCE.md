@@ -80,6 +80,23 @@ tuicr update 0.20.0
 Remove only `~/.local/bin/tuicr` and its receipt when uninstalling; repository
 configuration is separate.
 
+## Marksman upstream binary
+
+Marksman is pinned under `~/.local/bin` because Fedora 44 does not provide it in
+the enabled repositories. Review a stable upstream release, update the release
+tag and GitHub-published SHA-256 in
+`bootstrap/fedora/CLEAN-INSTALL.md`, and repeat its checksum-verified installation
+block. Confirm both Markdown scopes afterward:
+
+```bash
+marksman --version
+(cd "$HOME/dotfiles" && hx --health markdown)
+(cd "$HOME/Vaults/state-space" && hx --health markdown)
+```
+
+Remove only `~/.local/bin/marksman` when uninstalling; the global and project
+Helix configurations are separate.
+
 ## Cargo binaries
 
 `22.1.1` is the version of the **cargo-update program**, not the Fedora Cargo

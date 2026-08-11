@@ -69,6 +69,24 @@ for row in cargo_rows:
     assert role.strip()
     for command in commands.split(","):
         add(command, f"cargo:{package}", role)
+external_rows = rows("external-tools.tsv")
+for row in external_rows:
+    tool, _classification, _source_class, _source, commands, _desktops, _units, _update, _uninstall, role, _profile = row
+    assert role.strip()
+    if commands != "-":
+        for command in commands.split(","):
+            add(command, f"external:{tool}", role)
+marksman_rows = [row for row in external_rows if row[0] == "marksman"]
+assert len(marksman_rows) == 1, f"unexpected Marksman provider rows: {marksman_rows}"
+marksman_row = marksman_rows[0]
+assert marksman_row[1:5] == [
+    "feature",
+    "official-upstream-release",
+    "https://github.com/artempyanykh/marksman/releases/tag/2026-02-08",
+    "marksman",
+]
+assert marksman_row[8] == "rm ~/.local/bin/marksman"
+assert marksman_row[-1] == "all"
 
 tinymist_rows = [row for row in cargo_rows if row[0] == "tinymist-cli" or row[1] == "tinymist"]
 assert tinymist_rows == [[
@@ -111,15 +129,22 @@ formatter_commands = {
 }
 helix_commands = server_commands | formatter_commands
 expected = {
-    "basedpyright-langserver", "ruff", "tinymist", "harper-ls", "markdown-oxide",
+    "basedpyright-langserver", "ruff", "tinymist", "harper-ls", "marksman",
     "bash-language-server", "taplo", "yaml-language-server",
     "vscode-json-language-server", "vscode-html-language-server",
     "vscode-css-language-server", "typescript-language-server", "typstyle",
     "prettier", "shfmt",
 }
 assert helix_commands == expected, f"unexpected Helix command set: {sorted(helix_commands ^ expected)}"
-for command in helix_commands | {"basedpyright", "ty", "typst", "shellcheck"}:
+for command in helix_commands | {"basedpyright", "ty", "typst", "shellcheck", "markdown-oxide"}:
     assert command in providers, f"{command} has no authoritative provider"
+
+markdown_language = next(language for language in languages if language["name"] == "markdown")
+assert markdown_language["language-servers"] == ["marksman", "harper-ls"]
+assert servers["marksman"] == {"command": "marksman", "args": ["server"]}
+assert servers["markdown-oxide"] == {"command": "markdown-oxide"}
+assert providers["marksman"][0] == "external:marksman"
+assert providers["markdown-oxide"][0] == "cargo:markdown-oxide"
 
 python_language = next(language for language in languages if language["name"] == "python")
 assert python_language["language-servers"] == ["basedpyright", "ruff"]
@@ -205,7 +230,7 @@ awk -F '\t' '
   fail 'Taplo does not use the locked official Cargo build with LSP support'
 ! awk -F '\t' '$1 == "@taplo/cli" || $2 == "taplo" { found=1 } END { exit !found }' \
   "$REPO_DIR/bootstrap/fedora/npm-packages.tsv" || fail 'broken npm Taplo provider remains selected'
-pass 'Typst Markdown prose and TOML tooling retain deliberate stable Cargo providers'
+pass 'Typst project-local Markdown Oxide prose and TOML tooling retain deliberate stable Cargo providers'
 
 awk -F '\t' '
   $1 == "cargo-update" && $2 == "cargo-install-update,cargo-install-update-config" &&
@@ -240,6 +265,14 @@ done
 # shellcheck disable=SC2016
 grep -Fq 'hx --health "$language"' "$REPO_DIR/bootstrap/fedora/EDITOR-TOOLS.md" ||
   fail 'documented Helix health loop does not invoke hx'
+# The documented command intentionally retains the user's literal HOME variable.
+# shellcheck disable=SC2016
+grep -Fq '(cd "$HOME/Vaults/state-space" && hx --health markdown)' \
+  "$REPO_DIR/bootstrap/fedora/EDITOR-TOOLS.md" ||
+  fail 'State Space project-local Markdown health check is not documented'
+grep -Fq 'marksman_sha=be5098e8213219269c47fc0d916a66fa31ce0602ec967475c722260aabf26087' \
+  "$REPO_DIR/bootstrap/fedora/CLEAN-INSTALL.md" ||
+  fail 'Marksman clean-install procedure lacks the reviewed release digest'
 pass 'rolling provider metadata and all required health checks are current'
 
 printf '1..%d\n' "$checks"

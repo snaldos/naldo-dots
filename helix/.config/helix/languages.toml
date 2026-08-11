@@ -1,5 +1,5 @@
 # Every external command used below has one preferred provider in
-# bootstrap/fedora/{dnf-packages,npm-packages,uv-tools,cargo-tools}.tsv.
+# bootstrap/fedora/{dnf-packages,npm-packages,uv-tools,cargo-tools,external-tools}.tsv.
 
 [language-server.basedpyright]
 command = "basedpyright-langserver"
@@ -33,6 +33,7 @@ dialect = "American"
 
 [language-server.marksman]
 command = "marksman"
+args = ["server"]
 
 [language-server.markdown-oxide]
 command = "markdown-oxide"

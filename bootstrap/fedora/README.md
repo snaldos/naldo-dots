@@ -99,10 +99,13 @@ sources.
 - Herdr and Tuicr use reviewed official installers and machine-local ownership
   receipts. Tuicr is compared with a checksum-verified release. Pixi uses its
   official installer and dedicated `~/.pixi/bin`; Conda is not selected beside it.
+- Marksman uses a pinned, checksum-verified official upstream release under
+  `~/.local/bin`; it is unavailable from Fedora 44's enabled DNF repositories.
 - Noctalia owns clipboard history; Fedora `wl-clipboard` supplies CLI transfer.
 - npm and uv are rolling except for `typescript@6`, which retains the `tsserver`
   API required by the selected LSP. Cargo tags/versions record reviewed routes;
-  tagged Tinymist and Markdown Oxide updates remain manual.
+  tagged Tinymist and Markdown Oxide updates remain manual. Marksman updates are
+  also manual so each upstream binary and published digest can be reviewed.
 - NVIDIA uses current RPM Fusion instructions on the desktop only.
 
 Fedora 44 package names and identities were audited for this release. Before a
